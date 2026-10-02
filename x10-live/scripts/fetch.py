@@ -5,6 +5,7 @@ GitHub Actions から定期実行される想定。必要なのは環境変数 X
 - 参加者は participants.txt（1行1ハンドル）
 - 投稿は参加者ごとに「前回取得した最新の投稿より後」だけを取りに行く（同じ投稿を二度読まないので課金が増えない）
 - リポスト（RT）と返信は数えない。引用は数える（下の設定で変更可）
+- 名前・アイコン・フォロワー数は日本時間で1日1回だけ取り直し、フォロワー数は日付ごとに記録する
 """
 import json, os, sys, time, urllib.parse, urllib.request, urllib.error
 from datetime import datetime, timezone, timedelta
@@ -13,13 +14,19 @@ from datetime import datetime, timezone, timedelta
 CHALLENGE_START = "2026-10-01T00:00:00+09:00"  # 企画の開始日時（日本時間）
 COUNT_REPLIES = False       # 返信も1本として数えるか（False なら取得自体しないので課金も減る）
 COUNT_QUOTES = True         # 引用ポストも1本として数えるか
-USER_REFRESH_HOURS = 72     # 名前・アイコンの再取得間隔（毎回取ると課金が増えるため）
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data.json")
 PARTICIPANTS = os.path.join(ROOT, "participants.txt")
 API = "https://api.x.com/2"
 TOKEN = os.environ.get("X_BEARER_TOKEN", "").strip()
+
+
+JST = timezone(timedelta(hours=9))
+
+
+def today_jst():
+    return datetime.now(JST).strftime("%Y-%m-%d")
 
 
 def now_iso():
@@ -64,21 +71,27 @@ def load_data():
 
 
 def refresh_users(data, handles):
+    """名前・アイコン・フォロワー数を取得。全員分は日本時間で1日1回、新しく増えた人はその場で。"""
     st = data.setdefault("state", {})
+    followers = data.setdefault("followers", {})
     known = {u["handle"].lower(): u for u in data["users"]}
-    last = st.get("users_refreshed_at")
-    stale = not last or datetime.now(timezone.utc) - datetime.fromisoformat(last.replace("Z", "+00:00")) > timedelta(hours=USER_REFRESH_HOURS)
-    targets = handles if stale else [h for h in handles if h.lower() not in known]
+    today = today_jst()
+    daily = st.get("users_refreshed_on") != today
+    targets = handles if daily else [h for h in handles if h.lower() not in known]
     if targets:
         for i in range(0, len(targets), 100):
-            res = api("/users/by", {"usernames": ",".join(targets[i:i + 100]), "user.fields": "name,profile_image_url"})
+            res = api("/users/by", {"usernames": ",".join(targets[i:i + 100]),
+                                    "user.fields": "name,profile_image_url,public_metrics"})
             for u in res.get("data", []):
                 known[u["username"].lower()] = {"handle": u["username"], "id": u["id"], "name": u.get("name") or u["username"],
                                                 "avatar": u.get("profile_image_url", "")}
+                fc = u.get("public_metrics", {}).get("followers_count")
+                if fc is not None:
+                    followers.setdefault(u["username"], {})[today] = fc
             for e in res.get("errors", []):
                 print(f"  ユーザーが見つかりません: {e.get('value')} ({e.get('title')})")
-        if stale:
-            st["users_refreshed_at"] = now_iso()
+        if daily:
+            st["users_refreshed_on"] = today
     # participants.txt の順番で並べ、リストから外した人は消す
     data["users"] = [known[h.lower()] for h in handles if h.lower() in known]
 
