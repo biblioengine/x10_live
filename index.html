@@ -115,8 +115,8 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .cell:not(.future):hover{outline:2px solid var(--fg);outline-offset:-1px}
 
 .rankwrap{overflow-x:auto}
-.rank{min-width:560px}
-.rank-row{display:grid;grid-template-columns:36px minmax(160px,1.6fr) repeat(4,minmax(70px,1fr));align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--line);font-size:13px}
+.rank{min-width:660px}
+.rank-row{display:grid;grid-template-columns:36px minmax(160px,1.6fr) repeat(5,minmax(70px,1fr));align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--line);font-size:13px}
 .rank-row:last-child{border-bottom:0}
 .rank-row.h{font-size:11px;color:var(--muted);padding-block:8px}
 .rank-row .r{text-align:right}
@@ -145,7 +145,7 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .wall-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
 
 /* 個人ページ */
-.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
 .stat{padding:12px 16px;border-right:1px solid var(--line);min-width:0}
 .stat:last-child{border-right:0}
 .stat .k{font-size:11px;color:var(--muted);letter-spacing:.04em}
@@ -198,6 +198,7 @@ dialog::backdrop{background:rgba(10,15,25,.45)}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stat{border-bottom:1px solid var(--line)}
   .stat:nth-child(2n){border-right:0}
+  .stat:last-child{grid-column:1/-1}
 }
 @media (max-width:720px){
   .app{grid-template-columns:minmax(0,1fr)}
@@ -262,7 +263,7 @@ nagi_writes,ナギ,2026-10-02T07:12:00+09:00,"おはよう"</pre>
 const GOAL=10;
 const COLORS=['#2b8a5e','#c2410c','#7c3aed','#0e7490','#b45309','#be185d','#4d7c0f','#475569'];
 const DOW=['日','月','火','水','木','金','土'];
-const state={users:[],posts:[],byUser:{},view:'live',uid:null,y:0,m:0,day:null,isSample:true,start:null,updated:null,img:{},rf:'all'};
+const state={users:[],posts:[],byUser:{},view:'live',uid:null,y:0,m:0,day:null,isSample:true,start:null,updated:null,img:{},rf:'all',followers:{}};
 
 /* ---------- サンプルデータ（架空の参加者） ---------- */
 function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -289,7 +290,10 @@ function sample(){
       }
     }
   }
-  return{users,posts,start:start.getTime()};
+  const followers={};
+  for(const [h] of defs){let f=Math.floor(200+r()*4000);followers[h]={};
+    for(let t=new Date(start);t<=now;t.setDate(t.getDate()+1)){f=Math.max(0,f+Math.round((r()-.35)*f*.02));followers[h][jstDate(t.getTime())]=f}}
+  return{users,posts,start:start.getTime(),followers};
 }
 
 /* ---------- 読み込み ---------- */
@@ -307,7 +311,7 @@ function parseCSV(s){
 function normalize(raw){
   let items=raw,meta={},roster=[];
   if(raw&&!Array.isArray(raw)&&Array.isArray(raw.posts)){ // 自動取得の data.json
-    meta={start:Date.parse(raw.start),updated:Date.parse(raw.updated_at)};roster=raw.users||[];items=raw.posts;
+    meta={start:Date.parse(raw.start),updated:Date.parse(raw.updated_at),followers:raw.followers||{}};roster=raw.users||[];items=raw.posts;
   }else if(raw&&!Array.isArray(raw)&&Array.isArray(raw.data)){ // X API v2
     const um={};(raw.includes?.users||[]).forEach(u=>um[u.id]=u);
     items=raw.data.map(t=>({id:t.id,handle:um[t.author_id]?.username||t.author_id,name:um[t.author_id]?.name,created_at:t.created_at,text:t.text}));
@@ -330,7 +334,7 @@ function normalize(raw){
 function load(d,isSample){
   const keepView=state.users.length&&!isSample;
   state.users=d.users;state.posts=d.posts.sort((a,b)=>a.ts-b.ts);state.isSample=isSample;
-  state.start=d.start||(state.posts[0]?.ts??Date.now());state.updated=d.updated||null;
+  state.start=d.start||(state.posts[0]?.ts??Date.now());state.followers=d.followers||{};state.updated=d.updated||null;
   state.byUser={};state.users.forEach(u=>{state.byUser[u.id]=[];if(u.avatar)state.img[u.id]=u.avatar.replace('_normal.','_bigger.')});
   state.posts.forEach(p=>state.byUser[p.uid]&&state.byUser[p.uid].push(p));
   if(!keepView){const now=new Date();state.y=now.getFullYear();state.m=now.getMonth();state.view='live';state.uid=state.users[0].id;state.day=null}
@@ -345,6 +349,15 @@ const ymd=(y,m,d)=>y*10000+(m+1)*100+d;
 const dim=(y,m)=>new Date(y,m+1,0).getDate();
 const todayKey=()=>dkey(Date.now());
 const startKey=()=>dkey(state.start);
+const jstDate=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+function fol(handle){
+  const m=state.followers[handle];if(!m)return null;
+  const ds=Object.keys(m).sort();if(!ds.length)return null;
+  const now=m[ds[ds.length-1]],first=m[ds[0]],prev=ds.length>1?m[ds[ds.length-2]]:null;
+  return{now,day:prev===null?null:now-prev,total:now-first,since:ds[0]};
+}
+const sgn=v=>v===null||v===undefined?'—':(v>0?'+':v<0?'−':'±')+Math.abs(v).toLocaleString();
+const sgnc=v=>!v?'var(--muted)':v>0?'#2b8a5e':'var(--live)';
 const dayCount=(uid,k)=>state.byUser[uid].reduce((s,p)=>s+(dkey(p.ts)===k),0);
 function totals(uid){
   const map={};state.byUser[uid].forEach(p=>{const k=dkey(p.ts);map[k]=(map[k]||0)+1});
@@ -412,7 +425,8 @@ function renderLive(){
   const rank=[...rows].sort((a,b)=>b.tot.ach-a.tot.ach||b.tot.all-a.tot.all).map(({u,tot},i)=>
     `<div class="rank-row"><div class="no">${i+1}</div><div class="nmc">${av(u,'sm')}<span>${esc(u.name)}</span></div>
      <div class="r num">${tot.ach}日</div><div class="r num">${tot.days?Math.round(tot.ach/tot.days*100):0}%</div>
-     <div class="r num">${tot.all}</div><div class="r num">${tot.days?(tot.all/tot.days).toFixed(1):'0'}</div></div>`).join('');
+     <div class="r num">${tot.all}</div><div class="r num">${tot.days?(tot.all/tot.days).toFixed(1):'0'}</div>
+     ${(f=>`<div class="r num" style="color:${sgnc(f?.total)}">${f?sgn(f.total):'—'}</div>`)(fol(u.handle))}</div>`).join('');
 
   const st=new Date(state.start);
   document.getElementById('main').innerHTML=`
@@ -428,7 +442,7 @@ function renderLive(){
   <section class="card">
     <div class="card-h"><h2>通算成績</h2><span class="sub">${st.getMonth()+1}/${st.getDate()} から今日まで</span></div>
     <div class="rankwrap"><div class="rank">
-      <div class="rank-row h"><div></div><div>参加者</div><div class="r">達成日数</div><div class="r">達成率</div><div class="r">投稿数</div><div class="r">1日平均</div></div>
+      <div class="rank-row h"><div></div><div>参加者</div><div class="r">達成日数</div><div class="r">達成率</div><div class="r">投稿数</div><div class="r">1日平均</div><div class="r">フォロワー増減</div></div>
       ${rank}</div></div>
   </section>`;
 }
@@ -479,6 +493,9 @@ function renderUser(){
     <div class="stat"><div class="k">達成日数</div><div class="v num">${tot.ach}<small>/ ${tot.days}日</small></div></div>
     <div class="stat"><div class="k">達成率</div><div class="v num">${tot.days?Math.round(tot.ach/tot.days*100):0}<small>%</small></div></div>
     <div class="stat"><div class="k">通算投稿</div><div class="v num">${tot.all}<small>本</small></div></div>
+    ${(f=>f?`<div class="stat"><div class="k">フォロワー</div><div class="v num">${f.now.toLocaleString()}<small style="color:${sgnc(f.day)}">前日比 ${sgn(f.day)}</small></div>
+      <div class="k num" style="color:${sgnc(f.total)}">${f.since.slice(5).replace('-','/')}から ${sgn(f.total)}</div></div>`
+      :`<div class="stat"><div class="k">フォロワー</div><div class="v num">—<small>記録待ち</small></div></div>`)(fol(u.handle))}
   </section>
   <div class="split">
     <section class="card">
