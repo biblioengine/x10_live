@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="X毎日10投稿チャレンジの非公式実況ページ">
+<title>10投稿チャレンジ実況</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Dela+Gothic+One&family=Roboto+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: 中継番組のスコアボード。今日の途中経過 → 達成カレンダー → 通算成績。参加者一覧はアイコンの壁、個人ページはカレンダー＋その日のタイムライン */
+:root{
+  --bg:#f3f4f8; --panel:#ffffff; --line:#e1e4ec; --fg:#161a24; --muted:#687087;
+  --x:#2f62f0; --x-soft:#dfe7ff; --gold:#f0a800; --gold-soft:#fff3cc; --live:#e8364f;
+  --track:#e9ecf3; --hover:#f0f2f8;
+  --f-body:"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+  --f-disp:"Dela Gothic One","Noto Sans JP",sans-serif;
+  --f-num:"Roboto Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1218; --panel:#181c25; --line:#2a303c; --fg:#eceff5; --muted:#9aa3b6;
+  --x:#6c90ff; --x-soft:#1f2a4a; --gold:#ffc53d; --gold-soft:#3a2f10; --live:#ff5c72;
+  --track:#252b37; --hover:#20252f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1218; --panel:#181c25; --line:#2a303c; --fg:#eceff5; --muted:#9aa3b6;
+  --x:#6c90ff; --x-soft:#1f2a4a; --gold:#ffc53d; --gold-soft:#3a2f10; --live:#ff5c72;
+  --track:#252b37; --hover:#20252f; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.6}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--x);outline-offset:2px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+
+.app{display:grid;grid-template-columns:244px minmax(0,1fr);min-height:100%}
+aside{background:var(--panel);border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:12px;position:sticky;top:0;height:100vh;height:100dvh;min-height:0}
+.brand{padding:0 8px;line-height:1.25}
+.brand .t{font-family:var(--f-disp);font-size:19px;letter-spacing:.02em}
+.brand .t em{font-style:normal;color:var(--gold)}
+.brand .s{font-size:11px;color:var(--muted)}
+.navlabel{font-size:11px;color:var(--muted);letter-spacing:.08em;padding:4px 8px 0}
+.navs{flex:1;min-height:0;display:flex;flex-direction:column;gap:4px}
+.nav{display:flex;flex-direction:column;gap:2px}
+#navUsers{overflow-y:auto;min-height:0;flex:1}
+.nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:7px 8px}
+.nav button:hover{background:var(--hover)}
+.nav button[aria-current="true"]{background:var(--hover);box-shadow:inset 3px 0 0 var(--fg);font-weight:700}
+.av{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px;background-size:cover;background-position:center}
+.av.sm{width:26px;height:26px;font-size:11px}
+.av.lg{width:44px;height:44px;font-size:18px}
+.who{min-width:0;display:flex;flex-direction:column;line-height:1.3}
+.who span{font-size:12px;color:var(--muted);font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.navcnt{margin-left:auto;font-size:12px;font-family:var(--f-num);color:var(--muted)}
+.navcnt.done{color:#161a24;background:var(--gold);border-radius:4px;padding:0 5px;font-weight:700}
+.vico{flex:none;width:32px;height:32px;border-radius:8px;display:grid;place-items:center;font-size:10px;font-weight:900;letter-spacing:.04em}
+.side-foot{display:flex;flex-direction:column;gap:8px;padding:0 4px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;font-size:13px}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--fg);border-color:var(--fg);color:var(--panel)}
+.sample{font-size:11px;color:var(--muted);line-height:1.5}
+.sample b{display:inline-block;background:var(--gold);color:#161a24;border-radius:4px;padding:0 6px;margin-right:4px}
+
+main{padding-block:20px 48px;padding-inline:24px;min-width:0;display:flex;flex-direction:column;gap:16px}
+.topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.topbar h1{font-family:var(--f-disp);font-weight:400;font-size:22px;margin:0;display:flex;align-items:center;gap:10px;text-wrap:balance}
+.topbar h1 small{font-family:var(--f-body);font-size:13px;color:var(--muted)}
+.onair{display:inline-flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px 4px 8px;font-size:12px;flex-wrap:wrap}
+.onair .dot{background:var(--live);color:#fff;font-weight:900;font-size:10px;border-radius:4px;padding:1px 6px;letter-spacing:.06em}
+.onair .dot::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#fff;margin-right:5px;vertical-align:1px;animation:blink 1.4s infinite}
+.onair .mut{color:var(--muted)}
+@keyframes blink{50%{opacity:.2}}
+.monthnav{display:flex;align-items:center;gap:6px}
+.monthnav .m{min-width:96px;text-align:center;font-weight:700}
+.iconbtn{width:32px;height:32px;border:1px solid var(--line);background:var(--panel);border-radius:8px;display:grid;place-items:center}
+.iconbtn:hover{background:var(--hover)}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.card-h{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.card-h h2{font-size:15px;margin:0}
+.card-h .sub{color:var(--muted);font-size:12px}
+.key{display:flex;gap:12px;margin-left:auto;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.key span{display:inline-flex;align-items:center;gap:5px}
+.key i{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+/* 今日の途中経過 */
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;padding:16px}
+.player{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;text-align:left;background:var(--panel);min-width:0}
+.player:hover{border-color:var(--muted)}
+.player.done{border-color:var(--gold);background:linear-gradient(var(--gold-soft),var(--panel) 80%)}
+.player .top{display:flex;align-items:center;gap:10px;min-width:0}
+.player .rk{font-family:var(--f-disp);font-size:18px;width:24px;text-align:center;color:var(--muted)}
+.player .nm{min-width:0;flex:1}
+.player .nm b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.player .nm span{font-size:12px;color:var(--muted)}
+.player .ct{font-size:13px;color:var(--muted);text-align:right;line-height:1.1}
+.player .ct b{font-size:22px;color:var(--fg)}
+.pill{flex:none;font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--track);color:var(--muted)}
+.pill.done{background:var(--gold);color:#161a24}
+.ticks{display:grid;grid-template-columns:repeat(10,1fr);gap:3px}
+.ticks i{height:12px;border-radius:2px;background:var(--track)}
+.player .foot{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.last{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+
+/* 達成カレンダー（全員） */
+.cmpwrap{overflow-x:auto;padding:8px 12px 12px}
+table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
+.cmp th{font-size:11px;color:var(--muted);font-weight:400;padding:2px 0;text-align:center;min-width:28px;line-height:1.3}
+.cmp th.td{color:var(--live);font-weight:700}
+.cmp td.u{position:sticky;left:0;background:var(--panel);padding:2px 10px 2px 4px;white-space:nowrap;z-index:1}
+.cmp td.u div{display:flex;align-items:center;gap:8px;font-size:13px}
+.cmp td.tot{padding:0 6px 0 10px;text-align:right;font-size:13px;white-space:nowrap}
+.cell{width:100%;min-width:28px;height:28px;border:0;border-radius:6px;font-family:var(--f-num);font-size:11px;padding:0;background:var(--track);color:var(--muted)}
+.cell.done{background:var(--gold);color:#161a24;font-weight:700}
+.cell.today{box-shadow:inset 0 0 0 2px var(--live)}
+.cell.future{background:transparent;border:1px dashed var(--line);cursor:default}
+.cell:not(.future):hover{outline:2px solid var(--fg);outline-offset:-1px}
+
+.rankwrap{overflow-x:auto}
+.rank{min-width:560px}
+.rank-row{display:grid;grid-template-columns:36px minmax(160px,1.6fr) repeat(4,minmax(70px,1fr));align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--line);font-size:13px}
+.rank-row:last-child{border-bottom:0}
+.rank-row.h{font-size:11px;color:var(--muted);padding-block:8px}
+.rank-row .r{text-align:right}
+.rank-row .no{font-family:var(--f-disp);color:var(--muted);text-align:center}
+.rank-row .nmc{display:flex;gap:8px;align-items:center;min-width:0}
+.rank-row .nmc span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* 参加者一覧（アイコンの壁） */
+.wall-sum{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line)}
+.wall-sum .big{font-family:var(--f-disp);font-size:30px;line-height:1}
+.wall-sum .big small{font-family:var(--f-body);font-size:13px;color:var(--muted);margin-left:4px}
+.prog{flex:1;min-width:160px;height:10px;border-radius:5px;background:var(--track);overflow:hidden}
+.prog i{display:block;height:100%;background:var(--gold)}
+.roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:14px 8px;padding:16px}
+.face{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 2px;border:0;border-radius:10px;background:none;text-align:center;min-width:0}
+.face:hover{background:var(--hover)}
+.ring{width:70px;height:70px;border-radius:50%;padding:4px;position:relative}
+.ring .av{width:100%;height:100%;font-size:24px;border:3px solid var(--panel)}
+.face.idle .ring .av{filter:grayscale(1);opacity:.55}
+.crown{position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);background:var(--gold);color:#161a24;font-size:9px;font-weight:900;border-radius:999px;padding:0 6px;border:2px solid var(--panel);white-space:nowrap}
+.face b{font-size:11px;font-weight:500;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.face .sc{font-size:10px;color:var(--muted);margin-top:-4px}
+.rosterbar{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.seg{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:3px 12px;font-size:12px}
+.seg[aria-pressed="true"]{background:var(--fg);color:var(--panel);border-color:var(--fg)}
+.wall-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+
+/* 個人ページ */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.stat{padding:12px 16px;border-right:1px solid var(--line);min-width:0}
+.stat:last-child{border-right:0}
+.stat .k{font-size:11px;color:var(--muted);letter-spacing:.04em}
+.stat .v{font-size:22px;font-weight:700}
+.stat .v small{font-size:12px;color:var(--muted);margin-left:2px;font-family:var(--f-body);font-weight:400}
+.split{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start}
+.cal{padding:12px 16px 16px}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.dow div{font-size:11px;color:var(--muted);text-align:center;padding-bottom:4px}
+.day{aspect-ratio:1/0.9;max-width:100%;border:1px solid var(--line);border-radius:8px;background:var(--panel);display:flex;flex-direction:column;justify-content:space-between;padding:5px 6px;text-align:left;min-width:0}
+.day.out{visibility:hidden}
+.day:hover{border-color:var(--muted)}
+.day[aria-pressed="true"]{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg) inset}
+.day.done{background:var(--gold-soft);border-color:var(--gold)}
+.day.future{background:transparent;border-style:dashed;cursor:default;opacity:.6}
+.day.pre{opacity:.45}
+.day .d{font-size:11px;display:flex;justify-content:space-between;align-items:center;gap:2px}
+.day.today .d>span:first-child{background:var(--live);color:#fff;border-radius:4px;padding:0 4px}
+.day .c{font-family:var(--f-num);font-size:16px;font-weight:700;line-height:1}
+.day .c small{font-size:10px;color:var(--muted);font-weight:500}
+.dbar{height:5px;border-radius:3px;background:var(--track);overflow:hidden}
+.dbar b{display:block;height:100%;background:var(--x)}
+.day.done .dbar b{background:var(--gold)}
+.tl{max-height:660px;overflow:auto}
+.tl-h{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.tl-h h2{font-size:15px;margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tl-h .row2{display:flex;align-items:center;gap:10px}
+.tl-h .row2 .ticks{flex:1}
+.post{display:grid;grid-template-columns:48px minmax(0,1fr);gap:10px;padding:11px 16px;border-bottom:1px solid var(--line)}
+.post:last-child{border-bottom:0}
+.post .time{font-family:var(--f-num);font-size:13px;font-weight:700}
+.post p{margin:0 0 4px;white-space:pre-wrap;overflow-wrap:anywhere}
+.post .nth{font-size:11px;color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.post .nth b.goal{color:#161a24;background:var(--gold);border-radius:3px;padding:0 4px}
+.post .nth a{color:var(--x)}
+.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+.gap{font-size:11px;color:var(--muted);padding:3px 16px 3px 74px;background:var(--bg);border-bottom:1px solid var(--line)}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:8px;font-size:13px;z-index:10;max-width:calc(100vw - 32px)}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--fg);max-width:min(560px,calc(100vw - 32px));padding:0}
+dialog::backdrop{background:rgba(10,15,25,.45)}
+.dlg{padding:20px;display:flex;flex-direction:column;gap:12px}
+.dlg h3{margin:0;font-size:16px}
+.dlg pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;font-family:var(--f-num);font-size:12px;overflow-x:auto;margin:0}
+.dlg p{margin:0;color:var(--muted);font-size:13px}
+.dlg .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+@media (max-width:900px){
+  .split{grid-template-columns:minmax(0,1fr)}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat{border-bottom:1px solid var(--line)}
+  .stat:nth-child(2n){border-right:0}
+}
+@media (max-width:720px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  aside{border-right:0;border-bottom:1px solid var(--line);padding:12px 16px;position:static;height:auto}
+  .navlabel,.brand .s{display:none}
+  .nav.views{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .nav.views button{padding:6px 8px;border:1px solid var(--line)}
+  .nav.views button[aria-current="true"]{box-shadow:none;border-color:var(--fg)}
+  .navs{flex:none}
+  #navUsers{flex-direction:row;gap:6px;overflow-x:auto;overflow-y:hidden;padding-bottom:4px}
+  #navUsers button{width:auto;flex:none;padding:5px 8px 5px 5px}
+  #navUsers button[aria-current="true"]{box-shadow:inset 0 -3px 0 var(--fg)}
+  #navUsers .who span{display:none}
+  .side-foot{flex-direction:row;align-items:center;flex-wrap:wrap}
+  main{padding-inline:16px}
+  .board{padding:12px;grid-template-columns:minmax(0,1fr)}
+  .grid,.dow{gap:3px}
+  .day{padding:3px 4px}
+  .day .c{font-size:13px}.day .c small{display:none}
+  .roster{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 4px;padding:10px}
+  .ring{width:60px;height:60px}.ring .av{font-size:20px}
+}
+@media (max-width:380px){.roster{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand"><div class="t"><em>10</em>投稿チャレンジ実況</div><div class="s">X に毎日10本。野次馬による非公式の観戦ページ</div></div>
+    <nav class="nav views" id="navViews"></nav>
+    <div class="navs">
+      <div class="navlabel">参加者</div>
+      <nav class="nav" id="navUsers"></nav>
+    </div>
+    <div class="side-foot">
+      <button class="btn" id="btnImport" type="button">データを読み込む</button>
+      <input type="file" id="fileIn" accept=".json,.csv,application/json,text/csv" hidden>
+      <div class="sample" id="sampleNote"><b>例</b>架空の参加者によるサンプルデータです。</div>
+    </div>
+  </aside>
+  <main id="main"></main>
+</div>
+
+<dialog id="dlg">
+  <div class="dlg">
+    <h3>投稿データの読み込み</h3>
+    <p>JSON または CSV。1行が1投稿です。created_at は日時。</p>
+    <pre>handle,name,created_at,text
+nagi_writes,ナギ,2026-10-02T07:12:00+09:00,"おはよう"</pre>
+    <p>自動取得の data.json（start / updated_at / users / posts）や、X API v2 の返却形式（data と includes.users）もそのまま読めます。</p>
+    <div class="row">
+      <button class="btn" type="button" id="dlgCancel">閉じる</button>
+      <button class="btn primary" type="button" id="dlgPick">ファイルを選ぶ</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(()=>{
+const GOAL=10;
+const COLORS=['#2b8a5e','#c2410c','#7c3aed','#0e7490','#b45309','#be185d','#4d7c0f','#475569'];
+const DOW=['日','月','火','水','木','金','土'];
+const state={users:[],posts:[],byUser:{},view:'live',uid:null,y:0,m:0,day:null,isSample:true,start:null,updated:null,img:{},rf:'all'};
+
+/* ---------- サンプルデータ（架空の参加者） ---------- */
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function sample(){
+  const r=rng(1002);const pick=a=>a[Math.floor(r()*a.length)];
+  const defs=[['nagi_writes','ナギ',.9],['kumo_no_ue','雲の上のひと',.75],['mochi_daily','もち',.55],['hayate_cmd','疾風コマンド',.8],['yoru_kissa','夜喫茶マスター',.6,1],['tanaka_3rd','田中さん（三日坊主）',.2]];
+  [['sora_iro','そらいろ'],['kaki_pen','柿ペン'],['umi_note','うみノート'],['hibi_kore','日々これ'],['tetsu_ya','てつや'],['mikan_bako','みかん箱'],['shiro_neko','しろねこ'],['asa_ichi','朝イチ'],['kotoba_ya','ことば屋'],['hoshi_yomi','星読み'],['natsu_me','なつめ'],['zukan_kun','図鑑くん'],['ame_furi','雨ふり'],['pan_ya','パン屋の娘'],['kaze_tayori','風だより'],['moji_moji','もじもじ'],['yuki_dama','ゆきだま'],['chiba_dad','千葉のパパ'],['gohan_log','ごはんログ'],['tabi_saki','旅さき'],['kuma_san','くまさん'],['ichigo_m','いちご'],['ronri_t','論理太郎'],['fumi_bako','文箱'],['niji_kake','にじかけ'],['oto_mushi','音むし'],['haru_kaze','春風'],['sabo_ten','さぼてん']]
+    .forEach(([h,n])=>defs.push([h,n,.25+r()*.7,r()<.2]));
+  const TX=['おはようございます。今日も10本いきます','{n}本目。ネタ切れが近い','昼ごはん食べながら投稿','さっきの話の続き','今日のひとこと：継続は筋肉','締め切りに追われる人の気持ちがわかってきた','140字に収める練習になってる','ここまで来たら意地','散歩中に思いついたこと','夜の部、はじめます','{n}本目。あと少し','今日の気づきをひとつ'];
+  const users=defs.map(([h,n],i)=>({id:h,handle:h,name:n,color:COLORS[i%COLORS.length]}));
+  const now=new Date();const start=new Date(now.getFullYear(),now.getMonth(),now.getDate()-17);
+  const posts=[];let id=1;
+  for(const [h,,dil,night] of defs){
+    for(let t=new Date(start);t<=now;t.setDate(t.getDate()+1)){
+      const isToday=t.toDateString()===now.toDateString();
+      let n=r()<dil?GOAL+(r()<.3?Math.floor(r()*5):0):Math.floor(2+r()*8);
+      if(dil<.25&&t-start>5*864e5) n=Math.floor(r()*4);
+      const hrs=[];for(let k=0;k<n;k++)hrs.push(night?(14+r()*10):(6.5+r()*16.5));
+      hrs.sort((a,b)=>a-b);
+      for(const hh of hrs){
+        const dt=new Date(t.getFullYear(),t.getMonth(),t.getDate(),Math.floor(hh),Math.floor((hh%1)*60));
+        if(isToday&&dt>now) continue;
+        posts.push({id:String(id++),uid:h,ts:dt.getTime(),text:pick(TX).replace('{n}',1+Math.floor(r()*10))});
+      }
+    }
+  }
+  return{users,posts,start:start.getTime()};
+}
+
+/* ---------- 読み込み ---------- */
+function parseCSV(s){
+  const rows=[];let row=[],f='',q=false;
+  for(let i=0;i<s.length;i++){const c=s[i];
+    if(q){if(c==='"'){if(s[i+1]==='"'){f+='"';i++}else q=false}else f+=c}
+    else if(c==='"')q=true;else if(c===','){row.push(f);f=''}
+    else if(c==='\n'||c==='\r'){if(c==='\r'&&s[i+1]==='\n')i++;row.push(f);rows.push(row);row=[];f=''}
+    else f+=c}
+  if(f!==''||row.length){row.push(f);rows.push(row)}
+  const head=rows.shift().map(h=>h.trim().toLowerCase());
+  return rows.filter(r=>r.some(x=>x.trim())).map(r=>Object.fromEntries(head.map((h,i)=>[h,r[i]])));
+}
+function normalize(raw){
+  let items=raw,meta={},roster=[];
+  if(raw&&!Array.isArray(raw)&&Array.isArray(raw.posts)){ // 自動取得の data.json
+    meta={start:Date.parse(raw.start),updated:Date.parse(raw.updated_at)};roster=raw.users||[];items=raw.posts;
+  }else if(raw&&!Array.isArray(raw)&&Array.isArray(raw.data)){ // X API v2
+    const um={};(raw.includes?.users||[]).forEach(u=>um[u.id]=u);
+    items=raw.data.map(t=>({id:t.id,handle:um[t.author_id]?.username||t.author_id,name:um[t.author_id]?.name,created_at:t.created_at,text:t.text}));
+  }
+  if(!Array.isArray(items)) throw new Error('配列形式ではありません');
+  const users=[],seen={},posts=[];
+  const addUser=(h,name,avatar)=>{if(seen[h])return;seen[h]=1;users.push({id:h,handle:h,name:name||h,avatar,color:COLORS[users.length%COLORS.length]})};
+  roster.forEach(u=>addUser(String(u.handle).replace(/^@/,''),u.name,u.avatar));
+  items.forEach((it,i)=>{
+    if(it.platform&&/thread/i.test(it.platform)) return;
+    const h=String(it.handle||it.username||it.screen_name||it.user||'').replace(/^@/,'').trim();
+    const ts=Date.parse(it.created_at||it.date||it.datetime);
+    if(!h||isNaN(ts)) return;
+    addUser(h,it.name);
+    posts.push({id:String(it.id||'r'+i),uid:h,ts,text:String(it.text||'')});
+  });
+  if(!users.length) throw new Error('handle と created_at を持つ行が見つかりませんでした');
+  return{users,posts,...meta};
+}
+function load(d,isSample){
+  const keepView=state.users.length&&!isSample;
+  state.users=d.users;state.posts=d.posts.sort((a,b)=>a.ts-b.ts);state.isSample=isSample;
+  state.start=d.start||(state.posts[0]?.ts??Date.now());state.updated=d.updated||null;
+  state.byUser={};state.users.forEach(u=>{state.byUser[u.id]=[];if(u.avatar)state.img[u.id]=u.avatar.replace('_normal.','_bigger.')});
+  state.posts.forEach(p=>state.byUser[p.uid]&&state.byUser[p.uid].push(p));
+  if(!keepView){const now=new Date();state.y=now.getFullYear();state.m=now.getMonth();state.view='live';state.uid=state.users[0].id;state.day=null}
+  if(!state.byUser[state.uid]) state.uid=state.users[0].id;
+  document.getElementById('sampleNote').hidden=!isSample;
+  render();
+}
+
+/* ---------- 集計 ---------- */
+const dkey=t=>{const d=new Date(t);return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate()};
+const ymd=(y,m,d)=>y*10000+(m+1)*100+d;
+const dim=(y,m)=>new Date(y,m+1,0).getDate();
+const todayKey=()=>dkey(Date.now());
+const startKey=()=>dkey(state.start);
+const dayCount=(uid,k)=>state.byUser[uid].reduce((s,p)=>s+(dkey(p.ts)===k),0);
+function totals(uid){
+  const map={};state.byUser[uid].forEach(p=>{const k=dkey(p.ts);map[k]=(map[k]||0)+1});
+  const tk=todayKey();let ach=0,days=0,streak=0;
+  for(let t=new Date(state.start);dkey(t)<=tk;t.setDate(t.getDate()+1)){
+    const k=dkey(t),ok=(map[k]||0)>=GOAL;
+    if(k<tk||ok){days++;if(ok)ach++}
+  }
+  return{map,ach,days,all:state.byUser[uid].length};
+}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const av=(u,cls='')=>state.img[u.id]
+  ?`<span class="av ${cls}" style="background-color:${u.color};background-image:url('${esc(state.img[u.id])}')" role="img" aria-label="${esc(u.name)}"></span>`
+  :`<span class="av ${cls}" style="background:${u.color}">${esc([...u.name][0]||'?')}</span>`;
+const hm=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+function ticks(v){let s='';for(let i=0;i<GOAL;i++)s+=`<i style="${i<v?`background:${v>=GOAL?'var(--gold)':'var(--x)'}`:''}"></i>`;return `<div class="ticks">${s}</div>`}
+
+/* ---------- 描画 ---------- */
+function render(){renderNav();({live:renderLive,roster:renderRoster,user:renderUser})[state.view]()}
+function renderNav(){
+  const tk=todayKey(),done=state.users.filter(u=>dayCount(u.id,tk)>=GOAL).length;
+  document.getElementById('navViews').innerHTML=`
+    <button type="button" data-v="live" aria-current="${state.view==='live'}"><span class="vico" style="background:var(--live);color:#fff">LIVE</span>
+      <span class="who">みんなの実況<span>本日達成 ${done} / ${state.users.length}人</span></span></button>
+    <button type="button" data-v="roster" aria-current="${state.view==='roster'}"><span class="vico" style="background:var(--fg);color:var(--panel)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="4" r="2.2"/><circle cx="12" cy="4" r="2.2"/><circle cx="4" cy="12" r="2.2"/><circle cx="12" cy="12" r="2.2"/></svg></span>
+      <span class="who">参加者一覧<span>${state.users.length}人</span></span></button>`;
+  document.getElementById('navUsers').innerHTML=state.users.map(u=>{const c=dayCount(u.id,tk);
+    return `<button type="button" data-u="${esc(u.id)}" aria-current="${state.view==='user'&&state.uid===u.id}">${av(u)}
+    <span class="who">${esc(u.name)}<span>@${esc(u.handle)}</span></span><span class="navcnt${c>=GOAL?' done':''}">${c}/${GOAL}</span></button>`}).join('');
+}
+function onair(){
+  const n=new Date(),left=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1)-n;
+  const upd=state.updated?`<span class="mut">データ更新 ${hm(state.updated)}</span>`:'';
+  return `<span class="onair"><span class="dot">LIVE</span><span class="num">${n.getMonth()+1}/${n.getDate()} ${hm(n)}</span><span class="mut">今日の残り ${Math.floor(left/36e5)}時間${Math.floor(left%36e5/6e4)}分</span>${upd}</span>`;
+}
+function monthNav(){
+  return `<div class="monthnav"><button class="iconbtn" type="button" data-mv="-1" aria-label="前の月">‹</button>
+  <span class="m num">${state.y}年${state.m+1}月</span><button class="iconbtn" type="button" data-mv="1" aria-label="次の月">›</button></div>`;
+}
+
+function renderLive(){
+  const tk=todayKey(),{y,m}=state,n=dim(y,m),sk=startKey();
+  const rows=state.users.map(u=>{const today=state.byUser[u.id].filter(p=>dkey(p.ts)===tk);
+    return{u,c:today.length,last:today[today.length-1],tot:totals(u.id)}});
+  const board=[...rows].sort((a,b)=>Math.min(b.c,GOAL)-Math.min(a.c,GOAL)||(a.last?.ts??9e15)-(b.last?.ts??9e15)).map((r,i)=>{
+    const done=r.c>=GOAL;
+    return `<button type="button" class="player${done?' done':''}" data-u="${esc(r.u.id)}" data-today="1">
+      <div class="top"><span class="rk">${i+1}</span>${av(r.u)}<div class="nm"><b>${esc(r.u.name)}</b><span>@${esc(r.u.handle)}</span></div>
+      <span class="ct num"><b>${r.c}</b>/${GOAL}</span></div>
+      ${ticks(r.c)}
+      <div class="foot"><span class="last">${r.last?`最新 ${hm(r.last.ts)}　${esc(r.last.text)}`:'今日はまだ投稿なし'}</span>
+      <span class="pill${done?' done':''}">${done?'本日達成':'あと'+(GOAL-r.c)+'本'}</span></div>
+    </button>`}).join('');
+
+  const head=Array.from({length:n},(_,i)=>{const k=ymd(y,m,i+1),w=new Date(y,m,i+1).getDay();return `<th class="num${k===tk?' td':''}">${i+1}<br>${DOW[w]}</th>`}).join('');
+  const body=rows.map(({u,tot})=>`<tr><td class="u"><div>${av(u,'sm')}${esc(u.name)}</div></td>${
+    Array.from({length:n},(_,i)=>{const k=ymd(y,m,i+1);
+      if(k>tk||k<sk) return `<td><button type="button" class="cell future" disabled aria-label="対象外"></button></td>`;
+      const c=tot.map[k]||0;
+      return `<td><button type="button" class="cell${c>=GOAL?' done':''}${k===tk?' today':''}" data-u="${esc(u.id)}" data-k="${k}"
+        aria-label="${esc(u.name)} ${m+1}月${i+1}日 ${c}本">${c}</button></td>`}).join('')
+    }<td class="tot num">${tot.ach}<span style="color:var(--muted)">/${tot.days}日</span></td></tr>`).join('');
+
+  const rank=[...rows].sort((a,b)=>b.tot.ach-a.tot.ach||b.tot.all-a.tot.all).map(({u,tot},i)=>
+    `<div class="rank-row"><div class="no">${i+1}</div><div class="nmc">${av(u,'sm')}<span>${esc(u.name)}</span></div>
+     <div class="r num">${tot.ach}日</div><div class="r num">${tot.days?Math.round(tot.ach/tot.days*100):0}%</div>
+     <div class="r num">${tot.all}</div><div class="r num">${tot.days?(tot.all/tot.days).toFixed(1):'0'}</div></div>`).join('');
+
+  const st=new Date(state.start);
+  document.getElementById('main').innerHTML=`
+  <div class="topbar"><h1>みんなの実況</h1>${onair()}</div>
+  <section class="card">
+    <div class="card-h"><h2>今日の途中経過</h2><span class="sub">本数の多い順（同数なら早く到達した順）・カードを押すと今日の投稿へ</span></div>
+    <div class="board">${board}</div>
+  </section>
+  <section class="card">
+    <div class="card-h"><h2>達成カレンダー</h2>${monthNav()}<div class="key"><span><i style="background:var(--gold)"></i>10本達成</span><span><i style="background:var(--track)"></i>未達（数字は本数）</span></div></div>
+    <div class="cmpwrap"><table class="cmp"><thead><tr><th></th>${head}<th>達成</th></tr></thead><tbody>${body}</tbody></table></div>
+  </section>
+  <section class="card">
+    <div class="card-h"><h2>通算成績</h2><span class="sub">${st.getMonth()+1}/${st.getDate()} から今日まで</span></div>
+    <div class="rankwrap"><div class="rank">
+      <div class="rank-row h"><div></div><div>参加者</div><div class="r">達成日数</div><div class="r">達成率</div><div class="r">投稿数</div><div class="r">1日平均</div></div>
+      ${rank}</div></div>
+  </section>`;
+}
+
+function renderRoster(){
+  const tk=todayKey();
+  const all=state.users.map(u=>({u,c:dayCount(u.id,tk)})).sort((a,b)=>Math.min(b.c,GOAL)-Math.min(a.c,GOAL));
+  const list=state.rf==='done'?all.filter(r=>r.c>=GOAL):state.rf==='todo'?all.filter(r=>r.c<GOAL):all;
+  const doneN=all.filter(r=>r.c>=GOAL).length;
+  const faces=list.map(({u,c})=>{const a=c>=GOAL;
+    const ring=a?'var(--gold)':`conic-gradient(var(--x) 0 ${c/GOAL*360}deg, var(--track) 0)`;
+    return `<button type="button" class="face${c===0?' idle':''}" data-u="${esc(u.id)}" data-today="1"
+      title="${esc(u.name)} @${esc(u.handle)}　今日 ${c}本" aria-label="${esc(u.name)} 今日 ${c}本${a?' 達成':''}">
+      <span class="ring" style="background:${ring}">${av(u)}${a?'<span class="crown">達成</span>':''}</span>
+      <b>${esc(u.name)}</b><span class="sc num">${c}/${GOAL}</span></button>`}).join('');
+  const seg=(v,l)=>`<button type="button" class="seg" data-rf="${v}" aria-pressed="${state.rf===v}">${l}</button>`;
+  document.getElementById('main').innerHTML=`
+  <div class="topbar"><h1>参加者一覧 <small>${state.users.length}人</small></h1>${onair()}</div>
+  <section class="card">
+    <div class="wall-sum"><span class="big num">${doneN}<small>/ ${all.length}人が今日達成</small></span>
+      <span class="prog" aria-hidden="true"><i style="width:${doneN/Math.max(1,all.length)*100}%"></i></span>
+      <div class="rosterbar">${seg('all','全員')}${seg('done','達成 '+doneN)}${seg('todo','挑戦中 '+(all.length-doneN))}</div></div>
+    <div class="roster">${faces||'<div class="empty" style="grid-column:1/-1">該当する参加者はいません</div>'}</div>
+    <div class="wall-foot"><span>リングは今日の本数（1周で10本、金色で達成）。進んでいる順。灰色は今日まだ投稿なし。</span>
+      <button class="btn" type="button" id="btnFaces" style="margin-left:auto">アイコン画像を読み込む</button></div>
+  </section>`;
+}
+
+function renderUser(){
+  const u=state.users.find(x=>x.id===state.uid),{y,m}=state,n=dim(y,m),tk=todayKey(),sk=startKey();
+  const tot=totals(u.id),tc=tot.map[tk]||0;
+  const first=new Date(y,m,1).getDay();
+  let cells='';
+  for(let i=0;i<first;i++) cells+='<div class="day out"></div>';
+  for(let d=1;d<=n;d++){
+    const k=ymd(y,m,d),c=tot.map[k]||0,a=c>=GOAL;
+    if(k>tk){cells+=`<div class="day future"><span class="d num"><span>${d}</span></span></div>`;continue}
+    cells+=`<button type="button" class="day${a?' done':''}${k===tk?' today':''}${k<sk?' pre':''}" data-k="${k}" aria-pressed="${state.day===k}"
+      aria-label="${m+1}月${d}日 ${c}本${a?' 達成':''}">
+      <span class="d num"><span>${d}</span></span>
+      <span class="c">${c}<small>本</small></span>
+      <span class="dbar"><b style="width:${Math.min(100,c/GOAL*100)}%"></b></span></button>`;
+  }
+  document.getElementById('main').innerHTML=`
+  <div class="topbar"><h1>${av(u,'lg')}${esc(u.name)} <small>@${esc(u.handle)}</small></h1>${onair()}</div>
+  <section class="card stats">
+    <div class="stat"><div class="k">今日</div><div class="v num" style="color:${tc>=GOAL?'var(--gold)':'var(--x)'}">${tc}<small>/ ${GOAL}本</small></div></div>
+    <div class="stat"><div class="k">達成日数</div><div class="v num">${tot.ach}<small>/ ${tot.days}日</small></div></div>
+    <div class="stat"><div class="k">達成率</div><div class="v num">${tot.days?Math.round(tot.ach/tot.days*100):0}<small>%</small></div></div>
+    <div class="stat"><div class="k">通算投稿</div><div class="v num">${tot.all}<small>本</small></div></div>
+  </section>
+  <div class="split">
+    <section class="card">
+      <div class="card-h"><h2>カレンダー</h2>${monthNav()}</div>
+      <div class="cal"><div class="dow">${DOW.map(d=>`<div>${d}</div>`).join('')}</div><div class="grid">${cells}</div></div>
+    </section>
+    <section class="card" id="tlCard">${timeline(u)}</section>
+  </div>`;
+}
+function timeline(u){
+  const k=state.day;
+  if(!k) return `<div class="tl-h"><h2>タイムライン</h2></div><div class="empty">カレンダーの日付を選んでください</div>`;
+  const y=Math.floor(k/1e4),m=Math.floor(k/100)%100-1,d=k%100;
+  const list=state.byUser[u.id].filter(p=>dkey(p.ts)===k);
+  let html='',prev=null;
+  list.forEach((p,i)=>{
+    if(prev!==null){const g=Math.round((p.ts-prev)/6e4);if(g>=120)html+=`<div class="gap num">${Math.floor(g/60)}時間${g%60}分 空き</div>`}
+    const link=/^\d{6,}$/.test(p.id)?`<a href="https://x.com/${encodeURIComponent(u.handle)}/status/${p.id}" target="_blank" rel="noopener">Xで見る</a>`:'';
+    html+=`<article class="post"><span class="time">${hm(p.ts)}</span>
+      <div><p>${esc(p.text)}</p><div class="nth num"><span>${i+1}本目</span>${i+1===GOAL?'<b class="goal">10本到達</b>':''}${link}</div></div></article>`;
+    prev=p.ts;
+  });
+  const c=list.length;
+  return `<div class="tl-h"><h2>${m+1}月${d}日（${DOW[new Date(y,m,d).getDay()]}）${k===todayKey()?'<span class="pill" style="background:var(--live);color:#fff">今日</span>':''}${c>=GOAL?'<span class="pill done">達成</span>':''}</h2>
+    <div class="row2">${ticks(c)}<span class="num"><b>${c}</b>/${GOAL}</span></div></div>
+    <div class="tl">${c?html:'<div class="empty">この日の投稿はありません</div>'}</div>`;
+}
+
+/* ---------- 操作 ---------- */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b||b.disabled)return;
+  if(b.id==='btnFaces'){faceIn.click();return}
+  if(b.dataset.v){state.view=b.dataset.v;render();return}
+  if(b.dataset.rf){state.rf=b.dataset.rf;render();return}
+  if(b.dataset.mv){state.m+=+b.dataset.mv;if(state.m<0){state.m=11;state.y--}if(state.m>11){state.m=0;state.y++}render();return}
+  if(b.dataset.u&&(b.dataset.k||b.dataset.today||b.closest('#navUsers'))){
+    const k=b.dataset.k?+b.dataset.k:todayKey();
+    state.view='user';state.uid=b.dataset.u;state.day=k;state.y=Math.floor(k/1e4);state.m=Math.floor(k/100)%100-1;render();window.scrollTo({top:0});return}
+  if(b.classList.contains('day')&&b.dataset.k){
+    state.day=+b.dataset.k;
+    document.querySelectorAll('.day[aria-pressed]').forEach(x=>x.setAttribute('aria-pressed',x===b));
+    document.getElementById('tlCard').innerHTML=timeline(state.users.find(x=>x.id===state.uid));
+    if(innerWidth<900) document.getElementById('tlCard').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+});
+const dlg=document.getElementById('dlg'),fileIn=document.getElementById('fileIn');
+document.getElementById('btnImport').onclick=()=>dlg.showModal();
+document.getElementById('dlgCancel').onclick=()=>dlg.close();
+document.getElementById('dlgPick').onclick=()=>fileIn.click();
+fileIn.onchange=async()=>{
+  const f=fileIn.files[0];if(!f)return;
+  try{const txt=await f.text();
+    const raw=/\.csv$/i.test(f.name)||!/^\s*[\[{]/.test(txt)?parseCSV(txt):JSON.parse(txt);
+    const d=normalize(raw);state.users=[];load(d,false);dlg.close();toast(`${d.users.length}人・${d.posts.length}件を読み込みました`);
+  }catch(err){toast('読み込めませんでした：'+err.message)}
+  fileIn.value='';
+};
+
+/* アイコン画像：ファイル名（拡張子を除く）をハンドル名に合わせる。例 nagi_writes.png */
+const faceIn=Object.assign(document.createElement('input'),{type:'file',accept:'image/*',multiple:true,hidden:true});
+document.body.appendChild(faceIn);
+function shrink(file){return new Promise((ok,ng)=>{const url=URL.createObjectURL(file),im=new Image();
+  im.onload=()=>{const s=128,c=document.createElement('canvas');c.width=c.height=s;const k=Math.min(im.width,im.height);
+    c.getContext('2d').drawImage(im,(im.width-k)/2,(im.height-k)/2,k,k,0,0,s,s);URL.revokeObjectURL(url);ok(c.toDataURL('image/jpeg',.85))};
+  im.onerror=ng;im.src=url})}
+faceIn.onchange=async()=>{
+  const ids=new Map(state.users.map(u=>[u.handle.toLowerCase(),u.id]));let hit=0,miss=0;
+  for(const f of faceIn.files){const id=ids.get(f.name.replace(/\.[^.]+$/,'').replace(/^@/,'').toLowerCase());
+    if(!id){miss++;continue}try{state.img[id]=await shrink(f);hit++}catch{miss++}}
+  faceIn.value='';render();
+  toast(`${hit}人分のアイコンを設定しました${miss?`（${miss}件はハンドル名と一致せず）`:''}`);
+};
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3200)}
+
+/* 同じ場所に data.json があれば読み込み、5分ごとに更新。なければサンプル表示 */
+async function pull(first){
+  try{const res=await fetch('data.json',{cache:'no-store'});if(!res.ok)throw 0;
+    const d=normalize(await res.json());load(d,false);return true}
+  catch{if(first)load(sample(),true);return false}
+}
+pull(true).then(ok=>{if(ok)setInterval(()=>pull(false),5*60*1000)});
+setInterval(()=>document.querySelectorAll('.onair').forEach(el=>el.outerHTML=onair()),30000);
+})();
+</script>
+</body>
+</html>
