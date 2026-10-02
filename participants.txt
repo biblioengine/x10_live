@@ -43,3 +43,4 @@ chi_hatch_ngcpa
 369_biz_
 arutoxydr
 nozomi_factory
+kurimo_note
