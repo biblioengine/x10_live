@@ -340,6 +340,7 @@ function normalize(raw){
     const h=String(it.handle||it.username||it.screen_name||it.user||'').replace(/^@/,'').trim();
     const ts=Date.parse(it.created_at||it.date||it.datetime);
     if(!h||isNaN(ts)) return;
+    if(roster.length&&!seen[h]) return; // 参加者リストから外した人の投稿は表示しない
     addUser(h,it.name);
     posts.push({id:String(it.id||'r'+i),uid:h,ts,text:String(it.text||'')});
   });
