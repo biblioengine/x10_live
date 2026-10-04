@@ -125,6 +125,9 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .xname:hover{text-decoration:underline}
 .xlink{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;color:var(--panel);background:var(--fg);border-radius:999px;padding:5px 14px;text-decoration:none;white-space:nowrap}
 .xlink:hover{opacity:.85}
+.sublink{display:inline-flex;align-items:center;font-size:13px;font-weight:700;color:var(--fg);background:var(--panel);border:1px dashed var(--muted);border-radius:999px;padding:4px 14px;white-space:nowrap}
+.sublink:hover{background:var(--hover)}
+.subnote{font-size:12px;color:var(--muted);background:var(--panel);border:1px dashed var(--line);border-radius:10px;padding:8px 12px}
 .rank-row{display:grid;grid-template-columns:minmax(190px,1.6fr) repeat(5,minmax(70px,1fr));align-items:center;gap:10px;padding:9px 16px 9px 0;border-bottom:1px solid var(--line);font-size:13px}
 .rank-row .stick{display:flex;align-items:center;gap:8px;min-width:0;align-self:stretch;padding-left:8px;background:var(--panel)}
 .rank-row:last-child{border-bottom:0}
@@ -296,7 +299,7 @@ nagi_writes,ナギ,2026-10-02T07:12:00+09:00,"おはよう"</pre>
 const GOAL=10;
 const COLORS=['#2b8a5e','#c2410c','#7c3aed','#0e7490','#b45309','#be185d','#4d7c0f','#475569'];
 const DOW=['日','月','火','水','木','金','土'];
-const state={users:[],posts:[],byUser:{},view:'live',uid:null,y:0,m:0,day:null,isSample:true,start:null,updated:null,img:{},rf:'all',followers:{}};
+const state={subs:[],users:[],posts:[],byUser:{},view:'live',uid:null,y:0,m:0,day:null,isSample:true,start:null,updated:null,img:{},rf:'all',followers:{}};
 
 /* ---------- サンプルデータ（架空の参加者） ---------- */
 function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -342,9 +345,9 @@ function parseCSV(s){
   return rows.filter(r=>r.some(x=>x.trim())).map(r=>Object.fromEntries(head.map((h,i)=>[h,r[i]])));
 }
 function normalize(raw){
-  let items=raw,meta={},roster=[];
+  let items=raw,meta={},roster=[],subRoster=[];
   if(raw&&!Array.isArray(raw)&&Array.isArray(raw.posts)){ // 自動取得の data.json
-    meta={start:Date.parse(raw.start),updated:Date.parse(raw.updated_at),followers:raw.followers||{}};roster=raw.users||[];items=raw.posts;
+    meta={start:Date.parse(raw.start),updated:Date.parse(raw.updated_at),followers:raw.followers||{}};roster=raw.users||[];subRoster=raw.sub_users||[];items=raw.posts;
   }else if(raw&&!Array.isArray(raw)&&Array.isArray(raw.data)){ // X API v2
     const um={};(raw.includes?.users||[]).forEach(u=>um[u.id]=u);
     items=raw.data.map(t=>({id:t.id,handle:um[t.author_id]?.username||t.author_id,name:um[t.author_id]?.name,created_at:t.created_at,text:t.text}));
@@ -353,6 +356,10 @@ function normalize(raw){
   const users=[],seen={},posts=[];
   const addUser=(h,name,avatar)=>{if(seen[h])return;seen[h]=1;users.push({id:h,handle:h,name:name||h,avatar,color:COLORS[users.length%COLORS.length]})};
   roster.forEach(u=>addUser(String(u.handle).replace(/^@/,''),u.name,u.avatar));
+  // サブアカウント：一覧・ランキングには入れず、本人の個人ページからだけ開く
+  const subs=[];
+  subRoster.forEach(u=>{const h=String(u.handle).replace(/^@/,'');if(seen[h])return;seen[h]=1;
+    subs.push({id:h,handle:h,name:u.name||h,avatar:u.avatar,main:String(u.main||''),sub:true,color:COLORS[(users.length+subs.length)%COLORS.length]})});
   items.forEach((it,i)=>{
     if(it.platform&&/thread/i.test(it.platform)) return;
     const h=String(it.handle||it.username||it.screen_name||it.user||'').replace(/^@/,'').trim();
@@ -363,13 +370,14 @@ function normalize(raw){
     posts.push({id:String(it.id||'r'+i),uid:h,ts,text:String(it.text||'')});
   });
   if(!users.length) throw new Error('handle と created_at を持つ行が見つかりませんでした');
-  return{users,posts,...meta};
+  return{users,subs,posts,...meta};
 }
 function load(d,isSample){
   const keepView=state.users.length&&!isSample;
   state.users=d.users;state.posts=d.posts.sort((a,b)=>a.ts-b.ts);state.isSample=isSample;
   state.start=d.start||(state.posts[0]?.ts??Date.now());state.followers=d.followers||{};state.updated=d.updated||null;
-  state.byUser={};state.users.forEach(u=>{state.byUser[u.id]=[];if(u.avatar)state.img[u.id]=u.avatar.replace('_normal.','_bigger.')});
+  state.subs=d.subs||[];
+  state.byUser={};[...state.users,...state.subs].forEach(u=>{state.byUser[u.id]=[];if(u.avatar)state.img[u.id]=u.avatar.replace('_normal.','_bigger.')});
   state.posts.forEach(p=>state.byUser[p.uid]&&state.byUser[p.uid].push(p));
   if(!keepView){const now=new Date();state.y=now.getFullYear();state.m=now.getMonth();state.view='live';state.uid=state.users[0].id;state.day=null}
   if(!state.byUser[state.uid]) state.uid=state.users[0].id;
@@ -377,6 +385,9 @@ function load(d,isSample){
   render();
 }
 
+const findU=id=>state.users.find(x=>x.id===id)||state.subs.find(x=>x.id===id);
+const subOf=u=>state.subs.find(s=>s.main.toLowerCase()===u.handle.toLowerCase());
+const mainOf=u=>u.sub?state.users.find(x=>x.handle.toLowerCase()===u.main.toLowerCase()):null;
 /* ---------- 集計 ---------- */
 const dkey=t=>{const d=new Date(t);return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate()};
 const ymd=(y,m,d)=>y*10000+(m+1)*100+d;
@@ -513,7 +524,7 @@ function renderRoster(){
 }
 
 function renderUser(){
-  const u=state.users.find(x=>x.id===state.uid),{y,m}=state,n=dim(y,m),tk=todayKey(),sk=startKey();
+  const u=findU(state.uid),{y,m}=state,n=dim(y,m),tk=todayKey(),sk=startKey();
   const tot=totals(u.id),tc=tot.map[tk]||0;
   const first=new Date(y,m,1).getDay();
   let cells='';
@@ -529,7 +540,10 @@ function renderUser(){
   }
   document.getElementById('main').innerHTML=`
   <div class="topbar"><h1>${av(u,'lg')}<span class="hname"><span class="hrow"><a class="xname" href="https://x.com/${encodeURIComponent(u.handle)}" target="_blank" rel="noopener">${esc(u.name)}</a> <small>@${esc(u.handle)}</small></span>${state.tags[u.handle.toLowerCase()]?`<span class="tagline">${esc(state.tags[u.handle.toLowerCase()])}</span>`:''}</span></h1>
-    <a class="xlink" href="https://x.com/${encodeURIComponent(u.handle)}" target="_blank" rel="noopener">Xアカウントへ ↗</a>${onair()}</div>
+    <a class="xlink" href="https://x.com/${encodeURIComponent(u.handle)}" target="_blank" rel="noopener">Xアカウントへ ↗</a>
+    ${(sb=>sb?`<button type="button" class="sublink" data-u="${esc(sb.id)}" data-today="1">サブ垢チャレンジ中 →</button>`:'')(subOf(u))}
+    ${(mn=>mn?`<button type="button" class="sublink" data-u="${esc(mn.id)}" data-today="1">← メインアカウントへ</button>`:'')(mainOf(u))}${onair()}</div>
+  ${u.sub?`<div class="subnote">${(mn=>mn?`${esc(mn.name)}（@${esc(mn.handle)}）さん`:`@${esc(u.main)} さん`)(mainOf(u))}のサブアカウントです。一覧・ランキング・達成カレンダーには含まれません。</div>`:''}
   <section class="card stats">
     <div class="stat"><div class="k">今日</div><div class="v num" style="color:${tc>=GOAL?'var(--gold)':'var(--x)'}">${tc}<small>/ ${GOAL}本</small></div></div>
     <div class="stat"><div class="k">達成日数</div><div class="v num">${tot.ach}<small>/ ${tot.days}日</small></div></div>
@@ -633,7 +647,7 @@ document.addEventListener('click',e=>{
   if(b.classList.contains('day')&&b.dataset.k){
     state.day=+b.dataset.k;
     document.querySelectorAll('.day[aria-pressed]').forEach(x=>x.setAttribute('aria-pressed',x===b));
-    document.getElementById('tlCard').innerHTML=timeline(state.users.find(x=>x.id===state.uid));
+    document.getElementById('tlCard').innerHTML=timeline(findU(state.uid));
     if(innerWidth<900) document.getElementById('tlCard').scrollIntoView({behavior:'smooth',block:'start'});
   }
 });

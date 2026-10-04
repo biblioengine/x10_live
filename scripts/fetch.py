@@ -20,6 +20,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data.json")
 PARTICIPANTS = os.path.join(ROOT, "participants.txt")
 MANUAL = os.path.join(ROOT, "manual_posts.txt")
+SUBS = os.path.join(ROOT, "subaccounts.txt")
 API = "https://api.x.com/2"
 TOKEN = os.environ.get("X_BEARER_TOKEN", "").strip()
 
@@ -65,6 +66,21 @@ def load_handles():
     return out
 
 
+def load_subs():
+    """subaccounts.txt：1行に「メインのハンドル サブのハンドル」。"""
+    out = []
+    if os.path.exists(SUBS):
+        with open(SUBS, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = [x.lstrip("@") for x in line.split()]
+                if len(parts) >= 2:
+                    out.append((parts[0], parts[1]))
+    return out
+
+
 def load_data():
     if os.path.exists(DATA):
         with open(DATA, encoding="utf-8") as f:
@@ -76,7 +92,7 @@ def refresh_users(data, handles):
     """名前・アイコン・フォロワー数を取得。全員分は日本時間で1日1回、新しく増えた人はその場で。"""
     st = data.setdefault("state", {})
     followers = data.setdefault("followers", {})
-    known = {u["handle"].lower(): u for u in data["users"]}
+    known = {u["handle"].lower(): u for u in data["users"] + data.get("sub_users", [])}
     today = today_jst()
     daily = st.get("users_refreshed_on") != today or os.environ.get("FORCE_PROFILE_REFRESH") == "true"
     targets = handles if daily else [h for h in handles if h.lower() not in known]
@@ -114,7 +130,7 @@ def fetch_posts(data):
     since = st.setdefault("since_id", {})
     have = {p["id"] for p in data["posts"]}
     added = 0
-    for u in data["users"]:
+    for u in data["users"] + data.get("sub_users", []):
         params = {"max_results": 100, "tweet.fields": "created_at,referenced_tweets",
                   "exclude": "retweets" if COUNT_REPLIES else "retweets,replies"}
         if since.get(u["id"]):
@@ -164,7 +180,7 @@ def fetch_manual(data):
     todo = [i for i in dict.fromkeys(ids) if i not in have]
     if not todo:
         return 0
-    by_id = {u["id"]: u for u in data["users"]}
+    by_id = {u["id"]: u for u in data["users"] + data.get("sub_users", [])}
     added = 0
     for i in range(0, len(todo), 100):
         res = api("/tweets", {"ids": ",".join(todo[i:i + 100]),
@@ -195,7 +211,13 @@ def main():
     for k in ("self_reply_since", "self_reply_users"):
         data.setdefault("state", {}).pop(k, None)
     try:
-        refresh_users(data, handles)
+        subs = load_subs()
+        main_lower = {h.lower() for h in handles}
+        sub_map = {s.lower(): m for m, s in subs if s.lower() not in main_lower}
+        refresh_users(data, handles + [s for m, s in subs if s.lower() in sub_map])
+        # サブアカウントは一覧・ランキングとは別のグループに分ける
+        data["sub_users"] = [dict(u, main=sub_map[u["handle"].lower()]) for u in data["users"] if u["handle"].lower() in sub_map]
+        data["users"] = [u for u in data["users"] if u["handle"].lower() not in sub_map]
         added = fetch_posts(data)
         print(f"参加者 {len(data['users'])}人 / 新しい投稿 {added}件")
         try:
