@@ -129,6 +129,10 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .rank-row .stick{display:flex;align-items:center;gap:8px;min-width:0;align-self:stretch;padding-left:8px;background:var(--panel)}
 .rank-row:last-child{border-bottom:0}
 .rank-row.h{font-size:11px;color:var(--muted);padding-block:8px}
+.sortbtn{border:0;background:none;padding:2px 0;font:inherit;color:inherit;cursor:pointer;white-space:nowrap}
+.sortbtn:hover{color:var(--fg)}
+.sortbtn[aria-sort]{color:var(--fg);font-weight:700}
+.sortbtn .ar{display:inline-block;width:1em;text-align:center}
 .rank-row .r{text-align:right}
 .rank-row .no{font-family:var(--f-disp);color:var(--muted);text-align:center;width:24px;flex:none}
 .rank-row .stick .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -438,7 +442,14 @@ function renderLive(){
         aria-label="${esc(u.name)} ${m+1}月${i+1}日 ${c}本">${c}</button></td>`}).join('')
     }<td class="tot num">${tot.ach}<span style="color:var(--muted)">/${tot.days}日</span></td></tr>`).join('');
 
-  const rank=[...rows].sort((a,b)=>b.tot.ach-a.tot.ach||b.tot.all-a.tot.all).map(({u,tot},i)=>
+  const rs=state.rs||(state.rs={k:'ach',dir:-1});
+  const rate=t=>t.days?t.ach/t.days:0, avg=t=>t.days?t.all/t.days:0;
+  const sortVal={name:r=>r.u.name,ach:r=>r.tot.ach,rate:r=>rate(r.tot),all:r=>r.tot.all,avg:r=>avg(r.tot),fol:r=>fol(r.u.handle)?.total??-Infinity};
+  const cmp=(a,b)=>{const va=sortVal[rs.k](a),vb=sortVal[rs.k](b);
+    const d=rs.k==='name'?String(va).localeCompare(String(vb),'ja'):va-vb;
+    return d*rs.dir||b.tot.ach-a.tot.ach||b.tot.all-a.tot.all};
+  const sh=(k,label,right=true)=>`<div${right?' class="r"':''}><button type="button" class="sortbtn" data-sort="${k}"${rs.k===k?` aria-sort="${rs.dir<0?'descending':'ascending'}"`:''}>${label}<span class="ar">${rs.k===k?(rs.dir<0?'▼':'▲'):''}</span></button></div>`;
+  const rank=[...rows].sort(cmp).map(({u,tot},i)=>
     `<div class="rank-row"><div class="stick"><span class="no">${i+1}</span>${av(u,'sm')}<span class="nm">${esc(u.name)}</span></div>
      <div class="r num">${tot.ach}日</div><div class="r num">${tot.days?Math.round(tot.ach/tot.days*100):0}%</div>
      <div class="r num">${tot.all}</div><div class="r num">${tot.days?(tot.all/tot.days).toFixed(1):'0'}</div>
@@ -456,9 +467,9 @@ function renderLive(){
     <div class="cmpwrap"><table class="cmp"><thead><tr><th></th>${head}<th>達成</th></tr></thead><tbody>${body}</tbody></table></div>
   </section>
   <section class="card">
-    <div class="card-h"><h2>通算成績</h2><span class="sub">${st.getMonth()+1}/${st.getDate()} から今日まで</span></div>
+    <div class="card-h"><h2>通算成績</h2><span class="sub">${st.getMonth()+1}/${st.getDate()} から今日まで・見出しを押すと並び替え</span></div>
     <div class="rankwrap"><div class="rank">
-      <div class="rank-row h"><div class="stick"><span class="no"></span>参加者</div><div class="r">達成日数</div><div class="r">達成率</div><div class="r">投稿数</div><div class="r">1日平均</div><div class="r">フォロワー増減</div></div>
+      <div class="rank-row h"><div class="stick"><span class="no"></span><button type="button" class="sortbtn" data-sort="name"${rs.k==='name'?` aria-sort="${rs.dir<0?'descending':'ascending'}"`:''}>参加者<span class="ar">${rs.k==='name'?(rs.dir<0?'▼':'▲'):''}</span></button></div>${sh('ach','達成日数')}${sh('rate','達成率')}${sh('all','投稿数')}${sh('avg','1日平均')}${sh('fol','フォロワー増減')}</div>
       ${rank}</div></div>
   </section>`;
 }
@@ -563,6 +574,8 @@ document.addEventListener('click',e=>{
   if(b.id==='btnFaces'){faceIn.click();return}
   if(b.dataset.v){state.view=b.dataset.v;render();return}
   if(b.dataset.rf){state.rf=b.dataset.rf;render();return}
+  if(b.dataset.sort){const k=b.dataset.sort,rs=state.rs||{k:'ach',dir:-1};
+    state.rs=rs.k===k?{k,dir:-rs.dir}:{k,dir:k==='name'?1:-1};render();return}
   if(b.dataset.mv){state.m+=+b.dataset.mv;if(state.m<0){state.m=11;state.y--}if(state.m>11){state.m=0;state.y++}render();return}
   if(b.dataset.u&&(b.dataset.k||b.dataset.today||b.closest('#navUsers'))){
     const k=b.dataset.k?+b.dataset.k:todayKey();
