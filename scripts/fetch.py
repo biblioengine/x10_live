@@ -21,6 +21,7 @@ DATA = os.path.join(ROOT, "data.json")
 PARTICIPANTS = os.path.join(ROOT, "participants.txt")
 MANUAL = os.path.join(ROOT, "manual_posts.txt")
 SUBS = os.path.join(ROOT, "subaccounts.txt")
+AVATARS = os.path.join(ROOT, "avatars")
 API = "https://api.x.com/2"
 TOKEN = os.environ.get("X_BEARER_TOKEN", "").strip()
 
@@ -200,6 +201,34 @@ def fetch_manual(data):
     return added
 
 
+def save_avatars(data):
+    """個人カードの画像に使うアイコンを avatars/ に保存する（1日1回、新しい人はその場で）。
+    X の画像をそのままカードに描くとブラウザの制限で書き出せないため、同じサイトに置く。"""
+    st = data.setdefault("state", {})
+    today = today_jst()
+    daily = st.get("avatars_saved_on") != today
+    os.makedirs(AVATARS, exist_ok=True)
+    n = 0
+    for u in data["users"] + data.get("sub_users", []):
+        url = u.get("avatar") or ""
+        path = os.path.join(AVATARS, u["handle"].lower() + ".jpg")
+        if not url or (not daily and os.path.exists(path)):
+            continue
+        try:
+            req = urllib.request.Request(url.replace("_normal.", "_400x400."), headers={"User-Agent": "x10-live"})
+            with urllib.request.urlopen(req, timeout=20) as r:
+                body = r.read()
+            if body:
+                with open(path, "wb") as f:
+                    f.write(body)
+                n += 1
+        except Exception as e:
+            print(f"  アイコンを保存できませんでした: {u['handle']} ({e})")
+    if daily:
+        st["avatars_saved_on"] = today
+    return n
+
+
 def main():
     if not TOKEN:
         sys.exit("X_BEARER_TOKEN が設定されていません（GitHub の Settings → Secrets に登録してください）")
@@ -226,6 +255,12 @@ def main():
             print("手動追加の取得に失敗しました:", e)
     except RateLimited as e:
         print("X API の回数制限に達したため、今回はここまでで保存します:", e)
+    try:
+        n = save_avatars(data)
+        if n:
+            print(f"アイコン保存 {n}件")
+    except Exception as e:
+        print("アイコンの保存に失敗しました:", e)
     data["posts"].sort(key=lambda p: p["created_at"])
     data["updated_at"] = now_iso()
     with open(DATA, "w", encoding="utf-8") as f:

@@ -35,6 +35,7 @@ jobs:
           git config user.name "x10-live-bot"
           git config user.email "x10-live-bot@users.noreply.github.com"
           git add data.json
+          git add avatars 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "変更なし"
           else
