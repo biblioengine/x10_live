@@ -78,7 +78,7 @@ def refresh_users(data, handles):
     followers = data.setdefault("followers", {})
     known = {u["handle"].lower(): u for u in data["users"]}
     today = today_jst()
-    daily = st.get("users_refreshed_on") != today
+    daily = st.get("users_refreshed_on") != today or os.environ.get("FORCE_PROFILE_REFRESH") == "true"
     targets = handles if daily else [h for h in handles if h.lower() not in known]
     if targets:
         for i in range(0, len(targets), 100):

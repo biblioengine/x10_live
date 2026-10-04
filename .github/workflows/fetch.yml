@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "*/15 * * * *"   # 15分ごと（GitHub の混み具合で数分遅れることがあります）
   workflow_dispatch:          # Actions 画面の「Run workflow」で手動実行もできる
+    inputs:
+      refresh_profiles:
+        description: "名前・アイコン・フォロワー数を今すぐ取り直す（全員分で約0.5ドル）"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -22,6 +27,7 @@ jobs:
       - name: X から取得して data.json を更新
         env:
           X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+          FORCE_PROFILE_REFRESH: ${{ inputs.refresh_profiles }}
         run: python3 scripts/fetch.py
 
       - name: 変更があれば保存
