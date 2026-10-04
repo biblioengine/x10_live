@@ -4,21 +4,22 @@
 GitHub Actions から定期実行される想定。必要なのは環境変数 X_BEARER_TOKEN だけ。
 - 参加者は participants.txt（1行1ハンドル）
 - 投稿は参加者ごとに「前回取得した最新の投稿より後」だけを取りに行く（同じ投稿を二度読まないので課金が増えない）
-- リポスト（RT）と他人への返信は数えない。引用と、自分の投稿へのリプ（ツリー）は数える（下の設定で変更可）
+- リポスト（RT）と返信（ツリーを含む）は数えない。引用は数える（下の設定で変更可）
+- X の一覧から漏れた投稿は manual_posts.txt に URL を書くと個別に取り込む
 - 名前・アイコン・フォロワー数は日本時間で1日1回だけ取り直し、フォロワー数は日付ごとに記録する
 """
-import json, os, sys, time, urllib.parse, urllib.request, urllib.error
+import json, os, re, sys, time, urllib.parse, urllib.request, urllib.error
 from datetime import datetime, timezone, timedelta
 
 # ---- 設定 ----
 CHALLENGE_START = "2026-10-01T00:00:00+09:00"  # 企画の開始日時（日本時間）
 COUNT_REPLIES = False       # 返信も1本として数えるか（False なら取得自体しないので課金も減る）
 COUNT_QUOTES = True         # 引用ポストも1本として数えるか
-COUNT_SELF_REPLIES = True   # 自分の投稿へのリプ（ツリー・連投）を1本として数えるか
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data.json")
 PARTICIPANTS = os.path.join(ROOT, "participants.txt")
+MANUAL = os.path.join(ROOT, "manual_posts.txt")
 API = "https://api.x.com/2"
 TOKEN = os.environ.get("X_BEARER_TOKEN", "").strip()
 
@@ -97,11 +98,11 @@ def refresh_users(data, handles):
     data["users"] = [known[h.lower()] for h in handles if h.lower() in known]
 
 
-def counts(t, self_reply=False):
+def counts(t):
     refs = {r["type"] for r in t.get("referenced_tweets", [])}
     if "retweeted" in refs:
         return False
-    if "replied_to" in refs and not (COUNT_REPLIES or (self_reply and COUNT_SELF_REPLIES)):
+    if "replied_to" in refs and not COUNT_REPLIES:
         return False
     if "quoted" in refs and not COUNT_QUOTES:
         return False
@@ -146,79 +147,40 @@ def fetch_posts(data):
     return added
 
 
-def fetch_self_replies(data):
-    """自分の投稿へのリプ（ツリー）だけを検索で取る。他人への返信は読まないので課金されない。
-    検索は直近7日分しかさかのぼれないため、追加されたばかりの人も7日前までが上限。"""
-    if not COUNT_SELF_REPLIES or not data["users"]:
+def fetch_manual(data):
+    """manual_posts.txt に書いた投稿（URL か ID）を個別に取り込む。X の一覧から漏れた投稿の補正用。"""
+    if not os.path.exists(MANUAL):
         return 0
-    st = data.setdefault("state", {})
-    covered = set(st.get("self_reply_users", []))
+    ids = []
+    with open(MANUAL, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            m = re.search(r"(\d{15,})", line.split("?")[0])
+            if m:
+                ids.append(m.group(1))
     have = {p["id"] for p in data["posts"]}
+    todo = [i for i in dict.fromkeys(ids) if i not in have]
+    if not todo:
+        return 0
     by_id = {u["id"]: u for u in data["users"]}
-    floor = datetime.now(timezone.utc) - timedelta(days=6, hours=23)
-    start = max(datetime.fromisoformat(CHALLENGE_START).astimezone(timezone.utc), floor).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    def chunks(users):
-        out, cur = [], []
-        for u in users:
-            q = f"(from:{u['handle']} to:{u['handle']})"
-            if cur and len(" OR ".join(cur + [q])) > 440:
-                out.append(cur); cur = []
-            cur.append(q)
-        if cur:
-            out.append(cur)
-        return [" OR ".join(c) + " is:reply" for c in out]
-
-    def run(query, since=None, start_time=None):
-        params = {"query": query, "max_results": 100,
-                  "tweet.fields": "created_at,referenced_tweets,in_reply_to_user_id,author_id"}
-        if since:
-            params["since_id"] = since
-        if start_time:
-            params["start_time"] = start_time
-        n, newest, token = 0, None, None
-        while True:
-            if token:
-                params["next_token"] = token
-            res = api("/tweets/search/recent", params)
-            for t in res.get("data", []):
-                if newest is None or int(t["id"]) > int(newest):
-                    newest = t["id"]
-                u = by_id.get(t.get("author_id"))
-                if not u or t.get("in_reply_to_user_id") != u["id"] or t["id"] in have:
-                    continue
-                if not counts(t, self_reply=True):
-                    continue
-                data["posts"].append({"id": t["id"], "handle": u["handle"], "created_at": t["created_at"],
-                                      "text": t.get("text", ""), "kind": "thread"})
-                have.add(t["id"]); n += 1
-            token = res.get("meta", {}).get("next_token")
-            if not token:
-                return n, newest
-
     added = 0
-    since = st.get("self_reply_since")
-    known = [u for u in data["users"] if u["id"] in covered]
-    new = [u for u in data["users"] if u["id"] not in covered]
-    newest_all = since
-    # すでに対象の人：前回の続きから
-    if known and since:
-        for q in chunks(known):
-            n, nw = run(q, since=since)
-            added += n
-            if nw and (newest_all is None or int(nw) > int(newest_all)):
-                newest_all = nw
-    # 新しく対象になった人：企画開始日（最大7日前）からさかのぼる
-    if new:
-        for q in chunks(new):
-            n, nw = run(q, start_time=start)
-            added += n
-            if nw and (newest_all is None or int(nw) > int(newest_all)):
-                newest_all = nw
-        covered |= {u["id"] for u in new}
-        st["self_reply_users"] = sorted(covered)
-    if newest_all:
-        st["self_reply_since"] = newest_all
+    for i in range(0, len(todo), 100):
+        res = api("/tweets", {"ids": ",".join(todo[i:i + 100]),
+                              "tweet.fields": "created_at,referenced_tweets,author_id"})
+        for t in res.get("data", []):
+            u = by_id.get(t.get("author_id"))
+            if not u:
+                print(f"  手動追加：参加者ではない人の投稿のためスキップ {t['id']}")
+                continue
+            refs = {r["type"] for r in t.get("referenced_tweets", [])}
+            kind = "reply" if "replied_to" in refs else "quote" if "quoted" in refs else "post"
+            data["posts"].append({"id": t["id"], "handle": u["handle"], "created_at": t["created_at"],
+                                  "text": t.get("text", ""), "kind": kind, "manual": True})
+            added += 1
+        for e in res.get("errors", []):
+            print(f"  手動追加：取得できない投稿 {e.get('value')} ({e.get('title')})")
     return added
 
 
@@ -228,14 +190,18 @@ def main():
     handles = load_handles()
     data = load_data()
     data["start"] = CHALLENGE_START
+    # ツリーを数えていた時期に取り込んだ分を片付ける（ツリーは数えないルールに戻したため）
+    data["posts"] = [p for p in data["posts"] if p.get("kind") != "thread"]
+    for k in ("self_reply_since", "self_reply_users"):
+        data.setdefault("state", {}).pop(k, None)
     try:
         refresh_users(data, handles)
         added = fetch_posts(data)
         print(f"参加者 {len(data['users'])}人 / 新しい投稿 {added}件")
         try:
-            print(f"ツリー（自分へのリプ） {fetch_self_replies(data)}件")
+            print(f"手動追加 {fetch_manual(data)}件")
         except RuntimeError as e:
-            print("ツリーの取得に失敗しました（通常の投稿の取得には影響なし）:", e)
+            print("手動追加の取得に失敗しました:", e)
     except RateLimited as e:
         print("X API の回数制限に達したため、今回はここまでで保存します:", e)
     data["posts"].sort(key=lambda p: p["created_at"])
