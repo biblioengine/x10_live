@@ -140,6 +140,10 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .cd .frow{display:grid;grid-template-columns:62px minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:6px;margin-bottom:10px;font-size:12px;font-weight:700}
 .cd .frow b{color:var(--muted);font-weight:400}
 .cd .frow input{font-size:16px;padding:7px 8px}
+.cd .prow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:4px 0 8px}
+.cd .prow .bgl{grid-column:1/-1}
+.cd .prow label{margin:0;font-size:11px}
+.cd .prow input{font-size:16px;padding:7px 8px}
 .cd .bgpick{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 12px}
 .cd .bgl{width:100%;font-size:12px;font-weight:700}
 .cd .sw{display:flex;flex-wrap:wrap;gap:6px}
@@ -312,6 +316,11 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
       <div class="frow"><span>X</span><input id="pX" inputmode="numeric" autocomplete="off" placeholder="前日" aria-label="X 前日"><b>→</b><input id="cX" inputmode="numeric" autocomplete="off" placeholder="現在" aria-label="X 現在"></div>
       <div class="frow"><span>Threads</span><input id="pTh" inputmode="numeric" autocomplete="off" placeholder="前日" aria-label="Threads 前日"><b>→</b><input id="cTh" inputmode="numeric" autocomplete="off" placeholder="現在" aria-label="Threads 現在"></div>
       <div class="frow"><span>note</span><input id="pNote" inputmode="numeric" autocomplete="off" placeholder="前日" aria-label="note 前日"><b>→</b><input id="cNote" inputmode="numeric" autocomplete="off" placeholder="現在" aria-label="note 現在"></div>
+      <div class="prow"><span class="bgl">今日の投稿数</span>
+        <label for="nX">X<input id="nX" inputmode="numeric" autocomplete="off" placeholder="本"></label>
+        <label for="nTh">Threads<input id="nTh" inputmode="numeric" autocomplete="off" placeholder="本"></label>
+        <label for="nNote">note<input id="nNote" inputmode="numeric" autocomplete="off" placeholder="本"></label>
+      </div>
       <div class="bgpick">
         <span class="bgl">背景の色</span>
         <div class="sw" id="cardSw"></div>
@@ -657,11 +666,12 @@ document.getElementById('cardSw').innerHTML=BG_PRESETS.map(([h,n])=>`<button typ
 document.getElementById('cardSw').addEventListener('click',e=>{const b=e.target.closest('button');if(b){e.stopPropagation();setBg(b.dataset.bg)}});
 document.getElementById('cBg').addEventListener('input',e=>setBg(e.target.value));
 const cv=document.getElementById('cardCv'),cardDlg=document.getElementById('cardDlg');
-const cIn=['cX','cTh','cNote'].map(id=>document.getElementById(id)),pIn=['pX','pTh','pNote'].map(id=>document.getElementById(id));
+const cIn=['cX','cTh','cNote'].map(id=>document.getElementById(id)),pIn=['pX','pTh','pNote'].map(id=>document.getElementById(id)),nIn=['nX','nTh','nNote'].map(id=>document.getElementById(id));
 function dayNo(){const t=new Date(),a=new Date(t.getFullYear(),t.getMonth(),t.getDate()),s0=new Date(state.start),b=new Date(s0.getFullYear(),s0.getMonth(),s0.getDate());return Math.round((a-b)/864e5)+1}
 const digits=i=>i.value.replace(/[^\d]/g,'');
 function cardVals(){return cIn.map(digits)}
 function prevVals(){return pIn.map(digits)}
+function postVals(){return nIn.map(digits)}
 function spaced(ctx,text,x,y,sp,align){
   const w=[...text].reduce((s,c)=>s+ctx.measureText(c).width,0)+sp*([...text].length-1);
   let cx=align==='right'?x-w:x;ctx.textAlign='left';
@@ -724,6 +734,9 @@ function drawCard(){
     const bx=P+i*(bw+gap);
     ctx.fillStyle=C.panel;rrect(ctx,bx,by,bw,bh,26);ctx.fill();
     ctx.fillStyle=C.gold;ctx.fillRect(bx+32,by+40,36,5);
+    const pc=postVals()[i];
+    if(pc){ctx.font=`800 20px ${EN}`;ctx.fillStyle=C.muted;const sw=spaced(ctx,Number(pc)===1?'POST':'POSTS',bx+bw-32,by+56,3,'right');
+      ctx.textAlign='right';ctx.fillStyle=C.gold;ctx.font=`800 34px ${EN}`;ctx.fillText(pc,bx+bw-32-sw-10,by+57);ctx.textAlign='left'}
     ctx.fillStyle=C.fg;ctx.font=`800 34px ${EN}`;ctx.textAlign='left';ctx.fillText(lb,bx+32,by+100);
     // 前日 →
     if(prev[i]){ctx.fillStyle=C.muted;fit(ctx,fmt(prev[i])+' →',bw-64,32,`700 #px ${EN}`);ctx.fillText(fmt(prev[i])+' →',bx+32,by+164)}
@@ -742,8 +755,8 @@ async function openCard(id){
   // 同じ日なら入力をそのまま復元。日が変わっていたら、前回の「現在」を「前日」に入れる
   let saved={};try{saved=JSON.parse(localStorage.getItem('card2:'+cardU.handle.toLowerCase())||'{}')}catch{}
   const tk=todayKey();
-  if(saved.d===tk){pIn.forEach((e,i)=>e.value=saved.p?.[i]||'');cIn.forEach((e,i)=>e.value=saved.c?.[i]||'')}
-  else{pIn.forEach((e,i)=>e.value=(saved.d&&saved.d<tk?(saved.c?.[i]||saved.p?.[i]):'')||'');cIn.forEach(e=>e.value='')}
+  if(saved.d===tk){pIn.forEach((e,i)=>e.value=saved.p?.[i]||'');cIn.forEach((e,i)=>e.value=saved.c?.[i]||'');nIn.forEach((e,i)=>e.value=saved.n?.[i]||'')}
+  else{pIn.forEach((e,i)=>e.value=(saved.d&&saved.d<tk?(saved.c?.[i]||saved.p?.[i]):'')||'');cIn.forEach(e=>e.value='');nIn.forEach(e=>e.value='')}
   let bg='#0e1116';try{bg=localStorage.getItem('cardbg:'+cardU.handle.toLowerCase())||bg}catch{}
   setBg(bg,false);
   cardDlg.showModal();
@@ -757,8 +770,8 @@ async function openCard(id){
   const probe=new File([new Blob(['x'],{type:'image/png'})],'x.png',{type:'image/png'});
   document.getElementById('cardShare').hidden=!(navigator.canShare&&navigator.canShare({files:[probe]}));
 }
-[...cIn,...pIn].forEach(i=>i.addEventListener('input',()=>{
-  try{localStorage.setItem('card2:'+cardU.handle.toLowerCase(),JSON.stringify({d:todayKey(),p:prevVals(),c:cardVals()}))}catch{}
+[...cIn,...pIn,...nIn].forEach(i=>i.addEventListener('input',()=>{
+  try{localStorage.setItem('card2:'+cardU.handle.toLowerCase(),JSON.stringify({d:todayKey(),p:prevVals(),c:cardVals(),n:postVals()}))}catch{}
   redrawCard();
 }));
 function cardFile(cb){
