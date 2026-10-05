@@ -86,7 +86,14 @@ main{padding-block:20px 48px;padding-inline:24px;min-width:0;display:flex;flex-d
 
 /* 今日の途中経過 */
 .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;padding:16px}
-.player{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;text-align:left;background:var(--panel);min-width:0}
+.player{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;text-align:left;background:var(--panel);min-width:0;position:relative}
+/* 勲章：盾形のエンブレム＋下に垂れる2本のリボン */
+.sbadge{position:absolute;top:-12px;right:10px;width:32px;height:54px;z-index:1;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+.sbadge .sh{position:absolute;inset:0 0 auto 0;height:36px;background:#c8102e;color:#fff;font:17px/31px "Archivo Black",var(--f-disp);text-align:center;clip-path:polygon(50% 0,100% 14%,100% 62%,50% 100%,0 62%,0 14%);z-index:2}
+.sbadge .t{position:absolute;top:24px;width:12px;height:28px;background:#8f0b21;clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%)}
+.sbadge .t1{left:5px;transform:rotate(14deg);transform-origin:top center}
+.sbadge .t2{right:5px;transform:rotate(-14deg);transform-origin:top center}
+.player.has-s .top{padding-right:38px}
 .player:hover{border-color:var(--muted)}
 .player.done{border-color:var(--gold);background:linear-gradient(var(--gold-soft),var(--panel) 80%)}
 .player .top{display:flex;align-items:center;gap:10px;min-width:0}
@@ -502,10 +509,15 @@ function monthNav(){
 function renderLive(){
   const tk=todayKey(),{y,m}=state,n=dim(y,m),sk=startKey();
   const rows=state.users.map(u=>{const today=state.byUser[u.id].filter(p=>dkey(p.ts)===tk);
-    return{u,c:today.length,last:today[today.length-1],tot:totals(u.id)}});
-  const board=[...rows].sort((a,b)=>Math.min(b.c,GOAL)-Math.min(a.c,GOAL)||(a.last?.ts??9e15)-(b.last?.ts??9e15)).map((r,i)=>{
-    const done=r.c>=GOAL;
-    return `<button type="button" class="player${done?' done':''}" data-u="${esc(r.u.id)}" data-today="1">
+    // reach：今の本数（10本で頭打ち）に到達した時刻。同じ本数ならこれが早い人が上
+    const k=Math.min(today.length,GOAL);
+    return{u,c:today.length,last:today[today.length-1],reach:k?today[k-1].ts:Infinity,tot:totals(u.id)}});
+  // その日いちばん早く10本に到達した人に「S」
+  const fastest=rows.filter(r=>r.c>=GOAL).sort((a,b)=>a.reach-b.reach)[0];
+  const board=[...rows].sort((a,b)=>Math.min(b.c,GOAL)-Math.min(a.c,GOAL)||a.reach-b.reach).map((r,i)=>{
+    const done=r.c>=GOAL,isS=fastest&&fastest.u.id===r.u.id;
+    return `<button type="button" class="player${done?' done':''}${isS?' has-s':''}" data-u="${esc(r.u.id)}" data-today="1">
+      ${isS?`<span class="sbadge" title="今日いちばん早く10本に到達（${hm(r.reach)}）" aria-label="今日の最速達成"><span class="t t1"></span><span class="t t2"></span><span class="sh">S</span></span>`:''}
       <div class="top"><span class="rk">${i+1}</span>${av(r.u)}<div class="nm"><b>${esc(r.u.name)}</b><span>@${esc(r.u.handle)}</span></div>
       <span class="ct num"><b>${r.c}</b>/${GOAL}</span></div>
       ${ticks(r.c)}
