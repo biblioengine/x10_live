@@ -324,6 +324,7 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
     <div>
       <h3>今日の個人カード</h3>
       <p class="hint">前日と現在のフォロワー数を入れると、増減を自動で計算してカードにします。前日の欄は、前回カードを作ったときの「現在」が自動で入ります。</p>
+      <label for="cDate">日付<input type="date" id="cDate"></label>
       <div class="frow"><span>X</span><input id="pX" inputmode="numeric" autocomplete="off" placeholder="前日" aria-label="X 前日"><b>→</b><input id="cX" inputmode="numeric" autocomplete="off" placeholder="現在" aria-label="X 現在"></div>
       <div class="frow"><span>Threads</span><input id="pTh" inputmode="numeric" autocomplete="off" placeholder="前日" aria-label="Threads 前日"><b>→</b><input id="cTh" inputmode="numeric" autocomplete="off" placeholder="現在" aria-label="Threads 現在"></div>
       <div class="frow"><span>note</span><input id="pNote" inputmode="numeric" autocomplete="off" placeholder="前日" aria-label="note 前日"><b>→</b><input id="cNote" inputmode="numeric" autocomplete="off" placeholder="現在" aria-label="note 現在"></div>
@@ -683,9 +684,11 @@ document.getElementById('cardSw').innerHTML=BG_PRESETS.map(([h,n])=>`<button typ
 document.getElementById('cardSw').addEventListener('click',e=>{const b=e.target.closest('button');if(b){e.stopPropagation();setBg(b.dataset.bg)}});
 document.getElementById('cBg').addEventListener('input',e=>setBg(e.target.value));
 const cv=document.getElementById('cardCv'),cardDlg=document.getElementById('cardDlg');
-const cMsg=document.getElementById('cMsg'),cMsgN=document.getElementById('cMsgN');
+const cDate=document.getElementById('cDate'),cMsg=document.getElementById('cMsg'),cMsgN=document.getElementById('cMsgN');
 const cIn=['cX','cTh','cNote'].map(id=>document.getElementById(id)),pIn=['pX','pTh','pNote'].map(id=>document.getElementById(id)),nIn=['nX','nTh','nNote'].map(id=>document.getElementById(id));
-function dayNo(){const t=new Date(),a=new Date(t.getFullYear(),t.getMonth(),t.getDate()),s0=new Date(state.start),b=new Date(s0.getFullYear(),s0.getMonth(),s0.getDate());return Math.round((a-b)/864e5)+1}
+// カードの日付：入力欄の日付（初期値は今日）。空なら今日
+function cardDate(){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(cDate.value);return m?new Date(+m[1],m[2]-1,+m[3]):new Date()}
+function dayNo(){const t=cardDate(),a=new Date(t.getFullYear(),t.getMonth(),t.getDate()),s0=new Date(state.start),b=new Date(s0.getFullYear(),s0.getMonth(),s0.getDate());return Math.round((a-b)/864e5)+1}
 const digits=i=>i.value.replace(/[^\d]/g,'');
 function cardVals(){return cIn.map(digits)}
 function prevVals(){return pIn.map(digits)}
@@ -729,7 +732,7 @@ function drawCard(){
   ctx.fillStyle=C.bg;rrect(ctx,F,F,W-F*2,H-F*2,34);ctx.fill();
   ctx.textBaseline='alphabetic';ctx.textAlign='left';
   // Day・日付（右上）
-  const n=dayNo(),t=new Date(),R=W-P;
+  const n=dayNo(),t=cardDate(),R=W-P;
   ctx.fillStyle=C.gold;ctx.font=`800 28px ${EN}`;spaced(ctx,'DAY',R,112,8,'right');
   ctx.font=`700 40px ${EN}`;const tw=ctx.measureText(' / 30').width;
   ctx.fillStyle=C.muted;ctx.textAlign='right';ctx.fillText(' / 30',R,208);
@@ -793,6 +796,7 @@ async function openCard(id){
   if(saved.d===tk){pIn.forEach((e,i)=>e.value=saved.p?.[i]||'');cIn.forEach((e,i)=>e.value=saved.c?.[i]||'');nIn.forEach((e,i)=>e.value=saved.n?.[i]||'');cMsg.value=saved.t||''}
   else{pIn.forEach((e,i)=>e.value=(saved.d&&saved.d<tk?(saved.c?.[i]||saved.p?.[i]):'')||'');cIn.forEach(e=>e.value='');nIn.forEach(e=>e.value='');cMsg.value=''}
   cMsgN.textContent=`${cMsg.value.length} / 140`;
+  {const t=new Date();cDate.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`}
   let bg='#0e1116';try{bg=localStorage.getItem('cardbg:'+cardU.handle.toLowerCase())||bg}catch{}
   setBg(bg,false);
   cardDlg.showModal();
@@ -810,6 +814,7 @@ async function openCard(id){
   try{localStorage.setItem('card2:'+cardU.handle.toLowerCase(),JSON.stringify({d:todayKey(),p:prevVals(),c:cardVals(),n:postVals(),t:cMsg.value}))}catch{}
   redrawCard();
 }));
+cDate.addEventListener('input',redrawCard);cDate.addEventListener('change',redrawCard);
 // 入力した文字のフォントが届いてから描き直す（日本語フォントは使う文字の分だけ読み込まれるため）
 cMsg.addEventListener('input',()=>{cMsgN.textContent=`${cMsg.value.length} / 140`;
   document.fonts.load('500 36px "Zen Kaku Gothic New"',cMsg.value||MSG_DEFAULT).then(redrawCard,()=>{})});
