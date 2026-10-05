@@ -15,6 +15,8 @@ from datetime import datetime, timezone, timedelta
 CHALLENGE_START = "2026-10-01T00:00:00+09:00"  # 企画の開始日時（日本時間）
 COUNT_REPLIES = False       # 返信も1本として数えるか（False なら取得自体しないので課金も減る）
 COUNT_QUOTES = True         # 引用ポストも1本として数えるか
+# この仕組みを入れる前に @ID を変えた人（X の内部ID: 前のハンドル）。引き継ぎが済めば残しておいても害はない
+OLD_HANDLES = {"2102709315241144321": "bolu_note"}
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data.json")
@@ -108,11 +110,35 @@ def refresh_users(data, handles):
                 if fc is not None:
                     followers.setdefault(u["username"], {})[today] = fc
             for e in res.get("errors", []):
-                print(f"  ユーザーが見つかりません: {e.get('value')} ({e.get('title')})")
+                print(f"  ユーザーが見つかりません: {e.get('value')} ({e.get('title')}) ※@IDを変えた人なら participants.txt を新しいIDに書き換えてください")
         if daily:
             st["users_refreshed_on"] = today
     # participants.txt の順番で並べ、リストから外した人は消す
     data["users"] = [known[h.lower()] for h in handles if h.lower() in known]
+
+
+def follow_renames(data):
+    """@ID を変えた人の記録を引き継ぐ。X の内部ID（変わらない番号）ごとに前回のハンドルを覚えておき、
+    participants.txt を新しいハンドルに書き換えたら、それまでの投稿とフォロワー数の記録を新しい名前に付け替える。"""
+    st = data.setdefault("state", {})
+    by_id = st.setdefault("handle_by_id", {})
+    for k, v in OLD_HANDLES.items():
+        by_id.setdefault(k, v)
+    followers = data.setdefault("followers", {})
+    for u in data["users"] + data.get("sub_users", []):
+        old, new = by_id.get(u["id"]), u["handle"]
+        if old and old.lower() != new.lower():
+            n = 0
+            for p in data["posts"]:
+                if p["handle"].lower() == old.lower():
+                    p["handle"] = new
+                    n += 1
+            for k in [k for k in followers if k.lower() == old.lower()]:
+                merged = followers.pop(k)
+                merged.update(followers.get(new, {}))
+                followers[new] = merged
+            print(f"  @{old} → @{new} に引き継ぎ（投稿 {n}件）")
+        by_id[u["id"]] = new
 
 
 def counts(t):
@@ -247,6 +273,7 @@ def main():
         # サブアカウントは一覧・ランキングとは別のグループに分ける
         data["sub_users"] = [dict(u, main=sub_map[u["handle"].lower()]) for u in data["users"] if u["handle"].lower() in sub_map]
         data["users"] = [u for u in data["users"] if u["handle"].lower() not in sub_map]
+        follow_renames(data)
         added = fetch_posts(data)
         print(f"参加者 {len(data['users'])}人 / 新しい投稿 {added}件")
         try:
