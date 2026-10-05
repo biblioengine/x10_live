@@ -509,15 +509,15 @@ function monthNav(){
 function renderLive(){
   const tk=todayKey(),{y,m}=state,n=dim(y,m),sk=startKey();
   const rows=state.users.map(u=>{const today=state.byUser[u.id].filter(p=>dkey(p.ts)===tk);
-    // reach：今の本数（10本で頭打ち）に到達した時刻。同じ本数ならこれが早い人が上
-    const k=Math.min(today.length,GOAL);
-    return{u,c:today.length,last:today[today.length-1],reach:k?today[k-1].ts:Infinity,tot:totals(u.id)}});
+    // reach：今の本数に到達した時刻（同じ本数ならこれが早い人が上）、goal：10本目の時刻
+    const c=today.length;
+    return{u,c,last:today[c-1],reach:c?today[c-1].ts:Infinity,goal:c>=GOAL?today[GOAL-1].ts:Infinity,tot:totals(u.id)}});
   // その日いちばん早く10本に到達した人に「S」
-  const fastest=rows.filter(r=>r.c>=GOAL).sort((a,b)=>a.reach-b.reach)[0];
-  const board=[...rows].sort((a,b)=>Math.min(b.c,GOAL)-Math.min(a.c,GOAL)||a.reach-b.reach).map((r,i)=>{
+  const fastest=rows.filter(r=>r.c>=GOAL).sort((a,b)=>a.goal-b.goal)[0];
+  const board=[...rows].sort((a,b)=>b.c-a.c||a.reach-b.reach).map((r,i)=>{
     const done=r.c>=GOAL,isS=fastest&&fastest.u.id===r.u.id;
     return `<button type="button" class="player${done?' done':''}${isS?' has-s':''}" data-u="${esc(r.u.id)}" data-today="1">
-      ${isS?`<span class="sbadge" title="今日いちばん早く10本に到達（${hm(r.reach)}）" aria-label="今日の最速達成"><span class="t t1"></span><span class="t t2"></span><span class="sh">S</span></span>`:''}
+      ${isS?`<span class="sbadge" title="今日いちばん早く10本に到達（${hm(r.goal)}）" aria-label="今日の最速達成"><span class="t t1"></span><span class="t t2"></span><span class="sh">S</span></span>`:''}
       <div class="top"><span class="rk">${i+1}</span>${av(r.u)}<div class="nm"><b>${esc(r.u.name)}</b><span>@${esc(r.u.handle)}</span></div>
       <span class="ct num"><b>${r.c}</b>/${GOAL}</span></div>
       ${ticks(r.c)}
@@ -551,7 +551,7 @@ function renderLive(){
   document.getElementById('main').innerHTML=`
   <div class="topbar"><h1>みんなの実況</h1>${onair()}</div>
   <section class="card">
-    <div class="card-h"><h2>今日の途中経過</h2><span class="sub">本数の多い順（同数なら早く到達した順）・カードを押すと今日の投稿へ</span></div>
+    <div class="card-h"><h2>今日の途中経過</h2><span class="sub">本数の多い順（同数ならその本数に早く到達した順）・S＝今日いちばん早く10本に到達した人・カードを押すと今日の投稿へ</span></div>
     <div class="board">${board}</div>
   </section>
   <section class="card">
