@@ -745,7 +745,6 @@ function drawCard(){
   labels.forEach((lb,i)=>{
     const bx=P+i*(bw+gap);
     ctx.fillStyle=C.panel;rrect(ctx,bx,by,bw,bh,26);ctx.fill();
-    ctx.fillStyle=C.gold;ctx.fillRect(bx+32,by+40,36,5);
     const pc=postVals()[i];
     if(pc){ctx.font=`800 20px ${EN}`;ctx.fillStyle=C.muted;const sw=spaced(ctx,Number(pc)===1?'POST':'POSTS',bx+bw-32,by+56,3,'right');
       ctx.textAlign='right';ctx.fillStyle=C.gold;ctx.font=`800 34px ${EN}`;ctx.fillText(pc,bx+bw-32-sw-10,by+57);ctx.textAlign='left'}
