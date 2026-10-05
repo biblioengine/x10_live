@@ -140,12 +140,14 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .cardbtn:hover{opacity:.88}
 #cardDlg{max-width:min(880px,calc(100vw - 24px));width:100%}
 .cd{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,260px);gap:20px;padding:20px;align-items:start}
-.cd canvas{width:100%;height:auto;aspect-ratio:1/1;max-width:100%;border-radius:12px;display:block;box-shadow:0 6px 24px rgba(0,0,0,.18)}
+.cd canvas{width:100%;height:auto;max-width:100%;border-radius:12px;display:block;box-shadow:0 6px 24px rgba(0,0,0,.18)}
 .cd h3{margin:0 0 4px;font-size:16px}
 .cd .hint{margin:0 0 14px;font-size:12px;color:var(--muted);line-height:1.6}
 .cd label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;margin-bottom:12px}
 .cd input{font:inherit;font-family:var(--f-num);font-size:18px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);width:100%}
-.cd input:focus{outline:2px solid var(--gold);outline-offset:1px}
+.cd input:focus,.cd textarea:focus{outline:2px solid var(--gold);outline-offset:1px}
+.cd textarea{font:inherit;font-size:16px;font-weight:400;line-height:1.5;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);width:100%;resize:vertical;min-height:84px}
+.cd .cnt{font-size:11px;font-weight:400;color:var(--muted);text-align:right}
 .cd .frow{display:grid;grid-template-columns:62px minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:6px;margin-bottom:10px;font-size:12px;font-weight:700}
 .cd .frow b{color:var(--muted);font-weight:400}
 .cd .frow input{font-size:16px;padding:7px 8px}
@@ -330,6 +332,7 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
         <label for="nTh">Threads<input id="nTh" inputmode="numeric" autocomplete="off" placeholder="本"></label>
         <label for="nNote">note<input id="nNote" inputmode="numeric" autocomplete="off" placeholder="本"></label>
       </div>
+      <label for="cMsg">ひとこと（今の状況・気持ち・気づきなど）<textarea id="cMsg" rows="3" maxlength="140" placeholder="何も書かないと「note企画｜１日１０回投稿３０日チャレンジ中」と入ります"></textarea><span class="cnt" id="cMsgN">0 / 140</span></label>
       <div class="bgpick">
         <span class="bgl">背景の色</span>
         <div class="sw" id="cardSw"></div>
@@ -680,6 +683,7 @@ document.getElementById('cardSw').innerHTML=BG_PRESETS.map(([h,n])=>`<button typ
 document.getElementById('cardSw').addEventListener('click',e=>{const b=e.target.closest('button');if(b){e.stopPropagation();setBg(b.dataset.bg)}});
 document.getElementById('cBg').addEventListener('input',e=>setBg(e.target.value));
 const cv=document.getElementById('cardCv'),cardDlg=document.getElementById('cardDlg');
+const cMsg=document.getElementById('cMsg'),cMsgN=document.getElementById('cMsgN');
 const cIn=['cX','cTh','cNote'].map(id=>document.getElementById(id)),pIn=['pX','pTh','pNote'].map(id=>document.getElementById(id)),nIn=['nX','nTh','nNote'].map(id=>document.getElementById(id));
 function dayNo(){const t=new Date(),a=new Date(t.getFullYear(),t.getMonth(),t.getDate()),s0=new Date(state.start),b=new Date(s0.getFullYear(),s0.getMonth(),s0.getDate());return Math.round((a-b)/864e5)+1}
 const digits=i=>i.value.replace(/[^\d]/g,'');
@@ -701,13 +705,28 @@ function wrap(ctx,text,maxW,maxLines){
   return lines;
 }
 function rrect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+const MSG_DEFAULT='note企画｜１日１０回投稿３０日チャレンジ中',MSG_FONT='500 36px "Zen Kaku Gothic New","Noto Sans JP",sans-serif',MSG_LH=56;
+function msgText(){return cMsg.value.trim()||MSG_DEFAULT}
+// ひとことを行に分ける（改行はそのまま、長い行は折り返す）
+function msgLines(ctx,maxW){
+  ctx.font=MSG_FONT;const out=[];
+  for(const para of msgText().split(/\r?\n/)){
+    let cur='';for(const c of para){if(cur&&ctx.measureText(cur+c).width>maxW){out.push(cur);cur=c}else cur+=c}
+    out.push(cur);
+  }
+  while(out.length>1&&!out[out.length-1].trim())out.pop();
+  return out;
+}
 function drawCard(){
   const u=cardU;if(!u)return;
-  const ctx=cv.getContext('2d'),W=1080,F=28,P=84,C=cardPalette(cardBg);
+  let ctx=cv.getContext('2d');const W=1080,F=28,P=84,C=cardPalette(cardBg);
   const EN='"Archivo",sans-serif',LOGO='"Archivo Black","Archivo",sans-serif',JP='"Zen Kaku Gothic New","Noto Sans JP",sans-serif',MIX='"Archivo","Zen Kaku Gothic New","Noto Sans JP",sans-serif';
+  // ひとことの行数に合わせてカードを縦に伸ばす
+  const lines=msgLines(ctx,W-P*2),msgTop=996+44,H=msgTop+36+(lines.length-1)*MSG_LH+P;
+  if(cv.height!==H){cv.height=H;ctx=cv.getContext('2d')}
   // 白い枠
-  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,W);
-  ctx.fillStyle=C.bg;rrect(ctx,F,F,W-F*2,W-F*2,34);ctx.fill();
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=C.bg;rrect(ctx,F,F,W-F*2,H-F*2,34);ctx.fill();
   ctx.textBaseline='alphabetic';ctx.textAlign='left';
   // Day・日付（右上）
   const n=dayNo(),t=new Date(),R=W-P;
@@ -761,6 +780,9 @@ function drawCard(){
       ctx.fillText(`(${d>0?'+':d<0?'−':'±'}${fmt(Math.abs(d))})`,bx+32,by+300)}
     ctx.fillStyle=C.muted;ctx.font=`700 22px ${EN}`;spaced(ctx,'FOLLOWERS',bx+32,by+bh-30,5);
   });
+  // ひとこと
+  ctx.fillStyle=C.fg;ctx.font=MSG_FONT;ctx.textAlign='left';
+  lines.forEach((l,i)=>ctx.fillText(l,P,msgTop+36+i*MSG_LH));
 }
 function redrawCard(){cancelAnimationFrame(cardRaf);cardRaf=requestAnimationFrame(drawCard)}
 async function openCard(id){
@@ -768,25 +790,29 @@ async function openCard(id){
   // 同じ日なら入力をそのまま復元。日が変わっていたら、前回の「現在」を「前日」に入れる
   let saved={};try{saved=JSON.parse(localStorage.getItem('card2:'+cardU.handle.toLowerCase())||'{}')}catch{}
   const tk=todayKey();
-  if(saved.d===tk){pIn.forEach((e,i)=>e.value=saved.p?.[i]||'');cIn.forEach((e,i)=>e.value=saved.c?.[i]||'');nIn.forEach((e,i)=>e.value=saved.n?.[i]||'')}
-  else{pIn.forEach((e,i)=>e.value=(saved.d&&saved.d<tk?(saved.c?.[i]||saved.p?.[i]):'')||'');cIn.forEach(e=>e.value='');nIn.forEach(e=>e.value='')}
+  if(saved.d===tk){pIn.forEach((e,i)=>e.value=saved.p?.[i]||'');cIn.forEach((e,i)=>e.value=saved.c?.[i]||'');nIn.forEach((e,i)=>e.value=saved.n?.[i]||'');cMsg.value=saved.t||''}
+  else{pIn.forEach((e,i)=>e.value=(saved.d&&saved.d<tk?(saved.c?.[i]||saved.p?.[i]):'')||'');cIn.forEach(e=>e.value='');nIn.forEach(e=>e.value='');cMsg.value=''}
+  cMsgN.textContent=`${cMsg.value.length} / 140`;
   let bg='#0e1116';try{bg=localStorage.getItem('cardbg:'+cardU.handle.toLowerCase())||bg}catch{}
   setBg(bg,false);
   cardDlg.showModal();
   // 名前・キャッチコピーに使う文字の分まで、フォントを読み込んでから描く
-  const txt=cardU.name+(state.tags[cardU.handle.toLowerCase()]||'')+'1×10×30 ONE TEN THIRTY RUN DAY FOLLOWERS Threads note 0123456789,./—@'+cardU.handle;
+  const txt=cardU.name+(state.tags[cardU.handle.toLowerCase()]||'')+MSG_DEFAULT+cMsg.value+'1×10×30 ONE TEN THIRTY RUN DAY FOLLOWERS Threads note 0123456789,./—@'+cardU.handle;
   try{await Promise.all(['150px "Archivo Black"','800 40px "Archivo"','500 28px "Archivo"','700 22px "Archivo"','900 60px "Archivo"',
-    '900 60px "Zen Kaku Gothic New"','500 30px "Zen Kaku Gothic New"'].map(f=>document.fonts.load(f,txt)))}catch{}
+    '900 60px "Zen Kaku Gothic New"','500 30px "Zen Kaku Gothic New"','500 36px "Zen Kaku Gothic New"'].map(f=>document.fonts.load(f,txt)))}catch{}
   cardImg=new Image();cardImg.onload=redrawCard;cardImg.onerror=()=>{cardImg=null;redrawCard()};
   cardImg.src='avatars/'+encodeURIComponent(cardU.handle.toLowerCase())+'.jpg?d='+todayKey();
   drawCard();
   const probe=new File([new Blob(['x'],{type:'image/png'})],'x.png',{type:'image/png'});
   document.getElementById('cardShare').hidden=!(navigator.canShare&&navigator.canShare({files:[probe]}));
 }
-[...cIn,...pIn,...nIn].forEach(i=>i.addEventListener('input',()=>{
-  try{localStorage.setItem('card2:'+cardU.handle.toLowerCase(),JSON.stringify({d:todayKey(),p:prevVals(),c:cardVals(),n:postVals()}))}catch{}
+[...cIn,...pIn,...nIn,cMsg].forEach(i=>i.addEventListener('input',()=>{
+  try{localStorage.setItem('card2:'+cardU.handle.toLowerCase(),JSON.stringify({d:todayKey(),p:prevVals(),c:cardVals(),n:postVals(),t:cMsg.value}))}catch{}
   redrawCard();
 }));
+// 入力した文字のフォントが届いてから描き直す（日本語フォントは使う文字の分だけ読み込まれるため）
+cMsg.addEventListener('input',()=>{cMsgN.textContent=`${cMsg.value.length} / 140`;
+  document.fonts.load('500 36px "Zen Kaku Gothic New"',cMsg.value||MSG_DEFAULT).then(redrawCard,()=>{})});
 function cardFile(cb){
   try{cv.toBlob(b=>{if(!b){toast('画像を作れませんでした');return}
     cb(new File([b],`1x10x30_${cardU.handle}_day${dayNo()}.png`,{type:'image/png'}))},'image/png')}
