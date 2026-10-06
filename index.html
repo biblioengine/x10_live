@@ -223,7 +223,9 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #net canvas:active{cursor:grabbing}
 #net .nb{display:flex;align-items:center;gap:12px;padding-top:8px;font-size:12px;color:var(--muted)}
 #net .nb input{flex:1;accent-color:var(--x)}
-#net .nb b{color:var(--fg);font-family:var(--f-num);white-space:nowrap}
+#net .nt{position:absolute;left:4px;top:4px;pointer-events:none;display:flex;flex-direction:column;line-height:1.1}
+#net .nt .d{font-size:14px;font-weight:700;color:var(--muted)}
+#net .nt .h{font-family:var(--f-num);font-size:30px;font-weight:700;color:var(--fg)}
 #net .nh{font-size:11px;color:var(--muted);text-align:center;padding-top:4px}
 .wall-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
 
@@ -891,12 +893,14 @@ const IXL={reply:'リプ',quote:'引用',retweet:'リポスト'};
 function openNet(){
   closeNet();
   const el=document.createElement('div');el.id='net';document.body.appendChild(el);document.documentElement.style.overflow='hidden';
-  const s0=new Date(state.start),days=[];
-  for(let t=new Date(s0.getFullYear(),s0.getMonth(),s0.getDate());dkey(t)<=todayKey();t.setDate(t.getDate()+1))days.push(dkey(t));
+  // スライダーは1時間きざみ。各目盛りは「その時刻まで」の交流（最後の目盛りは今）
+  const s0=new Date(state.start),t0=new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()).getTime(),now=Date.now(),hours=[];
+  for(let t=t0+36e5;t<now;t+=36e5)hours.push(t);
+  hours.push(now);
   el.innerHTML=`<div class="wh"><span class="wt">参加者の交流</span><span class="ws" id="netInfo"></span>
     <button type="button" class="back" id="btnNetBack">戻る</button></div>
-    <div class="nc"><canvas id="netCv" aria-label="参加者どうしの交流の繋がり"></canvas></div>
-    <div class="nb"><span>${s0.getMonth()+1}/${s0.getDate()}</span><input type="range" id="netDay" min="0" max="${days.length-1}" value="${days.length-1}" aria-label="いつまでの交流を表示するか"><b id="netDate"></b></div>
+    <div class="nc"><canvas id="netCv" aria-label="参加者どうしの交流の繋がり"></canvas><div class="nt" id="netDate" aria-live="polite"></div></div>
+    <div class="nb"><span>${s0.getMonth()+1}/${s0.getDate()}</span><input type="range" id="netDay" min="0" max="${hours.length-1}" value="${hours.length-1}" aria-label="いつまでの交流を表示するか"><span>今</span></div>
     <div class="nh">ドラッグで回転・ピンチ（ホイール）で拡大縮小・アイコンを押すとその人の繋がり</div>`;
   const ids=new Set(state.users.map(u=>u.id));
   // 位置は球の表面に均等に置いてから、繋がりの力で動かす（毎回同じ初期配置）
@@ -906,24 +910,24 @@ function openNet(){
     return{u,x:Math.cos(a)*r*220,y:y*220,z:Math.sin(a)*r*220,vx:0,vy:0,vz:0,img}});
   NET.idx=Object.fromEntries(NET.nodes.map((nd,i)=>[nd.u.handle.toLowerCase(),i]));
   NET.ix=(state.ix||[]).filter(x=>ids.has(x.from)&&ids.has(x.to)&&x.from!==x.to);
-  NET.days=days;NET.yaw=.4;NET.pitch=-.25;NET.zoom=1;NET.sel=-1;NET.alpha=1;NET.ptrs=new Map();
+  NET.hours=hours;NET.yaw=.4;NET.pitch=-.25;NET.zoom=1;NET.sel=-1;NET.alpha=1;NET.ptrs=new Map();
   NET.cv=el.querySelector('#netCv');
   const sl=el.querySelector('#netDay');
   sl.addEventListener('input',()=>{netEdges(+sl.value);NET.alpha=Math.max(NET.alpha,.6)});
-  netEdges(days.length-1);netPointer(NET.cv);
+  netEdges(hours.length-1);netPointer(NET.cv);
   const loop=()=>{if(!document.getElementById('net'))return;netStep();netDraw();NET.raf=requestAnimationFrame(loop)};
   NET.raf=requestAnimationFrame(loop);
 }
 function closeNet(){cancelAnimationFrame(NET.raf);const el=document.getElementById('net');if(el){el.remove();document.documentElement.style.overflow=''}}
 // 選んだ日までの交流を、2人の組ごとにまとめる
 function netEdges(di){
-  const lim=NET.days[di],m=new Map();
-  for(const x of NET.ix){if(dkey(x.ts)>lim)continue;
+  const lim=NET.hours[di],m=new Map();
+  for(const x of NET.ix){if(x.ts>lim)continue;
     const a=NET.idx[x.from.toLowerCase()],b=NET.idx[x.to.toLowerCase()];if(a===undefined||b===undefined)continue;
     const k=a<b?a+'-'+b:b+'-'+a;let e=m.get(k);if(!e){e={a:Math.min(a,b),b:Math.max(a,b),w:0,t:{reply:0,quote:0,retweet:0}};m.set(k,e)}
     e.w++;e.t[x.type]=(e.t[x.type]||0)+1}
   NET.edges=[...m.values()];NET.di=di;
-  const k=NET.days[di];document.getElementById('netDate').textContent=`${Math.floor(k/100)%100}/${k%100}まで`;
+  const d=new Date(lim);document.getElementById('netDate').innerHTML=`<span class="d">${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）</span><span class="h num">${hm(lim)}</span>`;
   netInfo();
 }
 function netInfo(){
