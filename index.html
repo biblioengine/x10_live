@@ -126,8 +126,8 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .cell.done{background:var(--gold);color:#161a24;font-weight:700}
 .cell.today{box-shadow:inset 0 0 0 2px var(--live)}
 .cell.future{background:transparent;border:1px dashed var(--line);cursor:default}
-.cell.wait{background:transparent;border:1px dashed var(--line);cursor:default;font-family:inherit;font-size:10px;letter-spacing:-.02em;color:var(--muted)}
-.cell:not(.future):not(.wait):hover{outline:2px solid var(--fg);outline-offset:-1px}
+.cell.wait{background:transparent;border:1px dashed var(--line);cursor:pointer;font-family:inherit;font-size:10px;letter-spacing:-.02em;color:var(--muted)}
+.cell:not(.future):hover{outline:2px solid var(--fg);outline-offset:-1px}
 
 .rankwrap{overflow-x:auto}
 .rank{min-width:640px}
@@ -540,7 +540,7 @@ function renderLive(){
   const body=rows.map(({u,tot})=>`<tr><td class="u"><button type="button" class="uico" data-tip="${esc(u.name)}" title="${esc(u.name)}" aria-label="${esc(u.name)}" aria-expanded="false">${av(u,'sm')}<span class="uname">${esc(u.name)}</span></button></td>${
     Array.from({length:n},(_,i)=>{const k=ymd(y,m,i+1);
       if(k>tk||k<sk) return `<td><button type="button" class="cell future" disabled aria-label="対象外"></button></td>`;
-      if(k<tot.usk) return `<td><button type="button" class="cell wait" disabled title="待機中（${Math.floor(tot.usk/100)%100}/${tot.usk%100}から参加）" aria-label="${esc(u.name)} ${m+1}月${i+1}日 待機中">待機</button></td>`;
+      if(k<tot.usk) return `<td><button type="button" class="cell wait${k===tk?' today':''}" data-u="${esc(u.id)}" data-k="${k}" title="待機中（${Math.floor(tot.usk/100)%100}/${tot.usk%100}から参加）" aria-label="${esc(u.name)} ${m+1}月${i+1}日 待機中">待機</button></td>`;
       const c=tot.map[k]||0;
       return `<td><button type="button" class="cell${c>=GOAL?' done':''}${k===tk?' today':''}" data-u="${esc(u.id)}" data-k="${k}"
         aria-label="${esc(u.name)} ${m+1}月${i+1}日 ${c}本">${c}</button></td>`}).join('')
