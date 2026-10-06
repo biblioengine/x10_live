@@ -228,17 +228,19 @@ def fetch_manual(data):
 
 
 def save_avatars(data):
-    """個人カードの画像に使うアイコンを avatars/ に保存する（1日1回、新しい人はその場で）。
+    """個人カードの画像に使うアイコンを avatars/ に保存する（1日1回。新しい人とアイコンを変えた人はその場で）。
     X の画像をそのままカードに描くとブラウザの制限で書き出せないため、同じサイトに置く。"""
     st = data.setdefault("state", {})
     today = today_jst()
     daily = st.get("avatars_saved_on") != today
     os.makedirs(AVATARS, exist_ok=True)
+    src = st.setdefault("avatar_src", {})  # 保存したときのアイコンのURL（変わっていたらその場で取り直す）
     n = 0
     for u in data["users"] + data.get("sub_users", []):
         url = u.get("avatar") or ""
-        path = os.path.join(AVATARS, u["handle"].lower() + ".jpg")
-        if not url or (not daily and os.path.exists(path)):
+        key = u["handle"].lower()
+        path = os.path.join(AVATARS, key + ".jpg")
+        if not url or (not daily and os.path.exists(path) and src.get(key) == url):
             continue
         try:
             req = urllib.request.Request(url.replace("_normal.", "_400x400."), headers={"User-Agent": "x10-live"})
@@ -247,6 +249,7 @@ def save_avatars(data):
             if body:
                 with open(path, "wb") as f:
                     f.write(body)
+                src[key] = url
                 n += 1
         except Exception as e:
             print(f"  アイコンを保存できませんでした: {u['handle']} ({e})")
