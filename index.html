@@ -611,7 +611,7 @@ function renderUser(){
   for(let d=1;d<=n;d++){
     const k=ymd(y,m,d),c=tot.map[k]||0,a=c>=GOAL;
     if(k>tk){cells+=`<div class="day future"><span class="d num"><span>${d}</span></span></div>`;continue}
-    cells+=`<button type="button" class="day${a?' done':''}${k===tk?' today':''}${k<tot.usk?' pre':''}" data-k="${k}" aria-pressed="${state.day===k}"
+    cells+=`<button type="button" class="day${a?' done':''}${k===tk?' today':''}${k<sk?' pre':''}" data-k="${k}" aria-pressed="${state.day===k}"
       aria-label="${m+1}月${d}日 ${c}本${a?' 達成':''}">
       <span class="d num"><span>${d}</span></span>
       <span class="c">${c}<small>本</small></span>
@@ -694,7 +694,7 @@ const cDate=document.getElementById('cDate'),cMsg=document.getElementById('cMsg'
 const cIn=['cX','cTh','cNote'].map(id=>document.getElementById(id)),pIn=['pX','pTh','pNote'].map(id=>document.getElementById(id)),nIn=['nX','nTh','nNote'].map(id=>document.getElementById(id));
 // カードの日付：入力欄の日付（初期値は今日）。空なら今日
 function cardDate(){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(cDate.value);return m?new Date(+m[1],m[2]-1,+m[3]):new Date()}
-function dayNo(){const t=cardDate(),a=new Date(t.getFullYear(),t.getMonth(),t.getDate()),usk=userStartKey(cardU),b=new Date(Math.floor(usk/1e4),Math.floor(usk/100)%100-1,usk%100);return Math.round((a-b)/864e5)+1}
+function dayNo(){const t=cardDate(),a=new Date(t.getFullYear(),t.getMonth(),t.getDate()),s0=new Date(state.start),b=new Date(s0.getFullYear(),s0.getMonth(),s0.getDate());return Math.round((a-b)/864e5)+1}
 const digits=i=>i.value.replace(/[^\d]/g,'');
 function cardVals(){return cIn.map(digits)}
 function prevVals(){return pIn.map(digits)}
