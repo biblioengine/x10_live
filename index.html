@@ -211,6 +211,20 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .rosterbar{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
 .seg{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:3px 12px;font-size:12px}
 .seg[aria-pressed="true"]{background:var(--fg);color:var(--panel);border-color:var(--fg)}
+/* 参加者の交流（立体の繋がり図） */
+#net{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column;padding:calc(10px + env(safe-area-inset-top,0px)) 12px calc(10px + env(safe-area-inset-bottom,0px))}
+#net .wh{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:40px}
+#net .wt{font-family:var(--f-disp);font-size:18px;line-height:1.2}
+#net .ws{font-size:12px;color:var(--muted)}
+#net .ws b{color:var(--fg)}
+#net .back{margin-left:auto;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:5px 14px;font-size:13px;font-weight:700}
+#net .nc{flex:1;min-height:0;position:relative}
+#net canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab;display:block}
+#net canvas:active{cursor:grabbing}
+#net .nb{display:flex;align-items:center;gap:12px;padding-top:8px;font-size:12px;color:var(--muted)}
+#net .nb input{flex:1;accent-color:var(--x)}
+#net .nb b{color:var(--fg);font-family:var(--f-num);white-space:nowrap}
+#net .nh{font-size:11px;color:var(--muted);text-align:center;padding-top:4px}
 .wall-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
 
 /* 個人ページ */
@@ -416,7 +430,7 @@ function parseCSV(s){
 function normalize(raw){
   let items=raw,meta={},roster=[],subRoster=[];
   if(raw&&!Array.isArray(raw)&&Array.isArray(raw.posts)){ // 自動取得の data.json
-    meta={start:Date.parse(raw.start),updated:Date.parse(raw.updated_at),followers:raw.followers||{}};roster=raw.users||[];subRoster=raw.sub_users||[];items=raw.posts;
+    meta={start:Date.parse(raw.start),updated:Date.parse(raw.updated_at),followers:raw.followers||{},ix:(raw.interactions||[]).map(x=>({from:String(x.from),to:String(x.to),type:x.type,ts:Date.parse(x.created_at)})).filter(x=>!isNaN(x.ts))};roster=raw.users||[];subRoster=raw.sub_users||[];items=raw.posts;
   }else if(raw&&!Array.isArray(raw)&&Array.isArray(raw.data)){ // X API v2
     const um={};(raw.includes?.users||[]).forEach(u=>um[u.id]=u);
     items=raw.data.map(t=>({id:t.id,handle:um[t.author_id]?.username||t.author_id,name:um[t.author_id]?.name,created_at:t.created_at,text:t.text}));
@@ -445,7 +459,7 @@ function load(d,isSample){
   const keepView=state.users.length&&!isSample;
   state.users=d.users;state.posts=d.posts.sort((a,b)=>a.ts-b.ts);state.isSample=isSample;
   state.start=d.start||(state.posts[0]?.ts??Date.now());state.followers=d.followers||{};state.updated=d.updated||null;
-  state.subs=d.subs||[];
+  state.subs=d.subs||[];state.ix=d.ix||[];
   state.byUser={};[...state.users,...state.subs].forEach(u=>{state.byUser[u.id]=[];if(u.avatar)state.img[u.id]=u.avatar.replace('_normal.','_bigger.')});
   state.posts.forEach(p=>state.byUser[p.uid]&&state.byUser[p.uid].push(p));
   if(!keepView){const now=new Date();state.y=now.getFullYear();state.m=now.getMonth();state.view='live';state.uid=state.users[0].id;state.day=null}
@@ -591,7 +605,7 @@ function renderRoster(){
       <b>${esc(u.name)}</b><span class="sc num">${c}/${GOAL}</span></button>`}).join('');
   const seg=(v,l)=>`<button type="button" class="seg" data-rf="${v}" aria-pressed="${state.rf===v}">${l}</button>`;
   document.getElementById('main').innerHTML=`
-  <div class="topbar"><h1>参加者一覧 <small>${state.users.length}人</small></h1><button type="button" class="wallbtn" id="btnWall">全員表示</button>${onair()}</div>
+  <div class="topbar"><h1>参加者一覧 <small>${state.users.length}人</small></h1><button type="button" class="wallbtn" id="btnWall">全員表示</button><button type="button" class="wallbtn" id="btnNet">参加者の交流</button>${onair()}</div>
   <section class="card">
     <div class="wall-sum"><span class="big num">${doneN}<small>/ ${all.length}人が今日達成</small></span>
       <span class="prog" aria-hidden="true"><i style="width:${doneN/Math.max(1,all.length)*100}%"></i></span>
@@ -870,6 +884,130 @@ function renderWall(){
 function closeWall(){state.wall=false;document.getElementById('wall')?.remove();document.documentElement.style.overflow=''}
 addEventListener('resize',()=>{if(state.wall)renderWall()});
 
+/* ---------- 参加者の交流：リプ・引用・リポストの繋がりを立体で見る ---------- */
+// ドラッグで回転、ピンチ／ホイールで拡大縮小、アイコンを押すとその人と繋がっている人だけをはっきり見せる
+const NET={};
+const IXL={reply:'リプ',quote:'引用',retweet:'リポスト'};
+function openNet(){
+  closeNet();
+  const el=document.createElement('div');el.id='net';document.body.appendChild(el);document.documentElement.style.overflow='hidden';
+  const s0=new Date(state.start),days=[];
+  for(let t=new Date(s0.getFullYear(),s0.getMonth(),s0.getDate());dkey(t)<=todayKey();t.setDate(t.getDate()+1))days.push(dkey(t));
+  el.innerHTML=`<div class="wh"><span class="wt">参加者の交流</span><span class="ws" id="netInfo"></span>
+    <button type="button" class="back" id="btnNetBack">戻る</button></div>
+    <div class="nc"><canvas id="netCv" aria-label="参加者どうしの交流の繋がり"></canvas></div>
+    <div class="nb"><span>${s0.getMonth()+1}/${s0.getDate()}</span><input type="range" id="netDay" min="0" max="${days.length-1}" value="${days.length-1}" aria-label="いつまでの交流を表示するか"><b id="netDate"></b></div>
+    <div class="nh">ドラッグで回転・ピンチ（ホイール）で拡大縮小・アイコンを押すとその人の繋がり</div>`;
+  const ids=new Set(state.users.map(u=>u.id));
+  // 位置は球の表面に均等に置いてから、繋がりの力で動かす（毎回同じ初期配置）
+  const n=state.users.length;
+  NET.nodes=state.users.map((u,i)=>{const y=1-2*(i+.5)/n,r=Math.sqrt(1-y*y),a=i*2.39996;
+    const img=new Image();img.src='avatars/'+encodeURIComponent(u.handle.toLowerCase())+'.jpg';
+    return{u,x:Math.cos(a)*r*220,y:y*220,z:Math.sin(a)*r*220,vx:0,vy:0,vz:0,img}});
+  NET.idx=Object.fromEntries(NET.nodes.map((nd,i)=>[nd.u.handle.toLowerCase(),i]));
+  NET.ix=(state.ix||[]).filter(x=>ids.has(x.from)&&ids.has(x.to)&&x.from!==x.to);
+  NET.days=days;NET.yaw=.4;NET.pitch=-.25;NET.zoom=1;NET.sel=-1;NET.alpha=1;NET.ptrs=new Map();
+  NET.cv=el.querySelector('#netCv');
+  const sl=el.querySelector('#netDay');
+  sl.addEventListener('input',()=>{netEdges(+sl.value);NET.alpha=Math.max(NET.alpha,.6)});
+  netEdges(days.length-1);netPointer(NET.cv);
+  const loop=()=>{if(!document.getElementById('net'))return;netStep();netDraw();NET.raf=requestAnimationFrame(loop)};
+  NET.raf=requestAnimationFrame(loop);
+}
+function closeNet(){cancelAnimationFrame(NET.raf);const el=document.getElementById('net');if(el){el.remove();document.documentElement.style.overflow=''}}
+// 選んだ日までの交流を、2人の組ごとにまとめる
+function netEdges(di){
+  const lim=NET.days[di],m=new Map();
+  for(const x of NET.ix){if(dkey(x.ts)>lim)continue;
+    const a=NET.idx[x.from.toLowerCase()],b=NET.idx[x.to.toLowerCase()];if(a===undefined||b===undefined)continue;
+    const k=a<b?a+'-'+b:b+'-'+a;let e=m.get(k);if(!e){e={a:Math.min(a,b),b:Math.max(a,b),w:0,t:{reply:0,quote:0,retweet:0}};m.set(k,e)}
+    e.w++;e.t[x.type]=(e.t[x.type]||0)+1}
+  NET.edges=[...m.values()];NET.di=di;
+  const k=NET.days[di];document.getElementById('netDate').textContent=`${Math.floor(k/100)%100}/${k%100}まで`;
+  netInfo();
+}
+function netInfo(){
+  const el=document.getElementById('netInfo');if(!el)return;
+  if(NET.sel<0){const p=new Set();NET.edges.forEach(e=>{p.add(e.a);p.add(e.b)});
+    el.innerHTML=`繋がり <b>${NET.edges.length}</b> 組・交流のある人 <b>${p.size}</b> / ${NET.nodes.length}人`;return}
+  const t={reply:0,quote:0,retweet:0};let c=0;
+  NET.edges.forEach(e=>{if(e.a===NET.sel||e.b===NET.sel){c++;for(const k in t)t[k]+=e.t[k]}});
+  el.innerHTML=`<b>${esc(NET.nodes[NET.sel].u.name)}</b>さん：<b>${c}</b>人と交流（${Object.keys(t).map(k=>`${IXL[k]} ${t[k]}`).join('・')}）`;
+}
+// 繋がりの力で配置を整える（落ち着いたら止まる）
+function netStep(){
+  if(NET.alpha<.005)return;
+  const N=NET.nodes,a=NET.alpha;
+  for(let i=0;i<N.length;i++)for(let j=i+1;j<N.length;j++){
+    const p=N[i],q=N[j];let dx=p.x-q.x,dy=p.y-q.y,dz=p.z-q.z,d2=dx*dx+dy*dy+dz*dz;if(d2<1){dx=Math.random();d2=1}
+    const f=a*30000/Math.max(d2,900),d=Math.sqrt(d2);dx*=f/d;dy*=f/d;dz*=f/d;
+    p.vx+=dx;p.vy+=dy;p.vz+=dz;q.vx-=dx;q.vy-=dy;q.vz-=dz}
+  for(const e of NET.edges){const p=N[e.a],q=N[e.b];
+    const dx=q.x-p.x,dy=q.y-p.y,dz=q.z-p.z,d=Math.sqrt(dx*dx+dy*dy+dz*dz)||1;
+    const f=a*.02*Math.min(3,1+Math.log2(e.w))*(d-150)/d;
+    p.vx+=dx*f;p.vy+=dy*f;p.vz+=dz*f;q.vx-=dx*f;q.vy-=dy*f;q.vz-=dz*f}
+  // 全体の真ん中を原点に戻し、繋がりのない人も遠くへ行きすぎないように引き戻す
+  let mx=0,my=0,mz=0;for(const p of N){mx+=p.x;my+=p.y;mz+=p.z}mx/=N.length;my/=N.length;mz/=N.length;
+  for(const p of N){p.x-=mx;p.y-=my;p.z-=mz;p.vx-=p.x*.012*a;p.vy-=p.y*.012*a;p.vz-=p.z*.012*a;
+    p.vx*=.82;p.vy*=.82;p.vz*=.82;p.x+=p.vx;p.y+=p.vy;p.z+=p.vz}
+  NET.alpha*=.985;
+}
+function netDraw(){
+  const cv=NET.cv,dpr=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr)}
+  const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+  const cs=getComputedStyle(document.documentElement),C={x:cs.getPropertyValue('--x').trim(),gold:cs.getPropertyValue('--gold').trim(),fg:cs.getPropertyValue('--fg').trim(),bg:cs.getPropertyValue('--bg').trim()};
+  // 回転して画面に写す（奥ほど小さく）
+  // 大きさの基準は、離れた数人に引っぱられないよう、中心から近い順に9割の人が収まる距離にする
+  const rs=NET.nodes.map(p=>Math.hypot(p.x,p.y,p.z)).sort((a,b)=>a-b),ext=Math.max(1,rs[Math.floor(rs.length*.9)]||1);
+  const cy=Math.cos(NET.yaw),sy=Math.sin(NET.yaw),cp=Math.cos(NET.pitch),sp=Math.sin(NET.pitch),D=ext*3.2,sc=Math.min(W,H)*.40/ext*NET.zoom;
+  const P=NET.nodes.map((p,i)=>{const x1=p.x*cy-p.z*sy,z1=p.x*sy+p.z*cy,y2=p.y*cp-z1*sp,z2=p.y*sp+z1*cp,k=D/(D-z2);
+    return{i,sx:W/2+x1*k*sc,sy:H/2+y2*k*sc,k,z:z2,r:Math.max(6,Math.min(40,Math.min(W,H)*.032*k*NET.zoom))}});
+  NET.P=P;
+  const sel=NET.sel,nb=new Set();if(sel>=0)NET.edges.forEach(e=>{if(e.a===sel)nb.add(e.b);if(e.b===sel)nb.add(e.a)});
+  const lit=i=>sel<0||i===sel||nb.has(i);
+  // 線
+  ctx.lineCap='round';
+  for(const e of NET.edges){const a=P[e.a],b=P[e.b],on=sel>=0&&(e.a===sel||e.b===sel);
+    const depth=Math.min(1,Math.max(.25,(a.k+b.k)/2-.5));
+    ctx.globalAlpha=sel<0?Math.min(.75,.18+.1*Math.log2(1+e.w))*depth:on?.95:.04;
+    ctx.strokeStyle=on?C.gold:C.x;ctx.lineWidth=Math.min(6,.8+Math.log2(1+e.w)*.8)*(on?1.3:1);
+    ctx.beginPath();ctx.moveTo(a.sx,a.sy);ctx.lineTo(b.sx,b.sy);ctx.stroke()}
+  // アイコン（奥から順に。選んだ人と繋がっている人は最後に重ねて、いつもはっきり見せる）
+  const order=[...P].sort((a,b)=>(lit(a.i)-lit(b.i))||(a.z-b.z)||0);
+  if(sel>=0){order.splice(order.findIndex(q=>q.i===sel),1);order.push(P[sel])}
+  NET.order=order;
+  for(const q of order){const nd=NET.nodes[q.i],on=lit(q.i);
+    ctx.globalAlpha=on?1:.13;
+    ctx.save();ctx.beginPath();ctx.arc(q.sx,q.sy,q.r,0,Math.PI*2);ctx.closePath();ctx.clip();
+    if(nd.img.complete&&nd.img.naturalWidth)ctx.drawImage(nd.img,q.sx-q.r,q.sy-q.r,q.r*2,q.r*2);
+    else{ctx.fillStyle=nd.u.color;ctx.fillRect(q.sx-q.r,q.sy-q.r,q.r*2,q.r*2);ctx.fillStyle='#fff';ctx.font=`700 ${Math.round(q.r)}px ${cs.getPropertyValue('--f-body')}`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText([...nd.u.name][0]||'?',q.sx,q.sy+1)}
+    ctx.restore();
+    ctx.lineWidth=q.i===sel?3:1.5;ctx.strokeStyle=q.i===sel?C.gold:C.bg;ctx.beginPath();ctx.arc(q.sx,q.sy,q.r,0,Math.PI*2);ctx.stroke();
+    if(sel>=0&&on){ctx.globalAlpha=1;ctx.font=`${q.i===sel?700:500} ${q.i===sel?13:11}px ${cs.getPropertyValue('--f-body')}`;ctx.textAlign='center';ctx.textBaseline='top';
+      // 名前は「｜」より前だけ。繋がっている人は長いと重なるので短くする
+      const nm=q.i===sel?nd.u.name:(t=>t.length>10?t.slice(0,10)+'…':t)([...nd.u.name.split(/[｜|]/)[0].trim()||nd.u.name].join(''));
+      ctx.lineWidth=3;ctx.strokeStyle=C.bg;ctx.strokeText(nm,q.sx,q.sy+q.r+3);ctx.fillStyle=C.fg;ctx.fillText(nm,q.sx,q.sy+q.r+3)}
+  }
+  ctx.globalAlpha=1;
+}
+function netPointer(cv){
+  let moved=0,last=null,pinch=0;
+  cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);NET.ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=0;last={x:e.clientX,y:e.clientY};
+    if(NET.ptrs.size===2){const [a,b]=[...NET.ptrs.values()];pinch=Math.hypot(a.x-b.x,a.y-b.y)}});
+  cv.addEventListener('pointermove',e=>{if(!NET.ptrs.has(e.pointerId))return;NET.ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(NET.ptrs.size===2){const [a,b]=[...NET.ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y);if(pinch){NET.zoom=Math.min(4,Math.max(.4,NET.zoom*d/pinch))}pinch=d;moved=99;return}
+    const dx=e.clientX-last.x,dy=e.clientY-last.y;last={x:e.clientX,y:e.clientY};moved+=Math.abs(dx)+Math.abs(dy);
+    NET.yaw+=dx*.008;NET.pitch=Math.max(-1.5,Math.min(1.5,NET.pitch+dy*.008))});
+  const up=e=>{if(!NET.ptrs.has(e.pointerId))return;NET.ptrs.delete(e.pointerId);if(NET.ptrs.size<2)pinch=0;
+    if(e.type==='pointerup'&&moved<6&&NET.ptrs.size===0){const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+      // 上に描かれているものから順に当たりを調べる
+      const hit=[...NET.order].reverse().find(q=>Math.hypot(q.sx-x,q.sy-y)<=q.r+4);
+      NET.sel=hit?(hit.i===NET.sel?-1:hit.i):-1;netInfo()}};
+  cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+  cv.addEventListener('wheel',e=>{e.preventDefault();NET.zoom=Math.min(4,Math.max(.4,NET.zoom*Math.exp(-e.deltaY*.0015)))},{passive:false});
+}
+
 /* 達成カレンダーのアイコンを押すと名前を浮かせる */
 const tip=Object.assign(document.createElement('div'),{id:'tip',hidden:true});document.body.appendChild(tip);
 let tipFor=null;
@@ -893,6 +1031,8 @@ document.addEventListener('click',e=>{
   if(b.dataset.card){openCard(b.dataset.card);return}
   if(b.id==='btnWall'){state.wall=true;renderWall();return}
   if(b.id==='btnWallBack'){closeWall();return}
+  if(b.id==='btnNet'){openNet();return}
+  if(b.id==='btnNetBack'){closeNet();return}
   if(b.dataset.rf){state.rf=b.dataset.rf;render();return}
   if(b.dataset.sort){const k=b.dataset.sort,rs=state.rs||{k:'ach',dir:-1};
     state.rs=rs.k===k?{k,dir:-rs.dir}:{k,dir:k==='name'?1:-1};render();return}
