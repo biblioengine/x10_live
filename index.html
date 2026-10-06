@@ -126,7 +126,8 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .cell.done{background:var(--gold);color:#161a24;font-weight:700}
 .cell.today{box-shadow:inset 0 0 0 2px var(--live)}
 .cell.future{background:transparent;border:1px dashed var(--line);cursor:default}
-.cell:not(.future):hover{outline:2px solid var(--fg);outline-offset:-1px}
+.cell.wait{background:transparent;border:1px dashed var(--line);cursor:default;font-family:inherit;font-size:10px;letter-spacing:-.02em;color:var(--muted)}
+.cell:not(.future):not(.wait):hover{outline:2px solid var(--fg);outline-offset:-1px}
 
 .rankwrap{overflow-x:auto}
 .rank{min-width:640px}
@@ -462,6 +463,8 @@ const ymd=(y,m,d)=>y*10000+(m+1)*100+d;
 const dim=(y,m)=>new Date(y,m+1,0).getDate();
 const todayKey=()=>dkey(Date.now());
 const startKey=()=>dkey(state.start);
+// 参加者ごとの参加開始日（starts.txt）。書いていない人は企画の開始日から
+const userStartKey=u=>Math.max(startKey(),(u&&state.starts[u.handle.toLowerCase()])||0);
 const jstDate=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 function fol(handle){
   const m=state.followers[handle];if(!m)return null;
@@ -474,12 +477,14 @@ const sgnc=v=>!v?'var(--muted)':v>0?'#2b8a5e':'var(--live)';
 const dayCount=(uid,k)=>state.byUser[uid].reduce((s,p)=>s+(dkey(p.ts)===k),0);
 function totals(uid){
   const map={};state.byUser[uid].forEach(p=>{const k=dkey(p.ts);map[k]=(map[k]||0)+1});
-  const tk=todayKey();let ach=0,days=0,streak=0;
+  // 達成日数・投稿数は、その人の参加開始日から数える
+  const usk=userStartKey(findU(uid)),tk=todayKey();let ach=0,days=0,all=0;
   for(let t=new Date(state.start);dkey(t)<=tk;t.setDate(t.getDate()+1)){
-    const k=dkey(t),ok=(map[k]||0)>=GOAL;
+    const k=dkey(t);if(k<usk)continue;
+    const ok=(map[k]||0)>=GOAL;all+=map[k]||0;
     if(k<tk||ok){days++;if(ok)ach++}
   }
-  return{map,ach,days,all:state.byUser[uid].length};
+  return{map,ach,days,all,usk};
 }
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const av=(u,cls='')=>state.img[u.id]
@@ -535,6 +540,7 @@ function renderLive(){
   const body=rows.map(({u,tot})=>`<tr><td class="u"><button type="button" class="uico" data-tip="${esc(u.name)}" title="${esc(u.name)}" aria-label="${esc(u.name)}" aria-expanded="false">${av(u,'sm')}<span class="uname">${esc(u.name)}</span></button></td>${
     Array.from({length:n},(_,i)=>{const k=ymd(y,m,i+1);
       if(k>tk||k<sk) return `<td><button type="button" class="cell future" disabled aria-label="対象外"></button></td>`;
+      if(k<tot.usk) return `<td><button type="button" class="cell wait" disabled title="待機中（${Math.floor(tot.usk/100)%100}/${tot.usk%100}から参加）" aria-label="${esc(u.name)} ${m+1}月${i+1}日 待機中">待機</button></td>`;
       const c=tot.map[k]||0;
       return `<td><button type="button" class="cell${c>=GOAL?' done':''}${k===tk?' today':''}" data-u="${esc(u.id)}" data-k="${k}"
         aria-label="${esc(u.name)} ${m+1}月${i+1}日 ${c}本">${c}</button></td>`}).join('')
@@ -605,7 +611,7 @@ function renderUser(){
   for(let d=1;d<=n;d++){
     const k=ymd(y,m,d),c=tot.map[k]||0,a=c>=GOAL;
     if(k>tk){cells+=`<div class="day future"><span class="d num"><span>${d}</span></span></div>`;continue}
-    cells+=`<button type="button" class="day${a?' done':''}${k===tk?' today':''}${k<sk?' pre':''}" data-k="${k}" aria-pressed="${state.day===k}"
+    cells+=`<button type="button" class="day${a?' done':''}${k===tk?' today':''}${k<tot.usk?' pre':''}" data-k="${k}" aria-pressed="${state.day===k}"
       aria-label="${m+1}月${d}日 ${c}本${a?' 達成':''}">
       <span class="d num"><span>${d}</span></span>
       <span class="c">${c}<small>本</small></span>
@@ -688,7 +694,7 @@ const cDate=document.getElementById('cDate'),cMsg=document.getElementById('cMsg'
 const cIn=['cX','cTh','cNote'].map(id=>document.getElementById(id)),pIn=['pX','pTh','pNote'].map(id=>document.getElementById(id)),nIn=['nX','nTh','nNote'].map(id=>document.getElementById(id));
 // カードの日付：入力欄の日付（初期値は今日）。空なら今日
 function cardDate(){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(cDate.value);return m?new Date(+m[1],m[2]-1,+m[3]):new Date()}
-function dayNo(){const t=cardDate(),a=new Date(t.getFullYear(),t.getMonth(),t.getDate()),s0=new Date(state.start),b=new Date(s0.getFullYear(),s0.getMonth(),s0.getDate());return Math.round((a-b)/864e5)+1}
+function dayNo(){const t=cardDate(),a=new Date(t.getFullYear(),t.getMonth(),t.getDate()),usk=userStartKey(cardU),b=new Date(Math.floor(usk/1e4),Math.floor(usk/100)%100-1,usk%100);return Math.round((a-b)/864e5)+1}
 const digits=i=>i.value.replace(/[^\d]/g,'');
 function cardVals(){return cIn.map(digits)}
 function prevVals(){return pIn.map(digits)}
@@ -932,7 +938,16 @@ function toast(msg){const t=document.createElement('div');t.className='toast';t.
 
 /* 同じ場所に data.json があれば読み込み、5分ごとに更新。なければサンプル表示 */
 /* キャッチコピー：taglines.txt（1行に「ハンドル キャッチコピー」） */
-state.tags={};
+state.tags={};state.starts={};
+/* 参加開始日：starts.txt（1行に「ハンドル 開始日」。開始日は 2026-10-08 / 10/8 / 10月8日 のどれでも） */
+async function pullStarts(){
+  try{const res=await fetch('starts.txt',{cache:'no-store'});if(!res.ok)return;
+    const y0=new Date(state.start||Date.now()).getFullYear(),t={};
+    (await res.text()).split(/\r?\n/).forEach(l=>{l=l.trim();if(!l||l[0]==='#')return;
+      const m=l.match(/^@?(\S+)\s+(?:(\d{4})[-\/年])?(\d{1,2})[-\/月](\d{1,2})日?$/);
+      if(m)t[m[1].toLowerCase()]=(m[2]?+m[2]:y0)*10000+(+m[3])*100+(+m[4])});
+    state.starts=t}catch{}
+}
 async function pullTags(){
   try{const res=await fetch('taglines.txt',{cache:'no-store'});if(!res.ok)return;
     const t={};(await res.text()).split(/\r?\n/).forEach(l=>{l=l.trim();if(!l||l[0]==='#')return;
@@ -940,7 +955,7 @@ async function pullTags(){
     state.tags=t}catch{}
 }
 async function pull(first){
-  await pullTags();
+  await pullTags();await pullStarts();
   try{const res=await fetch('data.json',{cache:'no-store'});if(!res.ok)throw 0;
     const d=normalize(await res.json());load(d,false);return true}
   catch{if(first)load(sample(),true);return false}
