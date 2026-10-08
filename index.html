@@ -292,6 +292,9 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #plr .bar i.b{background:var(--pb)}
 #plr .dn2{display:flex;justify-content:space-between;font-family:"Archivo",var(--f-body);font-weight:800;font-size:11px;letter-spacing:.1em;margin-top:8px}
 #plr .dn2 span:first-child{color:var(--pg)}#plr .dn2 span:last-child{color:var(--pb)}
+#plr .pth{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+#plr .netgo{flex:none;border:1px solid var(--pg);background:transparent;color:var(--pg);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+#plr .netgo:hover{background:var(--pg);color:#0b0e14}
 #plr .pt{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
 #plr .pt button{display:flex;align-items:center;gap:8px;min-width:0;flex:1 1 150px;background:#0e131c;border:1px solid transparent;border-radius:12px;padding:6px 10px 6px 6px;color:inherit;text-align:left;cursor:pointer}
 #plr .pt button:hover{border-color:var(--pg)}
@@ -1037,7 +1040,7 @@ function openPlayer(id){
           <div class="bar"><i style="width:${pct(S.day,S.all)}%"></i><i class="b" style="flex:1"></i></div>
           <div class="sub">PEAK ${S.peak==null?'—':String(S.peak).padStart(2,'0')+':00'}</div>`)]];
   el.innerHTML=`<div class="in">
-  <div class="ph"><span class="tt">PLAYER PROFILE<small>選手紹介</small></span><div class="acts"><button type="button" class="back" data-net="${esc(u.id)}">交流を見る</button><button type="button" class="back" data-go="live">TOPへ</button><button type="button" class="back" id="btnPlrBack">戻る</button></div></div>
+  <div class="ph"><span class="tt">PLAYER PROFILE<small>選手紹介</small></span><div class="acts"><button type="button" class="back" data-go="live">TOPへ</button><button type="button" class="back" data-go="players">一覧に戻る</button></div></div>
   <div class="grid">
     <section class="hero${tint?' tint':''}"${tint}>
       <div class="pic">${pav(u)}</div>
@@ -1055,7 +1058,7 @@ function openPlayer(id){
       <div class="blk">${L('BIO','自己紹介（Xのプロフィールより）')}<div class="bio${u.bio?'':' none'}">${u.bio?esc(u.bio):'—'}</div></div>
     </section>
     <section class="more">
-      ${st(' w3',`${L('PARTNERS','よく交流している相手')}
+      ${st(' w3',`<div class="pth">${L('PARTNERS','よく交流している相手')}<button type="button" class="netgo" data-net="${esc(u.id)}">交流を見る ▶︎</button></div>
           ${S.partners.length?`<div class="pt">${S.partners.map(p=>`<button type="button" data-plr="${esc(p.u.id)}" aria-label="${esc(p.u.name)}さんの選手紹介へ">${pav(p.u)}<span style="min-width:0"><b>${esc(p.u.name)}</b><span>${p.c} HITS</span></span></button>`).join('')}</div>`:'<div class="sub" style="margin-top:8px">—</div>'}`)}
       ${note?st(' w3',`${L('COMMENTARY','実況席より')}<div class="cm">${esc(note)}</div>`):''}
     </section>
@@ -1068,7 +1071,7 @@ function openPlayer(id){
   car.addEventListener('scroll',()=>requestAnimationFrame(upd),{passive:true});
   pb.forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();car.scrollTo({left:(cur()+ +b.dataset.pg)*car.clientWidth,behavior:'smooth'})}));
   upd();
-  el.querySelector('#btnPlrBack').focus({preventScroll:true});
+  el.querySelector('[data-go="players"]').focus({preventScroll:true});
 }
 function closePlayer(){const el=document.getElementById('plr');if(el){el.remove();document.documentElement.style.overflow=''}}
 addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('plr'))backOv(closePlayer)});
