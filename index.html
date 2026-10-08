@@ -39,6 +39,8 @@ aside{background:var(--panel);border-right:1px solid var(--line);padding:18px 12
 .brand .t{font-family:var(--f-disp);font-size:19px;letter-spacing:.02em}
 .brand .t em{font-style:normal;color:var(--gold)}
 .brand .s{font-size:11px;color:var(--muted)}
+.ptr{position:fixed;left:50%;top:0;z-index:40;transform:translate(-50%,-60px);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;color:var(--muted);box-shadow:0 4px 14px rgba(0,0,0,.12);pointer-events:none;white-space:nowrap}
+.ptr.go{color:var(--fg)}
 .navlabel{font-size:11px;color:var(--muted);letter-spacing:.08em;padding:4px 8px 0}
 .navs{flex:1;min-height:0;display:flex;flex-direction:column;gap:4px}
 .nav{display:flex;flex-direction:column;gap:2px}
@@ -381,6 +383,10 @@ dialog::backdrop{background:rgba(10,15,25,.45)}
   #navUsers button[aria-current="true"]{box-shadow:inset 0 -3px 0 var(--fg)}
   #navUsers .who span{display:none}
   .side-foot{flex-direction:row;align-items:center;flex-wrap:wrap}
+  /* スマホでは参加者の横並びと「データを読み込む」は出さない */
+  .navs,#btnImport{display:none}
+  .side-foot:not(:has(.sample:not([hidden]))){display:none}
+  body{overscroll-behavior-y:contain}
   main{padding-inline:16px}
   .board{padding:12px;grid-template-columns:minmax(0,1fr)}
   .grid,.dow{gap:3px}
@@ -1285,6 +1291,18 @@ faceIn.onchange=async()=>{
   faceIn.value='';render();
   toast(`${hit}人分のアイコンを設定しました${miss?`（${miss}件はハンドル名と一致せず）`:''}`);
 };
+/* 引っぱって更新：いちばん上で下に引っぱって離すと、最新のデータを読み直す（スマホ） */
+(()=>{const ind=Object.assign(document.createElement('div'),{className:'ptr'});document.body.appendChild(ind);
+  let y0=null,d=0,busy=false;const TH=70;
+  const show=(dy,txt,go)=>{ind.style.transform=`translate(-50%,${Math.min(dy,90)-50}px)`;ind.textContent=txt;ind.classList.toggle('go',!!go)};
+  const hide=()=>{ind.style.transition='transform .2s';ind.style.transform='translate(-50%,-60px)';setTimeout(()=>ind.style.transition='',220)};
+  addEventListener('touchstart',e=>{if(busy||scrollY>0||document.getElementById('plr')||document.getElementById('net')||document.getElementById('wall')||document.querySelector('dialog[open]')){y0=null;return}
+    y0=e.touches[0].clientY;d=0},{passive:true});
+  addEventListener('touchmove',e=>{if(y0===null)return;d=(e.touches[0].clientY-y0)*.5;if(d<=0||scrollY>0){d=0;hide();return}
+    show(d,d>TH?'↻ 離して更新':'↓ 引っぱって更新',d>TH)},{passive:true});
+  addEventListener('touchend',async()=>{if(y0===null)return;y0=null;
+    if(d>TH){busy=true;show(TH,'更新中…',true);const ok=await pull(false);busy=false;hide();toast(ok?'最新のデータにしました':'更新できませんでした。少し時間をおいてもう一度')}else hide();d=0});
+})();
 function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3200)}
 
 /* 同じ場所に data.json があれば読み込み、5分ごとに更新。なければサンプル表示 */
