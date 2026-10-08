@@ -25,6 +25,7 @@ DATA = os.path.join(ROOT, "data.json")
 PARTICIPANTS = os.path.join(ROOT, "participants.txt")
 MANUAL = os.path.join(ROOT, "manual_posts.txt")
 SUBS = os.path.join(ROOT, "subaccounts.txt")
+PHOTOS = os.path.join(ROOT, "photos.txt")
 AVATARS = os.path.join(ROOT, "avatars")
 API = "https://api.x.com/2"
 TOKEN = os.environ.get("X_BEARER_TOKEN", "").strip()
@@ -104,10 +105,12 @@ def refresh_users(data, handles):
     if targets:
         for i in range(0, len(targets), 100):
             res = api("/users/by", {"usernames": ",".join(targets[i:i + 100]),
-                                    "user.fields": "name,profile_image_url,public_metrics"})
+                                    "user.fields": "name,profile_image_url,public_metrics,description,created_at"})
             for u in res.get("data", []):
+                # bio（プロフィール文）と joined（Xを始めた日）は選手紹介ページで使う
                 known[u["username"].lower()] = {"handle": u["username"], "id": u["id"], "name": u.get("name") or u["username"],
-                                                "avatar": u.get("profile_image_url", "")}
+                                                "avatar": u.get("profile_image_url", ""),
+                                                "bio": u.get("description", ""), "joined": u.get("created_at", "")}
                 fc = u.get("public_metrics", {}).get("followers_count")
                 if fc is not None:
                     followers.setdefault(u["username"], {})[today] = fc
@@ -343,6 +346,56 @@ def fetch_interactions(data):
     return added
 
 
+def fetch_photos(data):
+    """photos.txt に書いた投稿の画像を、選手紹介ページ用に1人2枚まで並べる。
+    画像の場所は行を書き足したときに1回だけ取りに行き、あとは覚えておく（毎回は読まない）。"""
+    lines = []
+    if os.path.exists(PHOTOS):
+        with open(PHOTOS, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                m = re.search(r"status(?:es)?/(\d{15,})", line) or re.match(r"(\d{15,})", line)
+                if not m:
+                    continue
+                n = re.search(r"\s(\d{1,2})\s*$", line)
+                lines.append((m.group(1), int(n.group(1)) if n else 1))
+    cache = data.setdefault("state", {}).setdefault("photo_cache", {})
+    todo = [i for i in dict.fromkeys(i for i, _ in lines) if i not in cache]
+    by_id = {u["id"]: u["handle"] for u in data["users"] + data.get("sub_users", [])}
+    for i in range(0, len(todo), 100):
+        res = api("/tweets", {"ids": ",".join(todo[i:i + 100]), "tweet.fields": "author_id,attachments",
+                              "expansions": "attachments.media_keys", "media.fields": "url,preview_image_url,type"})
+        media = {m["media_key"]: m.get("url") or m.get("preview_image_url") or "" for m in res.get("includes", {}).get("media", [])}
+        for t in res.get("data", []):
+            keys = t.get("attachments", {}).get("media_keys", [])
+            cache[t["id"]] = {"author": t.get("author_id", ""), "media": [media[k] for k in keys if media.get(k)]}
+        for e in res.get("errors", []):
+            v = e.get("value") or e.get("resource_id")
+            if v and v not in cache:
+                cache[v] = {"author": "", "media": []}  # 削除済みなど。何度も取りに行かない
+                print(f"  画像：取得できない投稿 {v} ({e.get('title')})")
+    photos = {}
+    for pid, n in lines:
+        c = cache.get(pid)
+        h = by_id.get(c["author"]) if c else None
+        if not h:
+            continue
+        if n > len(c["media"]):
+            print(f"  画像：{pid} に {n} 枚目の画像がありません")
+            continue
+        lst = photos.setdefault(h, [])
+        if len(lst) < 2:
+            lst.append({"post": pid, "img": c["media"][n - 1]})
+    # photos.txt から消した投稿は覚えておく必要もない
+    keep = {i for i, _ in lines}
+    for k in [k for k in cache if k not in keep]:
+        cache.pop(k)
+    data["photos"] = photos
+    return len(todo)
+
+
 def quote_interactions(data):
     """引用ポストの引用元が参加者の投稿なら、その人への「引用」として交流に入れる（毎回作り直す）。"""
     owner = {p["id"]: p["handle"] for p in data["posts"]}
@@ -418,6 +471,9 @@ def main():
             if n:
                 print(f"引用元の取り直し {n}件")
             print(f"交流（リプ・リポスト）の新規 {fetch_interactions(data)}件")
+            n = fetch_photos(data)
+            if n:
+                print(f"選手紹介の画像を新しく {n}件 読み込み")
         except RuntimeError as e:
             print("交流の取得に失敗しました:", e)
     except RateLimited as e:
