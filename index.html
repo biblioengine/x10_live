@@ -415,6 +415,12 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #ppl .pl .lcar::-webkit-scrollbar{display:none}
 #ppl .pl .lsec{flex:0 0 100%;min-width:0;overflow-y:auto;overscroll-behavior-y:contain;scroll-snap-align:start;scroll-snap-stop:always;padding:0 16px 16px}
 #ppl .pl .lsec .card{margin:0}
+/* カレンダー：表の中で縦にもスクロールさせ、日付の行を上に固定する */
+#ppl .pl .lsec:has(>[data-sec="cal"]){display:flex;flex-direction:column;overflow:hidden;padding-bottom:12px}
+#ppl .pl [data-sec="cal"]{flex:1;min-height:0;display:flex;flex-direction:column}
+#ppl .pl [data-sec="cal"] .cmpwrap{flex:1;min-height:0;overflow:auto;overscroll-behavior-y:contain;padding-top:0}
+#ppl .pl [data-sec="cal"] .cmp thead th{position:sticky;top:0;z-index:2;background:var(--panel);box-shadow:0 3px 0 var(--panel),0 -3px 0 var(--panel);padding-top:8px}
+#ppl .pl [data-sec="cal"] .cmp thead th:first-child{left:0;z-index:3}
 #ppl .pl .cmpwrap,#ppl .pl .rankwrap{overscroll-behavior-x:auto}
 #ppl .pl [data-sec=cal] .card-h,#ppl .pl [data-sec=rank] .card-h{padding:10px 14px}
 #ppl .pl [data-sec=cal] .key{flex-wrap:nowrap;gap:10px;font-size:11px;white-space:nowrap;margin-left:0}
@@ -1244,9 +1250,11 @@ function fillPeople(){const el=document.getElementById('ppl');if(!el)return;
   if(el.hidden){el.dataset.dirty=1;return}
   // LIVE を描き直しても、見ていた3つのうちどれか・スクロール位置はそのまま
   const pv=el.querySelector('.plive'),oc=pv.querySelector('.lcar'),li=oc?Math.round(oc.scrollLeft/Math.max(1,oc.clientWidth)):0,tops=oc?[...oc.children].map(x=>x.scrollTop):[];
+  const ow=pv.querySelector('[data-sec="cal"] .cmpwrap'),wpos=ow?[ow.scrollLeft,ow.scrollTop]:null;
   renderLive(pv);
   const nc=pv.querySelector('.lcar');
   if(nc){nc.scrollLeft=li*nc.clientWidth;[...nc.children].forEach((x,i)=>x.scrollTop=tops[i]||0);liveTabs(nc);
+    const nw=pv.querySelector('[data-sec="cal"] .cmpwrap');if(nw&&wpos){nw.scrollLeft=wpos[0];nw.scrollTop=wpos[1]}
     nc.addEventListener('scroll',()=>requestAnimationFrame(()=>liveTabs(nc)),{passive:true})}
   const tk=todayKey(),n=new Date();
   const all=state.users.map(u=>({u,c:dayCount(u.id,tk)})).sort((a,b)=>Math.min(b.c,GOAL)-Math.min(a.c,GOAL));
@@ -1691,7 +1699,7 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',themeIcon
   const hide=()=>{ind.style.transition='transform .2s';ind.style.transform='translate(-50%,-60px)';setTimeout(()=>ind.style.transition='',220)};
   // スマホのトップ（LIVE/MEMBER/PROFILE）は各ページの中でスクロールするので、そのページがいちばん上かを見る
   const top=()=>{const p=pplShown();if(!p)return scrollY;const i=pplPage();
-    if(i===0){const c=p.querySelector('.lcar');return c?(c.children[livePage()]?.scrollTop||0):0}
+    if(i===0){const c=p.querySelector('.lcar'),sc=c?.children[livePage()];return sc?(sc.scrollTop||0)+(sc.querySelector('.cmpwrap')?.scrollTop||0):0}
     return p.querySelector('.pcar').children[i]?.scrollTop||0};
   let x0=0;
   addEventListener('touchstart',e=>{if(busy||top()>0||document.getElementById('plr')||document.getElementById('net')||document.getElementById('wall')||document.querySelector('dialog[open]')){y0=null;return}
