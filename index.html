@@ -376,6 +376,27 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #ppl .wr .av{width:100%;height:100%;border:var(--bw,2px) solid var(--bg);font-size:inherit}
 #ppl .wc{position:absolute;left:50%;transform:translateX(-50%);background:var(--gold);color:#161a24;font-weight:900;border-radius:999px;border:2px solid var(--bg);white-space:nowrap;line-height:1.3}
 #ppl .wn{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.25;margin-top:3px}
+/* スマホ：個人ページ（選手紹介と一体） */
+#plr.uni{background:var(--bg);color:var(--fg);display:flex;flex-direction:column;overflow:hidden;padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(6px + env(safe-area-inset-bottom,0px))}
+#plr.uni .uh{flex:none;display:flex;flex-direction:column;gap:10px}
+#plr.uni .nav.views{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+#plr.uni .hero{padding:12px 14px}
+#plr.uni .uacts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+#plr.uni .uacts .xgo{margin:0;border:0;padding:5px 12px;font-size:11.5px;cursor:pointer;font-family:inherit}
+#plr.uni .uacts .cardgo{background:var(--gold);color:#161a24}
+#plr.uni .uacts .subgo{background:transparent;color:inherit;border:1px dashed currentColor}
+#plr.uni .ujump{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+#plr.uni .ujump button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 4px;font-size:12px;font-weight:700;white-space:nowrap;color:var(--muted)}
+#plr.uni .ujump button[aria-current="true"]{background:var(--fg);border-color:var(--fg);color:var(--panel)}
+#plr.uni .ucar{flex:1;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;margin:10px -16px 0}
+#plr.uni .ucar::-webkit-scrollbar{display:none}
+#plr.uni .usec{flex:0 0 100%;min-width:0;overflow-y:auto;overscroll-behavior-y:contain;scroll-snap-align:start;scroll-snap-stop:always;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px}
+#plr.uni .sts:not(.tint){background:#10141c;border:1px solid #232a37;border-radius:18px;padding:14px;color:#eef1f7}
+#plr.uni .side{padding-top:6px}
+#plr.uni .usec .card{margin:0}
+#plr.uni .hero:not(.tint){color:#eef1f7}
+#plr.uni .cal .grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-areas:none;gap:3px;align-items:stretch}
+#plr.uni .cal{padding:10px 10px 12px}
 .wall-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
 
 /* 個人ページ */
@@ -796,6 +817,20 @@ function renderRoster(){
   </section>`;
 }
 
+// 個人のカレンダーのマス（日ごとの本数）
+function calCells(u){
+  const {y,m}=state,n=dim(y,m),tk=todayKey(),sk=startKey(),tot=totals(u.id),first=new Date(y,m,1).getDay();
+  let cells='';
+  for(let i=0;i<first;i++) cells+='<div class="day out"></div>';
+  for(let d=1;d<=n;d++){
+    const k=ymd(y,m,d),c=tot.map[k]||0,a=c>=GOAL;
+    if(k>tk){cells+=`<div class="day future"><span class="d num"><span>${d}</span></span></div>`;continue}
+    cells+=`<button type="button" class="day${a?' done':''}${k===tk?' today':''}${k<sk?' pre':''}" data-k="${k}" aria-pressed="${state.day===k}"
+      aria-label="${m+1}月${d}日 ${c}本${a?' 達成':''}"><span class="d num"><span>${d}</span></span><span class="c">${c}<small>本</small></span>
+      <span class="dbar"><b style="width:${Math.min(100,c/GOAL*100)}%"></b></span></button>`;
+  }
+  return cells;
+}
 function renderUser(){
   const u=findU(state.uid),{y,m}=state,n=dim(y,m),tk=todayKey(),sk=startKey();
   const tot=totals(u.id),tc=tot.map[tk]||0;
@@ -1154,7 +1189,7 @@ function playerStats(u){
   const partners=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(([h,c])=>({u:state.users.find(v=>v.handle===h),c})).filter(x=>x.u).slice(0,3);
   return{tot,usk,high,combo,day,night:posts.length-day,peak,quote,all:posts.length,partners,fol:fol(u.handle)};
 }
-function openPlayer(id){
+function openPlayer(id,opt={}){
   const u=findU(id);if(!u)return;closePlayer();
   const S=playerStats(u),t=S.tot,md=k=>`${Math.floor(k/100)%100}.${String(k%100).padStart(2,'0')}`;
   const L=(en,ja)=>`<div class="lb">${en}<small>${ja}</small></div>`;
@@ -1183,6 +1218,56 @@ function openPlayer(id){
           <div class="dn2"><span>DAY ${pct(S.day,S.all)}%</span><span>NIGHT ${pct(S.night,S.all)}%</span></div>
           <div class="bar"><i style="width:${pct(S.day,S.all)}%"></i><i class="b" style="flex:1"></i></div>
           <div class="sub">PEAK ${S.peak==null?'—':String(S.peak).padStart(2,'0')+':00'}</div>`)]];
+  // ---- スマホ：個人ページと選手紹介を1つにまとめた画面 ----
+  if(isPhone()){
+    const f=S.fol;
+    pages[2]=[
+      st('',`${L('FOLLOWERS','フォロワー数')}<div class="v">${f?f.now.toLocaleString():'—'}</div>${f&&f.day!=null?`<div class="sub">前日比 ${sgn(f.day)}</div>`:''}`),
+      st('',`${L('GROW UP','フォロワーの増え方')}<div class="v${g>0?' up':g<0?' dn':''}">${g==null?'—':sgn(g)}</div>${f?`<div class="sub">${f.since.slice(5).replace('-','.')}〜</div>`:''}`),
+      st('',`${L('QUOTE','引用の割合')}<div class="v">${pct(S.quote,S.all)}<small>%</small></div><div class="bar"><i class="b" style="width:${pct(S.quote,S.all)}%"></i></div>`),
+      st('',`${L('DAY / NIGHT','昼6〜18時／夜')}<div class="dn2"><span>DAY ${pct(S.day,S.all)}%</span><span>${pct(S.night,S.all)}%</span></div>
+          <div class="bar"><i style="width:${pct(S.day,S.all)}%"></i><i class="b" style="flex:1"></i></div><div class="sub">PEAK ${S.peak==null?'—':String(S.peak).padStart(2,'0')+':00'}</div>`)];
+    el.classList.add('uni');state.uid=u.id;
+    if(opt.day)state.day=opt.day;else if(!state.day||opt.sec!=='post')state.day=todayKey();
+    const sec={status:0,cal:1,post:2}[opt.sec||'status']??0;
+    el.innerHTML=`<div class="uh">
+      <nav class="nav views">${tabsHTML(null)}</nav>
+      <section class="hero${tint?' tint':''}"${tint}>
+        <div class="pic" style="background:${ringBg(dayCount(u.id,todayKey()),'var(--pb)','rgba(255,255,255,.16)','var(--pg)')}">${pav(u)}</div>
+        <div class="who2"><div class="nm">${esc(u.name)}</div><div class="hd">@${esc(u.handle)}</div>
+        ${tag?`<div class="tg">${esc(tag)}</div>`:''}
+        <div class="uacts"><a class="xgo" href="https://x.com/${encodeURIComponent(u.handle)}" target="_blank" rel="noopener">Xアカウントへ ↗</a><button type="button" class="xgo cardgo" data-card="${esc(u.id)}">今日のカードを作る</button>
+        ${(sb=>sb?`<button type="button" class="xgo subgo" data-u="${esc(sb.id)}" data-today="1">サブ垢 →</button>`:'')(subOf(u))}${(mn=>mn?`<button type="button" class="xgo subgo" data-u="${esc(mn.id)}" data-today="1">← メイン</button>`:'')(mainOf(u))}</div></div>
+      </section>
+      <div class="ujump" role="tablist"><button type="button" data-uj="0">ステータス</button><button type="button" data-uj="1">カレンダー</button><button type="button" data-uj="2">ポスト</button></div>
+    </div>
+    <div class="ucar">
+      <div class="usec">
+        <section class="sts${tint?' tint':''}"${tint} aria-roledescription="carousel" aria-label="ステータス">
+          <div class="sth"><div class="lb">STATUS<small>成績</small></div>
+            <div class="pg"><button type="button" class="pgb" data-pg="-1" aria-label="前のページ">◀︎</button><span class="pgn num" aria-live="polite">1 / ${pages.length}</span><button type="button" class="pgb" data-pg="1" aria-label="次のページ">▶︎</button></div></div>
+          <div class="car">${pages.map((p,i)=>`<div class="pgp" aria-label="${i+1} / ${pages.length}">${p.join('')}</div>`).join('')}</div>
+        </section>
+        <section class="more">
+          ${st(' w3',`<div class="pth">${L('PARTNERS','よく交流している相手')}<button type="button" class="netgo" data-net="${esc(u.id)}">交流を見る ▶︎</button></div>
+            ${S.partners.length?`<div class="pt">${S.partners.map(p=>`<button type="button" data-plr="${esc(p.u.id)}" aria-label="${esc(p.u.name)}さんのページへ">${pav(p.u)}<span style="min-width:0"><b>${esc(p.u.name)}</b><span>${p.c} HITS</span></span></button>`).join('')}</div>`:'<div class="sub" style="margin-top:8px">—</div>'}`)}
+        </section>
+        <section class="side">
+          ${(ph=>ph.length?`<div class="shots">${ph.map(x=>`<a href="https://x.com/${encodeURIComponent(u.handle)}/status/${encodeURIComponent(x.post)}" target="_blank" rel="noopener" aria-label="元の投稿を見る"><img src="${esc(x.img)}${x.img.includes('?')?'':'?name=small'}" alt="" loading="lazy"></a>`).join('')}</div>`:'')(state.photos[u.handle]||[])}
+          <div class="blk">${L('BIO','自己紹介（Xのプロフィールより）')}<div class="bio${u.bio?'':' none'}">${u.bio?esc(u.bio):'—'}</div></div>
+        </section>
+        ${note?`<section class="more">${st(' w3',`${L('COMMENTARY','実況席より')}<div class="cm">${esc(note)}</div>`)}</section>`:''}
+      </div>
+      <div class="usec"><section class="card">
+        <div class="cal"><div class="dow">${DOW.map(d=>`<div>${d}</div>`).join('')}</div><div class="grid">${calCells(u)}</div></div></section></div>
+      <div class="usec"><section class="card" id="utl">${timeline(u)}</section></div>
+    </div>`;
+    document.body.appendChild(el);document.documentElement.style.overflow='hidden';
+    const uc=el.querySelector('.ucar'),ujs=el.querySelectorAll('[data-uj]');
+    const usync=()=>{const i=Math.round(uc.scrollLeft/Math.max(1,uc.clientWidth));ujs.forEach(b=>b.setAttribute('aria-current',+b.dataset.uj===i))};
+    uc.addEventListener('scroll',()=>requestAnimationFrame(usync),{passive:true});
+    uc.scrollLeft=sec*uc.clientWidth;usync();
+  }else{
   el.innerHTML=`<div class="in">
   <div class="ph"><span class="tt">PLAYER PROFILE<small>選手紹介</small></span><div class="acts"><button type="button" class="back" data-go="live">TOPへ</button><button type="button" class="back" data-go="players">一覧に戻る</button></div></div>
   <div class="grid">
@@ -1208,6 +1293,7 @@ function openPlayer(id){
     </section>
   </div></div>`;
   document.body.appendChild(el);document.documentElement.style.overflow='hidden';
+  }
   // ページ送り：ボタンでも横スワイプでも切り替わり、「1 / 3」が追いかける
   const car=el.querySelector('.car'),pgn=el.querySelector('.pgn'),pb=el.querySelectorAll('.pgb');
   const cur=()=>Math.round(car.scrollLeft/Math.max(1,car.clientWidth));
@@ -1215,7 +1301,7 @@ function openPlayer(id){
   car.addEventListener('scroll',()=>requestAnimationFrame(upd),{passive:true});
   pb.forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();car.scrollTo({left:(cur()+ +b.dataset.pg)*car.clientWidth,behavior:'smooth'})}));
   upd();
-  el.querySelector('[data-go="players"]').focus({preventScroll:true});
+  el.querySelector('[data-go="players"]')?.focus({preventScroll:true});
 }
 function closePlayer(){const el=document.getElementById('plr');if(el){el.remove();document.documentElement.style.overflow=''}}
 addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('plr'))backOv(closePlayer)});
@@ -1358,11 +1444,11 @@ function netPointer(cv){
 /* ---------- 戻る：ブラウザやスマホの「戻る」で前の画面に戻れるようにする ---------- */
 // 画面を切り替えるたびに履歴を1つ積み、「戻る」でその時の画面（と開いていた重ね画面）を復元する
 const curOv=()=>{const o=[];if(pplShown())o.push('ppl:'+pplPage());if(state.wall)o.push('wall');
-  if(document.getElementById('net'))o.push('net:'+(document.getElementById('net').dataset.id||''));if(document.getElementById('plr'))o.push('plr:'+document.getElementById('plr').dataset.id);return o.length?o.join('|'):null};
+  if(document.getElementById('net'))o.push('net:'+(document.getElementById('net').dataset.id||''));{const pl=document.getElementById('plr');if(pl){const uc=pl.querySelector('.ucar');o.push('plr:'+pl.dataset.id+(uc?'~'+Math.round(uc.scrollLeft/Math.max(1,uc.clientWidth))+'~'+(state.day||''):''))}}return o.length?o.join('|'):null};
 const snap=()=>({x10:1,view:state.view,uid:state.uid,day:state.day,y:state.y,m:state.m,ov:curOv(),sy:0});
 function pushNav(){try{const cur=history.state;if(cur&&cur.x10)history.replaceState({...cur,sy:scrollY},'');history.pushState(snap(),'')}catch{}}
 function closeOverlays(){closePeople();closeWall();closeNet();closePlayer();const cd=document.getElementById('cardDlg');if(cd&&cd.open)cd.close()}
-function openOv(ov){if(!ov)return;for(const o of ov.split('|')){if(o.startsWith('ppl:'))openPeople(+o.slice(4)||0);else if(o==='wall'){state.wall=true;renderWall()}else if(o.startsWith('net'))openNet(o.slice(4)||undefined);else if(o.startsWith('plr:'))openPlayer(o.slice(4))}}
+function openOv(ov){if(!ov)return;for(const o of ov.split('|')){if(o.startsWith('ppl:'))openPeople(+o.slice(4)||0);else if(o==='wall'){state.wall=true;renderWall()}else if(o.startsWith('net'))openNet(o.slice(4)||undefined);else if(o.startsWith('plr:')){const [id,sc,dy]=o.slice(4).split('~');openPlayer(id,{sec:['status','cal','post'][+sc||0],day:+dy||undefined})}}}
 addEventListener('popstate',e=>{const s=e.state;if(!s||!s.x10)return;
   // MEMBER/PROFILE の上に重ねた画面から戻るときは、下の一覧（スクロール位置も）をそのまま残す
   const keep=s.ov&&s.ov.startsWith('ppl:')&&document.getElementById('ppl');
@@ -1396,8 +1482,9 @@ document.addEventListener('click',e=>{
     const pg=PTABS.indexOf(t);
     // パソコンの LIVE は左のメニュー付きの元の画面へ。スマホは3ページの中で切り替える
     if(t==='live'&&!isPhone()){closeOverlays();state.view='live';render();pushNav();scrollTo({top:0});return}
-    if(pplShown()){openPeople(pg);return}
+    if(pplShown()){const had=!!document.getElementById('plr');openPeople(pg);if(had)pushNav();return}
     openPeople(pg);pushNav();return}
+  if(b.dataset.uj){const c=document.querySelector('#plr .ucar');if(c)c.scrollTo({left:+b.dataset.uj*c.clientWidth,behavior:'smooth'});return}
   if(b.dataset.lj){const c=document.querySelector('#ppl .lcar');if(c)c.scrollTo({left:+b.dataset.lj*c.clientWidth,behavior:'smooth'});return}
   if(b.dataset.pp){const c=document.querySelector('#ppl .pcar');c.scrollTo({left:+b.dataset.pp*c.clientWidth,behavior:'smooth'});return}
   if(b.id==='btnPplBack'){closePeople();pushNav();return}
@@ -1417,10 +1504,16 @@ document.addEventListener('click',e=>{
   if(b.dataset.sort){const k=b.dataset.sort,rs=state.rs||{k:'ach',dir:-1};
     state.rs=rs.k===k?{k,dir:-rs.dir}:{k,dir:k==='name'?1:-1};render();return}
   if(b.dataset.mv){state.m+=+b.dataset.mv;if(state.m<0){state.m=11;state.y--}if(state.m>11){state.m=0;state.y++}render();return}
+  if(b.dataset.u&&(b.dataset.k||b.dataset.today||b.closest('#navUsers'))&&isPhone()){
+    openPlayer(b.dataset.u,{sec:'post',day:b.dataset.k?+b.dataset.k:todayKey()});pushNav();return}
   if(b.dataset.u&&(b.dataset.k||b.dataset.today||b.closest('#navUsers'))){
     hidePeople();
     const k=b.dataset.k?+b.dataset.k:todayKey();
     state.view='user';state.uid=b.dataset.u;state.day=k;state.y=Math.floor(k/1e4);state.m=Math.floor(k/100)%100-1;render();pushNav();window.scrollTo({top:0});return}
+  if(b.classList.contains('day')&&b.dataset.k&&b.closest('#plr')){
+    state.day=+b.dataset.k;b.closest('#plr').querySelectorAll('.day[aria-pressed]').forEach(x=>x.setAttribute('aria-pressed',x===b));
+    document.getElementById('utl').innerHTML=timeline(findU(state.uid));
+    const uc=document.querySelector('#plr .ucar');uc.scrollTo({left:2*uc.clientWidth,behavior:'smooth'});uc.children[2].scrollTop=0;return}
   if(b.classList.contains('day')&&b.dataset.k){
     state.day=+b.dataset.k;
     document.querySelectorAll('.day[aria-pressed]').forEach(x=>x.setAttribute('aria-pressed',x===b));
