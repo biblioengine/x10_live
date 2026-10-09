@@ -36,11 +36,16 @@ button:focus-visible{outline:2px solid var(--x);outline-offset:2px}
 .app{display:grid;grid-template-columns:244px minmax(0,1fr);min-height:100%}
 aside{background:var(--panel);border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:12px;position:sticky;top:0;height:100vh;height:100dvh;min-height:0}
 .brand{padding:0 8px;line-height:1.25}
-.brand .t{font-family:var(--f-disp);font-size:19px;letter-spacing:.02em}
+.brand .t{font-family:var(--f-disp);font-size:19px;letter-spacing:.02em;border:0;background:none;padding:0;color:inherit;cursor:pointer;text-align:left}
 .brand .t em{font-style:normal;color:var(--gold)}
 .brand .s{font-size:11px;color:var(--muted)}
 .ptr{position:fixed;left:50%;top:0;z-index:40;transform:translate(-50%,-60px);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;color:var(--muted);box-shadow:0 4px 14px rgba(0,0,0,.12);pointer-events:none;white-space:nowrap}
 .ptr.go{color:var(--fg)}
+.nav.views{display:grid;gap:8px}
+.nav.views button.big{display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:10px 14px}
+.nav.views button.big b{font-family:"Archivo Black",var(--f-disp);font-weight:400;font-size:20px;letter-spacing:.08em;line-height:1.1}
+.nav.views button.big small{font-size:10px;color:var(--muted);font-weight:400}
+.nav.views button.big[aria-current="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg);background:var(--hover)}
 .navlabel{font-size:11px;color:var(--muted);letter-spacing:.08em;padding:4px 8px 0}
 .navs{flex:1;min-height:0;display:flex;flex-direction:column;gap:4px}
 .nav{display:flex;flex-direction:column;gap:2px}
@@ -203,7 +208,10 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #wall .wt em{font-style:normal;color:var(--gold)}
 #wall .ws{font-size:12px;color:var(--muted)}
 #wall .ws b{color:var(--fg)}
-#wall .back{margin-left:auto;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:5px 14px;font-size:13px;font-weight:700}
+#wall .wacts{margin-left:auto;display:flex;gap:6px}
+#wall .back.pf{font-family:"Archivo",var(--f-body);font-weight:800;letter-spacing:.06em;border-color:var(--fg)}
+#wall .wsw{text-align:center;font-size:11px;color:var(--muted);padding-top:4px}
+#wall .back{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:5px 14px;font-size:13px;font-weight:700}
 #wall .wg{flex:1;min-height:0;display:grid;justify-content:center;align-content:center;padding-top:6px}
 #wall .wf{display:flex;flex-direction:column;align-items:center;min-width:0;overflow:hidden}
 #wall .wr{border-radius:50%;position:relative;flex:none}
@@ -374,10 +382,7 @@ dialog::backdrop{background:rgba(10,15,25,.45)}
   .app{grid-template-columns:minmax(0,1fr)}
   aside{border-right:0;border-bottom:1px solid var(--line);padding:12px 16px;position:static;height:auto}
   .navlabel,.brand .s{display:none}
-  .nav.views{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-  .nav.views .who span{display:none}
-  .nav.views .vico{width:26px;height:26px}
-  .nav.views button{gap:6px;font-size:12px}
+  .nav.views{grid-template-columns:repeat(2,minmax(0,1fr))}
   .nav.views button{padding:6px 8px;border:1px solid var(--line)}
   .nav.views button[aria-current="true"]{box-shadow:none;border-color:var(--fg)}
   .navs{flex:none}
@@ -412,7 +417,7 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
 <body>
 <div class="app">
   <aside>
-    <div class="brand"><div class="t"><em>10</em>投稿チャレンジ実況</div><div class="s">X に毎日10本。野次馬による非公式の観戦ページ</div></div>
+    <div class="brand"><button type="button" class="t" data-go="live" aria-label="トップ（みんなの実況）へ"><em>10</em>投稿チャレンジ実況</button><div class="s">X に毎日10本。野次馬による非公式の観戦ページ</div></div>
     <nav class="nav views" id="navViews"></nav>
     <div class="navs">
       <div class="navlabel">参加者</div>
@@ -605,15 +610,10 @@ function ticks(v){let s='';for(let i=0;i<GOAL;i++)s+=`<i style="${i<v?`backgroun
 function render(){if(state.wall)renderWall();renderNav();({live:renderLive,roster:renderRoster,players:renderPlayers,user:renderUser})[state.view]()}
 function renderNav(){
   const tk=todayKey(),done=state.users.filter(u=>dayCount(u.id,tk)>=GOAL).length;
+  // 上のメニューは MEMBER（全員一覧）と PROFILE（参加者プロフィール）の2つ。トップ（実況）はタイトルから
   document.getElementById('navViews').innerHTML=`
-    <button type="button" data-v="live" aria-current="${state.view==='live'}"><span class="vico" style="background:var(--live);color:#fff">LIVE</span>
-      <span class="who">みんなの実況<span>本日達成 ${done} / ${state.users.length}人</span></span></button>
-    <button type="button" data-v="roster" aria-current="${state.view==='roster'}"><span class="vico" style="background:var(--fg);color:var(--panel)">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="4" cy="4" r="2.2"/><circle cx="12" cy="4" r="2.2"/><circle cx="4" cy="12" r="2.2"/><circle cx="12" cy="12" r="2.2"/></svg></span>
-      <span class="who">参加者一覧<span>${state.users.length}人</span></span></button>
-    <button type="button" data-v="players" aria-current="${state.view==='players'}"><span class="vico" style="background:var(--gold);color:#161a24">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="5" r="3"/><path d="M2 15c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5z"/></svg></span>
-      <span class="who">参加者紹介<span>選手紹介ページ</span></span></button>`;
+    <button type="button" class="big" data-v="member" aria-current="${!!state.wall}"><b>MEMBER</b><small>参加者一覧 ${state.users.length}人</small></button>
+    <button type="button" class="big" data-v="players" aria-current="${state.view==='players'&&!state.wall}"><b>PROFILE</b><small>参加者プロフィール</small></button>`;
   document.getElementById('navUsers').innerHTML=state.users.map(u=>{const c=dayCount(u.id,tk);
     return `<button type="button" data-u="${esc(u.id)}" aria-current="${state.view==='user'&&state.uid===u.id}">${av(u)}
     <span class="who">${esc(u.name)}<span>@${esc(u.handle)}</span></span><span class="navcnt${c>=GOAL?' done':''}">${c}/${GOAL}</span></button>`}).join('');
@@ -696,8 +696,8 @@ function renderPlayers(){
       <span class="pav" style="background-color:${u.color};background-image:url('avatars/${encodeURIComponent(u.handle.toLowerCase())}.jpg')${state.img[u.id]?`,url('${esc(state.img[u.id])}')`:''}"></span>
       <span class="pn">${esc(u.name)}</span><span class="ph2">@${esc(u.handle)}</span>${tag?`<span class="pt2">${esc(tag)}</span>`:''}</button>`};
   document.getElementById('main').innerHTML=`
-  <div class="topbar"><h1>参加者紹介 <small>${state.users.length}人</small></h1>${onair()}</div>
-  <section class="card"><div class="card-h"><h2>PLAYERS</h2><span class="sub">押すとその人の選手紹介ページ（Xのプロフィール文と、これまでの成績）</span></div>
+  <div class="topbar"><h1>PROFILE <small>参加者プロフィール ${state.users.length}人</small></h1><button type="button" class="wallbtn" data-v="member">◀︎ MEMBER</button>${onair()}</div>
+  <section class="card"><div class="card-h"><h2>PLAYERS</h2><span class="sub">押すとその人の選手紹介ページ（Xのプロフィール文と、これまでの成績）・横にスワイプで MEMBER へ</span></div>
     <div class="pgrid">${state.users.map(card).join('')}</div></section>`;
 }
 function renderRoster(){
@@ -974,7 +974,8 @@ function renderWall(){
   const done=all.filter(r=>r.c>=GOAL).length,n=new Date();
   el.innerHTML=`<div class="wh"><span class="wt"><em>10</em>投稿チャレンジ</span>
     <span class="ws num">${n.getMonth()+1}/${n.getDate()} ${hm(n)}時点　本日達成 <b>${done}</b> / ${all.length}人</span>
-    <button type="button" class="back" id="btnWallBack">戻る</button></div><div class="wg"></div>`;
+    <div class="wacts"><button type="button" class="back" id="btnWallBack">戻る</button><button type="button" class="back pf" data-v="players">PROFILE ▶︎</button></div></div><div class="wg"></div>
+    <div class="wsw">横にスワイプで PROFILE へ</div>`;
   const g=el.querySelector('.wg');
   const W=g.clientWidth,H=g.clientHeight-6;
   const {c,w}=wallLayout(all.length,W,H);
@@ -989,7 +990,18 @@ function renderWall(){
       ${a&&ring>=36?`<span class="wc" style="bottom:${-Math.round(ring*.06)}px;font-size:${Math.max(8,Math.round(ring*.13))}px;padding:0 ${Math.round(ring*.08)}px">達成</span>`:''}</span>
       ${showName?`<span class="wn" style="font-size:${Math.max(9,Math.min(12,Math.round(cell*.15)))}px">${esc(u.name)}</span>`:''}</div>`}).join('');
 }
-function closeWall(){state.wall=false;document.getElementById('wall')?.remove();document.documentElement.style.overflow=''}
+// MEMBER：全員を1画面に並べる表示を開く
+function goMember(){closeOverlays();state.wall=true;renderNav();renderWall();pushNav()}
+// MEMBER と PROFILE は横スワイプで行き来できる
+(()=>{let x0=null,y0=null;
+  addEventListener('touchstart',e=>{const t=e.touches[0];x0=t.clientX;y0=t.clientY},{passive:true});
+  addEventListener('touchend',e=>{if(x0===null)return;const t=e.changedTouches[0],dx=t.clientX-x0,dy=t.clientY-y0;x0=null;
+    if(Math.abs(dx)<70||Math.abs(dy)>Math.abs(dx)*.6)return;
+    if(document.getElementById('plr')||document.getElementById('net')||document.querySelector('dialog[open]'))return;
+    if(state.wall&&dx<0){closeWall();state.view='players';render();pushNav();scrollTo({top:0})}
+    else if(!state.wall&&state.view==='players'&&dx>0)goMember()},{passive:true});
+})();
+function closeWall(){const had=state.wall;state.wall=false;document.getElementById('wall')?.remove();document.documentElement.style.overflow='';if(had&&state.users.length)renderNav()}
 addEventListener('resize',()=>{if(state.wall)renderWall()});
 
 /* ---------- 選手紹介：決まったデータから自動で組み立てる（ゲームのステータス画面風） ---------- */
@@ -1088,7 +1100,7 @@ function openNet(focus){
   for(let t=t0+36e5;t<now;t+=36e5)hours.push(t);
   hours.push(now);
   el.innerHTML=`<div class="wh"><span class="wt">参加者の交流</span><span class="ws" id="netInfo"></span>
-    <div class="nacts"><button type="button" class="back" data-go="roster">参加者一覧</button><button type="button" class="back" data-go="live">TOPへ</button><button type="button" class="back" id="btnNetBack">戻る</button></div></div>
+    <div class="nacts"><button type="button" class="back" data-go="member">参加者一覧</button><button type="button" class="back" data-go="live">TOPへ</button><button type="button" class="back" id="btnNetBack">戻る</button></div></div>
     <div class="nc"><canvas id="netCv" aria-label="参加者どうしの交流の繋がり"></canvas><div class="nt" id="netDate" aria-live="polite"></div></div>
     <div class="nb"><span>${s0.getMonth()+1}/${s0.getDate()}</span><input type="range" id="netDay" min="0" max="${hours.length-1}" value="${hours.length-1}" aria-label="いつまでの交流を表示するか"><span>今</span></div>
     <div class="nh">ドラッグで回転・ピンチ（ホイール）で拡大縮小・アイコンを押すとその人の繋がり</div>`;
@@ -1243,13 +1255,15 @@ document.addEventListener('click',e=>{
   hideTip();
   const b=e.target.closest('button');if(!b||b.disabled)return;
   if(b.id==='btnFaces'){faceIn.click();return}
-  if(b.dataset.v){if(state.view!==b.dataset.v){state.view=b.dataset.v;render();pushNav();scrollTo({top:0})}return}
+  if(b.dataset.v==='member'){goMember();return}
+  if(b.dataset.v){const w=state.wall;if(w)closeWall();if(w||state.view!==b.dataset.v){state.view=b.dataset.v;render();pushNav();scrollTo({top:0})}return}
   if(b.dataset.card){openCard(b.dataset.card);return}
   if(b.id==='btnWall'){state.wall=true;renderWall();pushNav();return}
   if(b.id==='btnWallBack'){backOv(closeWall);return}
   if(b.id==='btnNet'){openNet();pushNav();return}
   if(b.dataset.plr){closePlayer();openPlayer(b.dataset.plr);pushNav();return}
   if(b.id==='btnPlrBack'){backOv(closePlayer);return}
+  if(b.dataset.go==='member'){goMember();return}
   if(b.dataset.go){closeOverlays();state.view=b.dataset.go;render();pushNav();scrollTo({top:0});return}
   if(b.dataset.net){const id=b.dataset.net;closeOverlays();openNet(id);pushNav();return}
   if(b.id==='btnNetBack'){backOv(closeNet);return}
