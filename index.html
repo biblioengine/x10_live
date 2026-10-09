@@ -7,7 +7,7 @@
 <title>1日10投稿チャレンジ実況</title>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Dela+Gothic+One&family=Roboto+Mono:wght@500;700&family=Archivo+Black&family=Archivo:wght@500;700;800;900&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Dela+Gothic+One&family=Roboto+Mono:wght@500;700&family=Archivo+Black&family=Archivo:wght@500;700;800;900&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=DotGothic16&display=swap">
 <style>
 /* Layout: 中継番組のスコアボード。今日の途中経過 → 達成カレンダー → 通算成績。参加者一覧はアイコンの壁、個人ページはカレンダー＋その日のタイムライン */
 :root{
@@ -359,12 +359,22 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #ppl .pl .lhead{flex:none;background:var(--bg);padding:8px 0}
 #ppl .pl .lhead .topbar{flex-wrap:nowrap;gap:8px;align-items:center}
 #ppl .pl .lhead .topbar h1{font-size:clamp(14px,4.4vw,17px);white-space:nowrap;flex:none;margin:0}
-#ppl .pl .lhead .onair{font-size:clamp(10px,3vw,12px);gap:clamp(4px,1.6vw,8px);padding:4px 10px 4px 6px;min-width:0;flex-wrap:nowrap;white-space:nowrap}
+#ppl .pl .lhead .onair{font-size:13px;gap:10px;padding:0 2px;min-width:0;flex-wrap:nowrap;white-space:nowrap;background:none;border:0;border-radius:0}
 #ppl .pl .lhead .onair .num{font-weight:700}
 #ppl .pl .lhead .onair .dno{font-family:"Archivo",var(--f-body);font-weight:800;letter-spacing:.04em}
 #ppl .pl .ljump{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}
 #ppl .pl .ljump button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 4px;font-size:12px;font-weight:700;white-space:nowrap;color:var(--muted)}
 #ppl .pl .ljump button[aria-current="true"]{background:var(--fg);border-color:var(--fg);color:var(--panel)}
+#ppl .pl .ticker{margin-top:8px;overflow:hidden;white-space:nowrap;border-radius:6px;padding:5px 0;font-family:"DotGothic16",var(--f-num),monospace;font-size:14px;letter-spacing:.04em;
+  color:#ffb21a;text-shadow:0 0 4px rgba(255,170,20,.75),0 0 10px rgba(255,140,0,.35);
+  background-color:#0b0a08;background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1.2px);background-size:3px 3px;
+  box-shadow:inset 0 0 0 1px #000,inset 0 0 12px rgba(0,0,0,.9);border:2px solid #2b2b2b}
+#ppl .pl .ticker .tk{display:inline-block;animation:tick linear infinite}
+#ppl .pl .ticker .ti b{font-weight:400;color:#ff4d3a;text-shadow:0 0 4px rgba(255,70,50,.8),0 0 10px rgba(255,40,20,.35);margin-right:.5em}
+#ppl .pl .ticker .ti b::before{content:"【"}#ppl .pl .ticker .ti b::after{content:"】"}
+#ppl .pl .ticker .tsep{color:#6b5a2a;text-shadow:none;margin:0 1.2em}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){#ppl .pl .ticker .tk{animation:none}}
 #ppl .pl .lcar{flex:1;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 -16px}
 #ppl .pl .lcar::-webkit-scrollbar{display:none}
 #ppl .pl .lsec{flex:0 0 100%;min-width:0;overflow-y:auto;overscroll-behavior-y:contain;scroll-snap-align:start;scroll-snap-stop:always;padding:0 16px 16px}
@@ -721,6 +731,33 @@ function monthNav(){
   <span class="m num">${state.y}年${state.m+1}月</span><button class="iconbtn" type="button" data-mv="1" aria-label="次の月">›</button></div>`;
 }
 
+/* 速報の帯（スマホの LIVE）：達成・最速・自己ベスト・連続達成・全体の通算・個人の節目 */
+function tickerItems(){
+  const tk=todayKey(),out=[],T=(tag,txt)=>`<span class="ti"><b>${tag}</b>${txt}</span>`;
+  const rows=state.users.map(u=>{const tot=totals(u.id),ps=state.byUser[u.id].filter(p=>dkey(p.ts)===tk);return{u,tot,ps,c:ps.length}});
+  // 達成速報（新しい順）と最速達成
+  const done=rows.filter(r=>r.c>=GOAL).map(r=>({...r,t:r.ps[GOAL-1].ts})).sort((a,b)=>b.t-a.t);
+  if(done.length){const f=done[done.length-1];out.push(T('最速',`本日の最速達成 ${esc(f.u.name)}（${hm(f.t)}）`))}
+  done.slice(0,12).forEach(r=>out.push(T('達成',`${esc(r.u.name)} 本日10本達成（${hm(r.t)}）`)));
+  // 自己ベスト更新（今日の本数が、これまでの日のいちばん多い本数を超えた）
+  rows.forEach(r=>{let best=0,has=false;for(const k in r.tot.map){if(+k<tk&&+k>=r.tot.usk){has=true;best=Math.max(best,r.tot.map[k])}}
+    if(has&&r.c>best&&r.c>=GOAL)out.push(T('自己ベスト',`${esc(r.u.name)} 今日${r.c}本 自己最多を更新`))});
+  // 連続達成（今日も達成していれば今日まで、まだなら昨日まで）
+  const streak=r=>{let n=0;const d=new Date();if((r.tot.map[tk]||0)<GOAL)d.setDate(d.getDate()-1);
+    for(;dkey(d)>=r.tot.usk&&(r.tot.map[dkey(d)]||0)>=GOAL;d.setDate(d.getDate()-1))n++;return n};
+  const st=rows.map(r=>streak(r)).filter(n=>n>=2);
+  if(st.length){const mx=Math.max(...st);out.push(T('連続',`${mx}日連続達成中 ${st.filter(n=>n===mx).length}人`))}
+  // 全体の通算
+  const all=rows.reduce((a,r)=>a+r.tot.all,0);
+  if(all)out.push(T('通算',`全員の通算投稿 ${all.toLocaleString()}本${all>=1000?`（${(Math.floor(all/1000)*1000).toLocaleString()}本突破）`:''}`));
+  // 個人の節目（今日、通算が100本の区切りを越えた人）
+  rows.forEach(r=>{const now=r.tot.all,before=now-r.c,m=Math.floor(now/100)*100;if(m>0&&before<m)out.push(T('節目',`${esc(r.u.name)} 通算${m}本`))});
+  return out;
+}
+function tickerHTML(){const it=tickerItems();if(!it.length)return '';
+  const line=it.join('<span class="tsep">／</span>')+'<span class="tsep">／</span>';
+  const len=it.join('').replace(/<[^>]+>/g,'').length;
+  return `<div class="ticker" aria-label="速報"><div class="tk" style="animation-duration:${Math.max(20,len*.28).toFixed(0)}s">${line}${line}</div></div>`}
 function renderLive(target){
   const tk=todayKey(),{y,m}=state,n=dim(y,m),sk=startKey();
   const rows=state.users.map(u=>{const today=state.byUser[u.id].filter(p=>dkey(p.ts)===tk);
@@ -769,7 +806,7 @@ function renderLive(target){
   // スマホでは3つを横に並べ、スワイプかボタンで切り替える（見出しはボタンで分かるので出さない）
   const L1=target?'<div class="lcar"><div class="lsec">':'',LM=target?'</div><div class="lsec">':'',L2=target?'</div></div>':'';
   (target||document.getElementById('main')).innerHTML=`
-  ${target?`<div class="lhead"><div class="topbar"><h1>みんなの実況</h1>${onair(true)}</div>${jump}</div>`:`<div class="topbar"><h1>みんなの実況</h1>${onair()}</div>`}
+  ${target?`<div class="lhead"><div class="topbar">${onair(true)}</div>${jump}${tickerHTML()}</div>`:`<div class="topbar"><h1>みんなの実況</h1>${onair()}</div>`}
   ${L1}<section class="card" data-sec="board">
     ${target?'':`<div class="card-h"><h2>今日の途中経過</h2>`}${target?'':'<span class="sub">本数の多い順（同数ならその本数に早く到達した順）・S＝今日いちばん早く10本に到達した人・カードを押すと今日の投稿へ</span></div>'}
     <div class="board">${board}</div>
