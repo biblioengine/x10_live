@@ -174,7 +174,7 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .cd .prow .bgl{grid-column:1/-1}
 .cd .prow label{margin:0;font-size:11px}
 .cd .prow input{font-size:16px;padding:7px 8px}
-.cd .bgpick{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 12px}
+.cd .bgpick{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0 4px}
 .cd .bgl{width:100%;font-size:12px;font-weight:700}
 .cd .sw{display:flex;flex-wrap:wrap;gap:6px}
 .cd .sw button{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);padding:0}
@@ -183,7 +183,12 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .cd .free input{width:36px;height:30px;padding:0;border-radius:6px;cursor:pointer}
 .cd .acts{display:flex;flex-direction:column;gap:8px;margin-top:6px}
 .cd .acts .btn{width:100%;padding:9px 12px}
-@media (max-width:640px){.cd{grid-template-columns:minmax(0,1fr);padding:14px;gap:14px}}
+@media (max-width:640px){.cd{grid-template-columns:minmax(0,1fr);padding:0 14px 14px;gap:14px}
+  /* スマホ：カードと背景の色はいつも上に見えるように固定し、入力欄だけがスクロールする */
+  .cd .cdl{position:sticky;top:0;z-index:2;background:var(--panel);padding:12px 0 8px;border-bottom:1px solid var(--line)}
+  .cd canvas{width:auto;max-height:36vh;margin:0 auto}
+  .cd .bgpick{margin:10px 0 0;gap:6px}.cd .bgpick .bgl{width:auto;margin-right:2px}
+  .cd .sw button{width:24px;height:24px}}
 .subnote{font-size:12px;color:var(--muted);background:var(--panel);border:1px dashed var(--line);border-radius:10px;padding:8px 12px}
 .rank-row{display:grid;grid-template-columns:minmax(190px,1.6fr) repeat(5,minmax(70px,1fr));align-items:center;gap:10px;padding:9px 16px 9px 0;border-bottom:1px solid var(--line);font-size:13px}
 .rank-row .stick{display:flex;align-items:center;gap:8px;min-width:0;align-self:stretch;padding-left:8px;background:var(--panel)}
@@ -528,7 +533,14 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
 
 <dialog id="cardDlg">
   <div class="cd">
+    <div class="cdl">
     <canvas id="cardCv" width="1080" height="1080" aria-label="個人カードのプレビュー"></canvas>
+      <div class="bgpick">
+        <span class="bgl">背景の色</span>
+        <div class="sw" id="cardSw"></div>
+        <label class="free" for="cBg">自由に選ぶ<input type="color" id="cBg" value="#0e1116"></label>
+      </div>
+    </div>
     <div>
       <h3>今日の個人カード</h3>
       <p class="hint">前日と現在のフォロワー数を入れると、増減を自動で計算してカードにします。前日の欄は、前回カードを作ったときの「現在」が自動で入ります。</p>
@@ -542,11 +554,6 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
         <label for="nNote">note<input id="nNote" inputmode="numeric" autocomplete="off" placeholder="本"></label>
       </div>
       <label for="cMsg">ひとこと（今の状況・気持ち・気づきなど）<textarea id="cMsg" rows="3" maxlength="140" placeholder="何も書かないと「note企画｜１日１０回投稿３０日チャレンジ中」と入ります"></textarea><span class="cnt" id="cMsgN">0 / 140</span></label>
-      <div class="bgpick">
-        <span class="bgl">背景の色</span>
-        <div class="sw" id="cardSw"></div>
-        <label class="free" for="cBg">自由に選ぶ<input type="color" id="cBg" value="#0e1116"></label>
-      </div>
       <div class="acts">
         <button class="btn primary" type="button" id="cardShare" hidden>画像を共有</button>
         <button class="btn primary" type="button" id="cardSave">画像を保存</button>
