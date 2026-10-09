@@ -80,6 +80,24 @@ aside{background:var(--panel);border-right:1px solid var(--line);padding:18px 12
 .sample b{display:inline-block;background:var(--gold);color:#161a24;border-radius:4px;padding:0 6px;margin-right:4px}
 
 main{padding-block:20px 48px;padding-inline:24px;min-width:0;display:flex;flex-direction:column;gap:16px}
+/* PC：見出しと LIVE 表示・切り替えボタンを上に固定。実況・カレンダー・通算成績は1つずつ表示 */
+@media (min-width:721px){
+  #main>.phead,#main>.topbar{position:sticky;top:0;z-index:6;background:var(--bg);margin:-20px -24px 0;padding:16px 24px 12px;border-bottom:1px solid var(--line)}
+  .phead{display:flex;flex-direction:column;gap:12px}
+  .pjump{display:grid;grid-template-columns:repeat(3,minmax(0,180px));gap:8px}
+  .pjump button{border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:999px;padding:8px 12px;font-size:14px;font-weight:700;cursor:pointer}
+  .pjump button:hover{border-color:var(--fg);color:var(--fg)}
+  .pjump button[aria-current="true"]{background:var(--fg);border-color:var(--fg);color:var(--panel)}
+  #main[data-ls="0"]>[data-sec]:not([data-sec="board"]),#main[data-ls="1"]>[data-sec]:not([data-sec="cal"]),#main[data-ls="2"]>[data-sec]:not([data-sec="rank"]){display:none}
+  #btnImport{display:none}
+  #navUsers{display:flex;flex-direction:column;gap:8px}
+  #navUsers .nwi{display:block;width:100%;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:8px;cursor:pointer;color:inherit;min-width:0}
+  #navUsers .nwi:hover{border-color:var(--fg)}
+  #navUsers .nwh{display:flex;align-items:center;gap:8px;min-width:0}
+  #navUsers .nwh .who{font-size:13px;font-weight:700}
+  #navUsers .nwh .who,#navUsers .nwh .who span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #navUsers .nnone{font-size:12px;color:var(--muted);margin:4px 2px}
+}
 .topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .topbar h1{font-family:var(--f-disp);font-weight:400;font-size:22px;margin:0;display:flex;align-items:center;gap:10px;text-wrap:balance}
 .topbar h1 small{font-family:var(--f-body);font-size:13px;color:var(--muted)}
@@ -401,16 +419,17 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #ppl .pl .ljump{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}
 #ppl .pl .ljump button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 4px;font-size:12px;font-weight:700;white-space:nowrap;color:var(--muted)}
 #ppl .pl .ljump button[aria-current="true"]{background:var(--fg);border-color:var(--fg);color:var(--panel)}
-#ppl .pl .ticker{margin-top:8px;overflow:hidden;white-space:nowrap;border-radius:6px;padding:5px 0;font-family:"DotGothic16",var(--f-num),monospace;font-size:14px;letter-spacing:.04em;
+.nled{display:block;margin-top:6px;font-size:12px;padding:3px 0;border-width:1px;border-radius:4px}
+.ticker{margin-top:8px;overflow:hidden;white-space:nowrap;border-radius:6px;padding:5px 0;font-family:"DotGothic16",var(--f-num),monospace;font-size:14px;letter-spacing:.04em;
   color:#ffb21a;text-shadow:0 0 4px rgba(255,170,20,.75),0 0 10px rgba(255,140,0,.35);
   background-color:#0b0a08;background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1.2px);background-size:3px 3px;
   box-shadow:inset 0 0 0 1px #000,inset 0 0 12px rgba(0,0,0,.9);border:2px solid #2b2b2b}
-#ppl .pl .ticker .tk{display:inline-block;animation:tick linear infinite}
-#ppl .pl .ticker .ti b{font-weight:400;color:#ff4d3a;text-shadow:0 0 4px rgba(255,70,50,.8),0 0 10px rgba(255,40,20,.35);margin-right:.5em}
-#ppl .pl .ticker .ti b::before{content:"【"}#ppl .pl .ticker .ti b::after{content:"】"}
-#ppl .pl .ticker .tsep{color:#6b5a2a;text-shadow:none;margin:0 1.2em}
+.ticker .tk{display:inline-block;animation:tick linear infinite}
+.ticker .ti b{font-weight:400;color:#ff4d3a;text-shadow:0 0 4px rgba(255,70,50,.8),0 0 10px rgba(255,40,20,.35);margin-right:.5em}
+.ticker .ti b::before{content:"【"}.ticker .ti b::after{content:"】"}
+.ticker .tsep{color:#6b5a2a;text-shadow:none;margin:0 1.2em}
 @keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-@media (prefers-reduced-motion:reduce){#ppl .pl .ticker .tk{animation:none}}
+@media (prefers-reduced-motion:reduce){.ticker .tk{animation:none}}
 #ppl .pl .lcar{flex:1;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 -16px}
 #ppl .pl .lcar::-webkit-scrollbar{display:none}
 #ppl .pl .lsec{flex:0 0 100%;min-width:0;overflow-y:auto;overscroll-behavior-y:contain;scroll-snap-align:start;scroll-snap-stop:always;padding:0 16px 16px}
@@ -556,7 +575,7 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
     <div class="brand"><div class="brow"><button type="button" class="t" data-go="live" aria-label="トップ（みんなの実況）へ">1日<em>10</em>投稿チャレンジ実況</button><button type="button" class="themebtn" data-theme-toggle aria-label="ライト／ダークの切り替え"></button></div><div class="s">X に毎日10本。野次馬による非公式の観戦ページ</div></div>
     <nav class="nav views" id="navViews"></nav>
     <div class="navs">
-      <div class="navlabel">参加者</div>
+      <div class="navlabel">速報</div>
       <nav class="nav" id="navUsers"></nav>
     </div>
     <div class="side-foot">
@@ -748,7 +767,7 @@ const hm=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'
 function ticks(v){let s='';for(let i=0;i<GOAL;i++)s+=`<i style="${i<v?`background:${v>=GOAL?'var(--gold)':'var(--x)'}`:''}"></i>`;return `<div class="ticks">${s}</div>`}
 
 /* ---------- 描画 ---------- */
-function render(){if(state.wall)renderWall();if(document.getElementById('ppl'))fillPeople();renderNav();({live:renderLive,roster:renderRoster,players:renderPlayers,user:renderUser})[state.view]()}
+function render(){if(state.wall)renderWall();{const m=document.getElementById('main');if(state.view==='live')m.dataset.ls=state.ls||0;else delete m.dataset.ls}if(document.getElementById('ppl'))fillPeople();renderNav();({live:renderLive,roster:renderRoster,players:renderPlayers,user:renderUser})[state.view]()}
 // 上のタブ（LIVE・MEMBER・PROFILE）。トップと MEMBER/PROFILE の画面で同じものを出す
 function tabsHTML(active){
   // 文字の左の小さな印：LIVE は赤く点滅する丸、MEMBER は丸が2×2の四角（参加者一覧）、PROFILE は縦長のカード
@@ -763,9 +782,7 @@ document.addEventListener('scroll',e=>{const w=e.target;if(!w.classList)return;i
 function renderNav(){
   const tk=todayKey(),done=state.users.filter(u=>dayCount(u.id,tk)>=GOAL).length;
   document.getElementById('navViews').innerHTML=tabsHTML(state.view==='live'?'live':null);
-  document.getElementById('navUsers').innerHTML=state.users.map(u=>{const c=dayCount(u.id,tk);
-    return `<button type="button" data-u="${esc(u.id)}" aria-current="${state.view==='user'&&state.uid===u.id}">${av(u)}
-    <span class="who">${esc(u.name)}<span>@${esc(u.handle)}</span></span><span class="navcnt${c>=GOAL?' done':''}">${c}/${GOAL}</span></button>`}).join('');
+  document.getElementById('navUsers').innerHTML=newsSide();
 }
 function onair(compact){
   const n=new Date(),left=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1)-n;
@@ -781,27 +798,44 @@ function monthNav(){
 }
 
 /* 速報の帯（スマホの LIVE）：達成・最速・自己ベスト・連続達成・全体の通算・個人の節目 */
-function tickerItems(){
-  const tk=todayKey(),out=[],T=(tag,txt)=>`<span class="ti"><b>${tag}</b>${txt}</span>`;
+// 速報のもと。u＝取り上げる人（いない項目もある）、s＝名前を除いた短い文（PCの左の電光掲示板用）
+function tickerData(){
+  const tk=todayKey(),out=[],T=(tag,txt,u,sh)=>out.push({tag,txt,u,s:sh||txt});
   const rows=state.users.map(u=>{const tot=totals(u.id),ps=state.byUser[u.id].filter(p=>dkey(p.ts)===tk);return{u,tot,ps,c:ps.length}});
   // 達成速報（新しい順）と最速達成
   const done=rows.filter(r=>r.c>=GOAL).map(r=>({...r,t:r.ps[GOAL-1].ts})).sort((a,b)=>b.t-a.t);
-  if(done.length){const f=done[done.length-1];out.push(T('最速',`本日の最速達成 ${esc(f.u.name)}（${hm(f.t)}）`))}
-  done.slice(0,12).forEach(r=>out.push(T('達成',`${esc(r.u.name)} 本日10本達成（${hm(r.t)}）`)));
+  if(done.length){const f=done[done.length-1];T('最速',`本日の最速達成 ${esc(f.u.name)}（${hm(f.t)}）`,f.u,`本日の最速達成（${hm(f.t)}）`)}
+  done.slice(0,12).forEach(r=>T('達成',`${esc(r.u.name)} 本日10本達成（${hm(r.t)}）`,r.u,`本日10本達成（${hm(r.t)}）`));
   // 自己ベスト更新（今日の本数が、これまでの日のいちばん多い本数を超えた）
   rows.forEach(r=>{let best=0,has=false;for(const k in r.tot.map){if(+k<tk&&+k>=r.tot.usk){has=true;best=Math.max(best,r.tot.map[k])}}
-    if(has&&r.c>best&&r.c>=GOAL)out.push(T('自己ベスト',`${esc(r.u.name)} 今日${r.c}本 自己最多を更新`))});
+    if(has&&r.c>best&&r.c>=GOAL)T('自己ベスト',`${esc(r.u.name)} 今日${r.c}本 自己最多を更新`,r.u,`今日${r.c}本 自己最多を更新`)});
   // 連続達成（今日も達成していれば今日まで、まだなら昨日まで）
   const streak=r=>{let n=0;const d=new Date();if((r.tot.map[tk]||0)<GOAL)d.setDate(d.getDate()-1);
     for(;dkey(d)>=r.tot.usk&&(r.tot.map[dkey(d)]||0)>=GOAL;d.setDate(d.getDate()-1))n++;return n};
   const st=rows.map(r=>streak(r)).filter(n=>n>=2);
-  if(st.length){const mx=Math.max(...st);out.push(T('連続',`${mx}日連続達成中 ${st.filter(n=>n===mx).length}人`))}
+  if(st.length){const mx=Math.max(...st);T('連続',`${mx}日連続達成中 ${st.filter(n=>n===mx).length}人`)}
   // 全体の通算
   const all=rows.reduce((a,r)=>a+r.tot.all,0);
-  if(all)out.push(T('通算',`全員の通算投稿 ${all.toLocaleString()}本${all>=1000?`（${(Math.floor(all/1000)*1000).toLocaleString()}本突破）`:''}`));
+  if(all)T('通算',`全員の通算投稿 ${all.toLocaleString()}本${all>=1000?`（${(Math.floor(all/1000)*1000).toLocaleString()}本突破）`:''}`);
   // 個人の節目（今日、通算が100本の区切りを越えた人）
-  rows.forEach(r=>{const now=r.tot.all,before=now-r.c,m=Math.floor(now/100)*100;if(m>0&&before<m)out.push(T('節目',`${esc(r.u.name)} 通算${m}本`))});
+  rows.forEach(r=>{const now=r.tot.all,before=now-r.c,m=Math.floor(now/100)*100;if(m>0&&before<m)T('節目',`${esc(r.u.name)} 通算${m}本`,r.u,`通算${m}本`)});
   return out;
+}
+function tickerItems(){return tickerData().map(x=>`<span class="ti"><b>${x.tag}</b>${x.txt}</span>`)}
+// PCの左：速報で取り上げられた人を5人まで。アイコンの下に、その人の速報を流す電光掲示板
+function newsSide(){
+  const tk=todayKey(),by=new Map(),pri={'最速':0,'自己ベスト':1,'節目':2,'達成':3};
+  tickerData().filter(x=>x.u).sort((a,b)=>pri[a.tag]-pri[b.tag]).forEach(x=>{const k=x.u.id;if(!by.has(k))by.set(k,[]);by.get(k).push(x)});
+  let list=[...by.values()].slice(0,5);
+  // 速報がまだ少ない時間帯は、今日の本数が多い人で埋める
+  if(list.length<5)state.users.map(u=>({u,c:dayCount(u.id,tk)})).filter(r=>r.c&&!by.has(r.u.id)).sort((a,b)=>b.c-a.c)
+    .slice(0,5-list.length).forEach(r=>list.push([{tag:'途中',u:r.u,s:`今日${r.c}本 投稿中`}]));
+  if(!list.length)return '<p class="nnone">まだ速報はありません</p>';
+  return list.map(xs=>{const u=xs[0].u,line=xs.map(x=>`<span class="ti"><b>${x.tag}</b>${x.s}</span>`).join('<span class="tsep">／</span>')+'<span class="tsep">／</span>';
+    const len=xs.map(x=>x.tag+x.s).join('').length+4;
+    return `<button type="button" class="nwi" data-u="${esc(u.id)}" data-today="1">
+      <span class="nwh">${av(u)}<span class="who">${esc(u.name)}<span>@${esc(u.handle)}</span></span></span>
+      <span class="ticker nled" aria-label="${esc(u.name)}の速報"><span class="tk" style="animation-duration:${Math.max(8,len*.45).toFixed(0)}s">${line}${line}</span></span></button>`}).join('');
 }
 function tickerHTML(){const it=tickerItems();if(!it.length)return '';
   const line=it.join('<span class="tsep">／</span>')+'<span class="tsep">／</span>';
@@ -855,7 +889,8 @@ function renderLive(target){
   // スマホでは3つを横に並べ、スワイプかボタンで切り替える（見出しはボタンで分かるので出さない）
   const L1=target?'<div class="lcar"><div class="lsec">':'',LM=target?'</div><div class="lsec">':'',L2=target?'</div></div>':'';
   (target||document.getElementById('main')).innerHTML=`
-  ${target?`<div class="lhead"><div class="topbar">${onair(true)}</div>${jump}${tickerHTML()}</div>`:`<div class="topbar"><h1>みんなの実況</h1>${onair()}</div>`}
+  ${target?`<div class="lhead"><div class="topbar">${onair(true)}</div>${jump}${tickerHTML()}</div>`:`<div class="phead"><div class="topbar"><h1>みんなの実況</h1>${onair()}</div>
+    <div class="pjump">${['途中経過','カレンダー','通算成績'].map((t,i)=>`<button type="button" data-pj="${i}" aria-current="${(state.ls||0)===i}">${t}</button>`).join('')}</div></div>`}
   ${L1}<section class="card" data-sec="board">
     ${target?'':`<div class="card-h"><h2>今日の途中経過</h2>`}${target?'':'<span class="sub">本数の多い順（同数ならその本数に早く到達した順）・S＝今日いちばん早く10本に到達した人・カードを押すと今日の投稿へ</span></div>'}
     <div class="board">${board}</div>
@@ -1623,6 +1658,8 @@ document.addEventListener('click',e=>{
     openPeople(pg);pushNav();return}
   if(b.dataset.uj){const c=document.querySelector('#plr .ucar');if(c)c.scrollTo({left:+b.dataset.uj*c.clientWidth,behavior:'smooth'});return}
   if(b.hasAttribute('data-theme-toggle')){const t=themeNow()==='dark'?'light':'dark';document.documentElement.dataset.theme=t;try{localStorage.setItem('x10theme',t)}catch{}themeIcons();return}
+  if(b.dataset.pj){state.ls=+b.dataset.pj;const m=document.getElementById('main');m.dataset.ls=state.ls;
+    m.querySelectorAll('[data-pj]').forEach(x=>x.setAttribute('aria-current',x===b));scrollTo({top:0});return}
   if(b.dataset.lj){const c=document.querySelector('#ppl .lcar');if(c)c.scrollTo({left:+b.dataset.lj*c.clientWidth,behavior:'smooth'});return}
   if(b.dataset.pp){const c=document.querySelector('#ppl .pcar');c.scrollTo({left:+b.dataset.pp*c.clientWidth,behavior:'smooth'});return}
   if(b.id==='btnPplBack'){closePeople();pushNav();return}
