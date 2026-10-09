@@ -264,7 +264,7 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #plr .pgp .st.w2{grid-column:1/-1}
 #plr .hero.tint{background:var(--cbg);border-color:var(--cline);color:var(--cfg)}
 #plr .hero.tint .hd,#plr .hero.tint .tg{color:var(--cmut)}
-#plr .hero.tint .pic{background:var(--cacc)}#plr .hero.tint .pic .av{border-color:var(--cbg)}
+#plr .hero.tint .pic .av{border-color:var(--cbg)}
 #plr .sts.tint{background:var(--cbg);border:1px solid var(--cline);border-radius:18px;padding:14px}
 #plr .sts.tint .st{background:var(--cpan);border-color:var(--cline);color:var(--cfg)}
 #plr .sts.tint .lb{color:var(--cacc)}#plr .sts.tint .lb small,#plr .sts.tint .sub,#plr .sts.tint .v small{color:var(--cmut)}
@@ -315,7 +315,9 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;padding:16px}
 .pcard{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:16px 10px 14px;min-width:0;cursor:pointer}
 .pcard:hover{border-color:var(--gold);box-shadow:0 4px 16px rgba(0,0,0,.08)}
-.pcard .pav{width:76px;height:76px;border-radius:50%;background-size:cover;background-position:center;box-shadow:0 0 0 3px var(--panel),0 0 0 5px var(--gold);margin-bottom:8px}
+.pcard .pring{position:relative;display:block;padding:4px;border-radius:50%;margin-bottom:8px}
+.pcard .pav{display:block;width:76px;height:76px;border-radius:50%;background-size:cover;background-position:center;border:3px solid var(--panel)}
+.pcard .pdone{position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);background:var(--gold);color:#161a24;font-size:9px;font-weight:900;border-radius:999px;padding:0 6px;border:2px solid var(--panel);white-space:nowrap}
 .pcard .pn{font-weight:700;font-size:13px;line-height:1.35;max-width:100%;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .pcard .ph2{font-family:var(--f-num);font-size:11px;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pcard .pt2{font-size:11px;color:var(--muted);line-height:1.4;max-width:100%;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-top:2px}
@@ -340,7 +342,9 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #ppl .ws{font-size:12px;color:var(--muted)}#ppl .ws b{color:var(--fg)}
 #ppl .pm .wg{flex:1;min-height:0;display:grid;justify-content:center;align-content:center;padding-top:6px}
 #ppl .wsw{text-align:center;font-size:11px;color:var(--muted);padding:4px 0}
-#ppl .pr{overflow-y:auto;overscroll-behavior:contain}
+#ppl .pr,#ppl .pl{overflow-y:auto;overscroll-behavior-y:contain}
+#ppl .pl .plive{padding-top:4px}
+.cmpwrap,.rankwrap{overscroll-behavior-x:contain}
 #ppl .pr .pgrid{padding:6px 0 16px}
 #ppl .wf{display:flex;flex-direction:column;align-items:center;min-width:0;overflow:hidden}
 #ppl .wr{border-radius:50%;position:relative;flex:none}
@@ -660,7 +664,7 @@ function monthNav(){
   <span class="m num">${state.y}年${state.m+1}月</span><button class="iconbtn" type="button" data-mv="1" aria-label="次の月">›</button></div>`;
 }
 
-function renderLive(){
+function renderLive(target){
   const tk=todayKey(),{y,m}=state,n=dim(y,m),sk=startKey();
   const rows=state.users.map(u=>{const today=state.byUser[u.id].filter(p=>dkey(p.ts)===tk);
     // reach：今の本数に到達した時刻（同じ本数ならこれが早い人が上）、goal：10本目の時刻
@@ -703,7 +707,7 @@ function renderLive(){
      ${(f=>`<div class="r num" style="color:${sgnc(f?.total)}">${f?sgn(f.total):'—'}</div>`)(fol(u.handle))}</div>`).join('');
 
   const st=new Date(state.start);
-  document.getElementById('main').innerHTML=`
+  (target||document.getElementById('main')).innerHTML=`
   <div class="topbar"><h1>みんなの実況</h1>${onair()}</div>
   <section class="card">
     <div class="card-h"><h2>今日の途中経過</h2><span class="sub">本数の多い順（同数ならその本数に早く到達した順）・S＝今日いちばん早く10本に到達した人・カードを押すと今日の投稿へ</span></div>
@@ -1023,29 +1027,44 @@ function renderWall(){
       ${showName?`<span class="wn" style="font-size:${Math.max(9,Math.min(12,Math.round(cell*.15)))}px">${esc(u.name)}</span>`:''}</div>`}).join('');
 }
 // MEMBER：全員を1画面に並べる表示を開く
-function goMember(){openPeople(0);pushNav()}
-/* ---------- MEMBER / PROFILE：2ページを横に並べ、スワイプかタブで切り替える（選手紹介のステータスと同じ動き） ---------- */
+function goMember(){openPeople(1);pushNav()}
+/* ---------- LIVE / MEMBER / PROFILE：3ページを横に並べ、スワイプかタブで切り替える（選手紹介のステータスと同じ動き） ---------- */
+// ページ番号：0=LIVE 1=MEMBER 2=PROFILE。スマホではこれがトップ画面になる
+const PTABS=['live','member','profile'];
+const isPhone=()=>matchMedia('(max-width:720px)').matches;
+// 今日の投稿数のリング（1周で10本、10本で金色）
+const ringBg=(c,prog='var(--x)',track='var(--track)',done='var(--gold)')=>c>=GOAL?done:`conic-gradient(${prog} 0 ${Math.min(c,GOAL)/GOAL*360}deg, ${track} 0)`;
 function pplPage(){const c=document.querySelector('#ppl .pcar');return c?Math.round(c.scrollLeft/Math.max(1,c.clientWidth)):0}
+function pplShown(){const el=document.getElementById('ppl');return el&&!el.hidden?el:null}
 function openPeople(page=0){
   const old=document.getElementById('ppl');
-  if(old){closePlayer();closeNet();const c=old.querySelector('.pcar');c.scrollTo({left:page*c.clientWidth,behavior:'smooth'});return}
+  if(old){closePlayer();closeNet();const wasHidden=old.hidden;old.hidden=false;document.documentElement.style.overflow='hidden';
+    if(old.dataset.dirty){delete old.dataset.dirty;fillPeople()}
+    const c=old.querySelector('.pcar');c.style.overflowX='';c.scrollTo({left:page*c.clientWidth,behavior:wasHidden?'auto':'smooth'});pplTabs();clearTimeout(c._t);c._t=setTimeout(()=>pplLock(c),wasHidden?0:600);return}
   closeOverlays();
   const el=document.createElement('div');el.id='ppl';document.body.appendChild(el);document.documentElement.style.overflow='hidden';
   el.innerHTML=`<div class="phd"><button type="button" class="pbrand" data-tab="live" aria-label="トップ（みんなの実況）へ"><em>10</em>投稿チャレンジ実況</button>
-    <nav class="nav views">${tabsHTML(page?'profile':'member')}</nav></div>
-    <div class="pcar"><section class="pp pm" aria-label="MEMBER 参加者一覧"><div class="ws num"></div><div class="wg"></div><div class="wsw">横にスワイプで PROFILE ▶︎</div></section>
+    <nav class="nav views">${tabsHTML(PTABS[page])}</nav></div>
+    <div class="pcar"><section class="pp pl" aria-label="LIVE みんなの実況"><div class="plive"></div></section>
+      <section class="pp pm" aria-label="MEMBER 参加者一覧"><div class="ws num"></div><div class="wg"></div><div class="wsw">◀︎ LIVE　・　横にスワイプで移動　・　PROFILE ▶︎</div></section>
       <section class="pp pr" aria-label="PROFILE 参加者プロフィール"><div class="wsw">◀︎ 横にスワイプで MEMBER　・　押すとその人の選手紹介</div><div class="pgrid"></div></section></div>`;
   fillPeople();
   const car=el.querySelector('.pcar');car.scrollLeft=page*car.clientWidth;
-  car.addEventListener('scroll',()=>requestAnimationFrame(pplTabs),{passive:true});
-  pplTabs();
+  car.addEventListener('scroll',()=>{requestAnimationFrame(pplTabs);clearTimeout(car._t);car._t=setTimeout(()=>pplLock(car),140)},{passive:true});
+  pplTabs();pplLock(car);
 }
-function pplTabs(){const el=document.getElementById('ppl');if(!el)return;const i=pplPage();
-  el.querySelectorAll('[data-tab]').forEach(t=>{if(t.classList.contains('big'))t.setAttribute('aria-current',t.dataset.tab===(i?'profile':'member'))});
+// LIVE の画面は表やカレンダーを左右に動かすので、LIVE からは横スワイプでページを移らない（MEMBER → LIVE は可）
+function pplLock(car){car.style.overflowX=car.scrollLeft<2?'hidden':''}
+// 一時的に隠す（個人ページへ行くときなど。戻ったときに同じページ・同じスクロール位置で出す）
+function hidePeople(){const el=document.getElementById('ppl');if(el&&!el.hidden){el.hidden=true;document.documentElement.style.overflow=''}}
+function pplTabs(){const el=pplShown();if(!el)return;const i=pplPage();
+  el.querySelectorAll('.big[data-tab]').forEach(t=>t.setAttribute('aria-current',t.dataset.tab===PTABS[i]));
   // 履歴には今のページを覚えておく（戻ったときに同じページで開く）
   try{const cur=history.state;if(cur&&cur.x10&&cur.ov&&cur.ov.startsWith('ppl:')&&cur.ov.split('|').length===1)history.replaceState({...cur,ov:'ppl:'+i},'')}catch{}
 }
 function fillPeople(){const el=document.getElementById('ppl');if(!el)return;
+  if(el.hidden){el.dataset.dirty=1;return}
+  renderLive(el.querySelector('.plive'));
   const tk=todayKey(),n=new Date();
   const all=state.users.map(u=>({u,c:dayCount(u.id,tk)})).sort((a,b)=>Math.min(b.c,GOAL)-Math.min(a.c,GOAL));
   const done=all.filter(r=>r.c>=GOAL).length;
@@ -1056,20 +1075,20 @@ function fillPeople(){const el=document.getElementById('ppl');if(!el)return;
   const cell=Math.floor(w),ring=Math.floor(cell*.86),showName=cell>=46;
   g.style.gridTemplateColumns=`repeat(${c},${cell}px)`;g.style.gridAutoRows=`${Math.floor(cell*1.3)}px`;
   g.innerHTML=all.map(({u,c:k})=>{const a=k>=GOAL;
-    const bg=a?'var(--gold)':`conic-gradient(var(--x) 0 ${k/GOAL*360}deg, var(--track) 0)`;
     const pad=Math.max(2,Math.round(ring*.06)),bw=Math.max(1,Math.round(ring*.04));
-    return `<div class="wf"><span class="wr" style="width:${ring}px;height:${ring}px;padding:${pad}px;--bw:${bw}px;background:${bg};font-size:${Math.round(ring*.32)}px">
+    return `<div class="wf"><span class="wr" style="width:${ring}px;height:${ring}px;padding:${pad}px;--bw:${bw}px;background:${ringBg(k)};font-size:${Math.round(ring*.32)}px">
       ${av(u)}
       ${a&&ring>=36?`<span class="wc" style="bottom:${-Math.round(ring*.06)}px;font-size:${Math.max(8,Math.round(ring*.13))}px;padding:0 ${Math.round(ring*.08)}px">達成</span>`:''}</span>
       ${showName?`<span class="wn" style="font-size:${Math.max(9,Math.min(12,Math.round(cell*.15)))}px">${esc(u.name)}</span>`:''}</div>`}).join('');
-  // PROFILE：全員のカード
-  el.querySelector('.pgrid').innerHTML=state.users.map(u=>{const tag=state.tags[u.handle.toLowerCase()];
-    return `<button type="button" class="pcard" data-plr="${esc(u.id)}" aria-label="${esc(u.name)}さんの選手紹介">
-      <span class="pav" style="background-color:${u.color};background-image:url('avatars/${encodeURIComponent(u.handle.toLowerCase())}.jpg')${state.img[u.id]?`,url('${esc(state.img[u.id])}')`:''}"></span>
+  // PROFILE：全員のカード（アイコンに今日の投稿数のリング）
+  el.querySelector('.pgrid').innerHTML=state.users.map(u=>{const tag=state.tags[u.handle.toLowerCase()],k=dayCount(u.id,tk);
+    return `<button type="button" class="pcard" data-plr="${esc(u.id)}" aria-label="${esc(u.name)}さんの選手紹介（今日 ${k}本）">
+      <span class="pring" style="background:${ringBg(k)}"><span class="pav" style="background-color:${u.color};background-image:url('avatars/${encodeURIComponent(u.handle.toLowerCase())}.jpg')${state.img[u.id]?`,url('${esc(state.img[u.id])}')`:''}"></span>${k>=GOAL?'<span class="pdone">達成</span>':''}</span>
       <span class="pn">${esc(u.name)}</span><span class="ph2">@${esc(u.handle)}</span>${tag?`<span class="pt2">${esc(tag)}</span>`:''}</button>`}).join('');
 }
-function closePeople(){const el=document.getElementById('ppl');if(el){el.remove();document.documentElement.style.overflow=''}}
-addEventListener('resize',()=>{const el=document.getElementById('ppl');if(!el)return;const i=pplPage();fillPeople();const c=el.querySelector('.pcar');c.scrollLeft=i*c.clientWidth});
+function closePeople(){const el=document.getElementById('ppl');if(el){const shown=!el.hidden;el.remove();if(shown)document.documentElement.style.overflow=''}}
+addEventListener('resize',()=>{const el=pplShown();if(!el)return;const i=pplPage();fillPeople();const c=el.querySelector('.pcar');c.scrollLeft=i*c.clientWidth;pplLock(c)});
+
 function closeWall(){const had=state.wall;state.wall=false;document.getElementById('wall')?.remove();document.documentElement.style.overflow='';if(had&&state.users.length)renderNav()}
 addEventListener('resize',()=>{if(state.wall)renderWall()});
 
@@ -1124,7 +1143,7 @@ function openPlayer(id){
   <div class="ph"><span class="tt">PLAYER PROFILE<small>選手紹介</small></span><div class="acts"><button type="button" class="back" data-go="live">TOPへ</button><button type="button" class="back" data-go="players">一覧に戻る</button></div></div>
   <div class="grid">
     <section class="hero${tint?' tint':''}"${tint}>
-      <div class="pic">${pav(u)}</div>
+      <div class="pic" style="background:${ringBg(dayCount(u.id,todayKey()),'var(--pb)','rgba(255,255,255,.16)','var(--pg)')}">${pav(u)}</div>
       <div class="who2"><div class="nm">${esc(u.name)}</div><div class="hd">@${esc(u.handle)}</div>
       ${tag?`<div class="tg">${esc(tag)}</div>`:''}
       <a class="xgo" href="https://x.com/${encodeURIComponent(u.handle)}" target="_blank" rel="noopener">Xアカウントへ ↗</a></div>
@@ -1294,7 +1313,7 @@ function netPointer(cv){
 
 /* ---------- 戻る：ブラウザやスマホの「戻る」で前の画面に戻れるようにする ---------- */
 // 画面を切り替えるたびに履歴を1つ積み、「戻る」でその時の画面（と開いていた重ね画面）を復元する
-const curOv=()=>{const o=[];if(document.getElementById('ppl'))o.push('ppl:'+pplPage());if(state.wall)o.push('wall');
+const curOv=()=>{const o=[];if(pplShown())o.push('ppl:'+pplPage());if(state.wall)o.push('wall');
   if(document.getElementById('net'))o.push('net:'+(document.getElementById('net').dataset.id||''));if(document.getElementById('plr'))o.push('plr:'+document.getElementById('plr').dataset.id);return o.length?o.join('|'):null};
 const snap=()=>({x10:1,view:state.view,uid:state.uid,day:state.day,y:state.y,m:state.m,ov:curOv(),sy:0});
 function pushNav(){try{const cur=history.state;if(cur&&cur.x10)history.replaceState({...cur,sy:scrollY},'');history.pushState(snap(),'')}catch{}}
@@ -1303,7 +1322,8 @@ function openOv(ov){if(!ov)return;for(const o of ov.split('|')){if(o.startsWith(
 addEventListener('popstate',e=>{const s=e.state;if(!s||!s.x10)return;
   // MEMBER/PROFILE の上に重ねた画面から戻るときは、下の一覧（スクロール位置も）をそのまま残す
   const keep=s.ov&&s.ov.startsWith('ppl:')&&document.getElementById('ppl');
-  if(keep){closePlayer();closeNet();const cd=document.getElementById('cardDlg');if(cd&&cd.open)cd.close()}else closeOverlays();
+  if(!(s.ov&&s.ov.startsWith('ppl:')))hidePeople();
+  if(keep){closePlayer();closeNet();closeWall();const cd=document.getElementById('cardDlg');if(cd&&cd.open)cd.close()}else closeOverlays();
   Object.assign(state,{view:s.view,uid:s.uid,day:s.day,y:s.y,m:s.m});render();openOv(s.ov);
   if(!s.ov)requestAnimationFrame(()=>scrollTo({top:s.sy||0}))});
 // 重ね画面の「戻る」ボタン：履歴があれば履歴で戻る（ブラウザの戻ると同じ動き）
@@ -1329,9 +1349,11 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b||b.disabled)return;
   if(b.id==='btnFaces'){faceIn.click();return}
   if(b.dataset.tab){const t=b.dataset.tab;
-    if(t==='live'){closeOverlays();state.view='live';render();pushNav();scrollTo({top:0});return}
-    if(document.getElementById('ppl')){openPeople(t==='member'?0:1);return}
-    openPeople(t==='member'?0:1);pushNav();return}
+    const pg=PTABS.indexOf(t);
+    // パソコンの LIVE は左のメニュー付きの元の画面へ。スマホは3ページの中で切り替える
+    if(t==='live'&&!isPhone()){closeOverlays();state.view='live';render();pushNav();scrollTo({top:0});return}
+    if(pplShown()){openPeople(pg);return}
+    openPeople(pg);pushNav();return}
   if(b.dataset.pp){const c=document.querySelector('#ppl .pcar');c.scrollTo({left:+b.dataset.pp*c.clientWidth,behavior:'smooth'});return}
   if(b.id==='btnPplBack'){closePeople();pushNav();return}
   if(b.dataset.v){const w=state.wall;if(w)closeWall();if(w||state.view!==b.dataset.v){state.view=b.dataset.v;render();pushNav();scrollTo({top:0})}return}
@@ -1341,7 +1363,8 @@ document.addEventListener('click',e=>{
   if(b.id==='btnNet'){openNet();pushNav();return}
   if(b.dataset.plr){closePlayer();openPlayer(b.dataset.plr);pushNav();return}
   if(b.id==='btnPlrBack'){backOv(closePlayer);return}
-  if(b.dataset.go==='member'||b.dataset.go==='players'){openPeople(b.dataset.go==='member'?0:1);pushNav();return}
+  if(b.dataset.go==='member'||b.dataset.go==='players'){openPeople(b.dataset.go==='member'?1:2);pushNav();return}
+  if(b.dataset.go==='live'&&isPhone()){openPeople(0);pushNav();return}
   if(b.dataset.go){closeOverlays();state.view=b.dataset.go;render();pushNav();scrollTo({top:0});return}
   if(b.dataset.net){const id=b.dataset.net;closeOverlays();openNet(id);pushNav();return}
   if(b.id==='btnNetBack'){backOv(closeNet);return}
@@ -1350,6 +1373,7 @@ document.addEventListener('click',e=>{
     state.rs=rs.k===k?{k,dir:-rs.dir}:{k,dir:k==='name'?1:-1};render();return}
   if(b.dataset.mv){state.m+=+b.dataset.mv;if(state.m<0){state.m=11;state.y--}if(state.m>11){state.m=0;state.y++}render();return}
   if(b.dataset.u&&(b.dataset.k||b.dataset.today||b.closest('#navUsers'))){
+    hidePeople();
     const k=b.dataset.k?+b.dataset.k:todayKey();
     state.view='user';state.uid=b.dataset.u;state.day=k;state.y=Math.floor(k/1e4);state.m=Math.floor(k/100)%100-1;render();pushNav();window.scrollTo({top:0});return}
   if(b.classList.contains('day')&&b.dataset.k){
@@ -1391,9 +1415,14 @@ faceIn.onchange=async()=>{
   let y0=null,d=0,busy=false;const TH=70;
   const show=(dy,txt,go)=>{ind.style.transform=`translate(-50%,${Math.min(dy,90)-50}px)`;ind.textContent=txt;ind.classList.toggle('go',!!go)};
   const hide=()=>{ind.style.transition='transform .2s';ind.style.transform='translate(-50%,-60px)';setTimeout(()=>ind.style.transition='',220)};
-  addEventListener('touchstart',e=>{if(busy||scrollY>0||document.getElementById('plr')||document.getElementById('net')||document.getElementById('wall')||document.getElementById('ppl')||document.querySelector('dialog[open]')){y0=null;return}
-    y0=e.touches[0].clientY;d=0},{passive:true});
-  addEventListener('touchmove',e=>{if(y0===null)return;d=(e.touches[0].clientY-y0)*.5;if(d<=0||scrollY>0){d=0;hide();return}
+  // スマホのトップ（LIVE/MEMBER/PROFILE）は各ページの中でスクロールするので、そのページがいちばん上かを見る
+  const top=()=>{const p=pplShown();return p?(p.querySelector('.pcar').children[pplPage()]?.scrollTop||0):scrollY};
+  let x0=0;
+  addEventListener('touchstart',e=>{if(busy||top()>0||document.getElementById('plr')||document.getElementById('net')||document.getElementById('wall')||document.querySelector('dialog[open]')){y0=null;return}
+    y0=e.touches[0].clientY;x0=e.touches[0].clientX;d=0},{passive:true});
+  addEventListener('touchmove',e=>{if(y0===null)return;const dx=e.touches[0].clientX-x0,dy=e.touches[0].clientY-y0;
+    if(Math.abs(dx)>Math.abs(dy)){y0=null;d=0;hide();return}
+    d=dy*.5;if(d<=0||top()>0){d=0;hide();return}
     show(d,d>TH?'↻ 離して更新':'↓ 引っぱって更新',d>TH)},{passive:true});
   addEventListener('touchend',async()=>{if(y0===null)return;y0=null;
     if(d>TH){busy=true;show(TH,'更新中…',true);const ok=await pull(false);busy=false;hide();toast(ok?'最新のデータにしました':'更新できませんでした。少し時間をおいてもう一度')}else hide();d=0});
@@ -1443,7 +1472,7 @@ async function pull(first){
     const d=normalize(await res.json());load(d,false);return true}
   catch{if(first)load(sample(),true);return false}
 }
-pull(true).then(ok=>{try{history.replaceState(snap(),'')}catch{}if(ok)setInterval(()=>pull(false),5*60*1000)});
+pull(true).then(ok=>{if(isPhone())openPeople(0);try{history.replaceState(snap(),'')}catch{}if(ok)setInterval(()=>pull(false),5*60*1000)});
 setInterval(()=>document.querySelectorAll('.onair').forEach(el=>el.outerHTML=onair()),30000);
 })();
 </script>
