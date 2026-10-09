@@ -164,6 +164,9 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .cd{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,260px);gap:20px;padding:20px;align-items:start}
 .cd canvas{width:100%;height:auto;max-width:100%;border-radius:12px;display:block;box-shadow:0 6px 24px rgba(0,0,0,.18)}
 .cd h3{margin:0 0 4px;font-size:16px}
+.cd .cdx{position:absolute;top:8px;right:8px;z-index:3;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--fg);font-size:22px;line-height:1;padding:0;cursor:pointer;display:grid;place-items:center}
+.cd .cdx:hover{border-color:var(--fg)}
+.cd .cdx:focus:not(:focus-visible){outline:none}
 .cd .hint{margin:0 0 14px;font-size:12px;color:var(--muted);line-height:1.6}
 .cd label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;margin-bottom:12px}
 .cd input{font:inherit;font-family:var(--f-num);font-size:18px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);width:100%}
@@ -188,6 +191,7 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .cd .acts .btn{width:100%;padding:9px 12px}
 @media (max-width:640px){.cd{grid-template-columns:minmax(0,1fr);padding:0 14px 14px;gap:14px}
   /* スマホ：カードと背景の色はいつも上に見えるように固定し、入力欄だけがスクロールする */
+  .cd .cdx{top:8px;right:8px;width:32px;height:32px;font-size:20px}
   .cd .cdl{position:sticky;top:0;z-index:2;background:var(--panel);margin:0 -14px;padding:12px 14px 8px}
   .cd .cdl::after{content:'';position:absolute;left:0;right:0;top:100%;height:22px;background:linear-gradient(var(--panel),transparent);pointer-events:none;opacity:0;transition:opacity .15s}
   #cardDlg.scrolled .cd .cdl::after{opacity:1}
@@ -555,6 +559,7 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
 <dialog id="cardDlg">
   <div class="cd">
     <div class="cdl">
+    <button type="button" class="cdx" id="cardX" aria-label="閉じる">×</button>
     <canvas id="cardCv" width="1080" height="1080" aria-label="個人カードのプレビュー"></canvas>
       <div class="bgpick">
         <span class="bgl">背景の色</span>
@@ -1053,14 +1058,11 @@ function drawCard(){
   for(const [s,col] of parts){ctx.fillStyle=col;ctx.fillText(s,x,208);x+=ctx.measureText(s).width+6}
   ctx.fillStyle=C.muted;ctx.font=`800 28px ${EN}`;const subW=spaced(ctx,'ONE TEN THIRTY RUN',P+4,262,8.5);
   ctx.font='30px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';ctx.textAlign='left';ctx.fillText('🏆',P+4+subW+14,264);
-  // ヘッダー画像：ロゴの下に敷き、カードの地の色をかぶせて文字を読みやすくする。下はフォロワー数の手前で地の色に溶かす
+  // ヘッダー画像：ロゴの下からフォロワー数の手前までに、色を重ねずそのまま敷く（比率はそのまま、はみ出た分を切る）
   const bnOn=!!(cardBn&&cardBn.complete&&cardBn.naturalWidth);
-  if(bnOn){const x0=F,y0=306,w0=W-F*2,h0=Math.round(w0/3),iw=cardBn.naturalWidth,ih=cardBn.naturalHeight,sc=Math.max(w0/iw,h0/ih);
-    const ca=(a)=>{const [r,g,b]=hexRgb(C.bg);return `rgba(${r},${g},${b},${a})`};
+  if(bnOn){const x0=F,y0=306,w0=W-F*2,h0=294,iw=cardBn.naturalWidth,ih=cardBn.naturalHeight,sc=Math.max(w0/iw,h0/ih);
     ctx.save();ctx.beginPath();ctx.rect(x0,y0,w0,h0);ctx.clip();
-    ctx.drawImage(cardBn,x0+(w0-iw*sc)/2,y0+(h0-ih*sc)/2,iw*sc,ih*sc);
-    const g=ctx.createLinearGradient(0,y0,0,y0+h0);g.addColorStop(0,ca(.55));g.addColorStop(.5,ca(.68));g.addColorStop(.85,ca(.93));g.addColorStop(1,ca(1));
-    ctx.fillStyle=g;ctx.fillRect(x0,y0,w0,h0);ctx.restore()}
+    ctx.drawImage(cardBn,x0+(w0-iw*sc)/2,y0+(h0-ih*sc)/2,iw*sc,ih*sc);ctx.restore()}
   ctx.fillStyle=C.line;ctx.fillRect(P,306,W-P*2,3);
   // アイコン
   const ax=P,ay=350,ar=224;
@@ -1071,11 +1073,13 @@ function drawCard(){
   ctx.strokeStyle=C.gold;ctx.lineWidth=6;ctx.beginPath();ctx.arc(ax+ar/2,ay+ar/2,ar/2+7,0,Math.PI*2);ctx.stroke();
   // 名前・ハンドル・キャッチコピー
   const tx=ax+ar+48,tmax=W-P-tx;ctx.textAlign='left';
-  if(bnOn){ctx.save();ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=14}
-  ctx.fillStyle=C.fg;fit(ctx,u.name,tmax,60,`900 #px ${MIX}`);ctx.fillText(u.name,tx,ay+78);
-  ctx.fillStyle=C.muted;ctx.font=`500 28px ${EN}`;ctx.fillText('@'+u.handle,tx,ay+124);
+  // 画像の上の文字は白にして、濃い影で読みやすくする
+  const tfg=bnOn?'#ffffff':C.fg,tmu=bnOn?'rgba(255,255,255,.88)':C.muted;
+  if(bnOn){ctx.save();ctx.shadowColor='rgba(0,0,0,.85)';ctx.shadowBlur=18;ctx.shadowOffsetY=2}
+  ctx.fillStyle=tfg;fit(ctx,u.name,tmax,60,`900 #px ${MIX}`);ctx.fillText(u.name,tx,ay+78);
+  ctx.fillStyle=tmu;ctx.font=`500 28px ${EN}`;ctx.fillText('@'+u.handle,tx,ay+124);
   const tag=state.tags[u.handle.toLowerCase()];
-  if(tag){ctx.fillStyle=C.fg;ctx.font=`500 30px ${JP}`;wrap(ctx,tag,tmax,2).forEach((l,i)=>ctx.fillText(l,tx,ay+178+i*44))}
+  if(tag){ctx.fillStyle=tfg;ctx.font=`500 30px ${JP}`;wrap(ctx,tag,tmax,2).forEach((l,i)=>ctx.fillText(l,tx,ay+178+i*44))}
   if(bnOn)ctx.restore();
   // フォロワー数
   const vals=cardVals(),prev=prevVals(),labels=['X','Threads','note'],gap=24,bw=(W-P*2-gap*2)/3,by=624,bh=W-P-624;
@@ -1146,6 +1150,7 @@ document.getElementById('cardSave').onclick=()=>cardFile(f=>{
 });
 document.getElementById('cardShare').onclick=()=>cardFile(async f=>{try{await navigator.share({files:[f]})}catch{}});
 document.getElementById('cardClose').onclick=()=>cardDlg.close();
+document.getElementById('cardX').onclick=()=>cardDlg.close();
 
 /* 全員表示：全員を1画面に収める（スクショ用） */
 function wallLayout(n,W,H){
