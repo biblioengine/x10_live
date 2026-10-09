@@ -481,6 +481,72 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .stat .v{font-size:22px;font-weight:700}
 .stat .v small{font-size:12px;color:var(--muted);margin-left:2px;font-family:var(--f-body);font-weight:400}
 .split{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start}
+/* ---- PC の個人ページ（サイトのライト／ダークに合わせる） ---- */
+.topbar h1 small{font-family:var(--f-num)}
+.pp{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:16px;align-items:start}
+.pp .pcd{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden;text-align:center;padding:0 18px 18px}
+.pp .pbn{margin:0 -18px;aspect-ratio:3/1;background:var(--track) center/cover no-repeat}
+.pp .pic{width:116px;height:116px;margin:-58px auto 10px;border-radius:50%;padding:5px;position:relative}
+.pp .pic .av{width:100%;height:100%;font-size:44px;border:4px solid var(--panel);border-radius:50%;display:block}
+.pp .nm{font-family:var(--f-disp);font-size:20px;line-height:1.3;overflow-wrap:anywhere}
+.pp .hd{font-family:var(--f-num);font-size:12px;color:var(--muted);margin-top:2px}
+.pp .tg{font-size:13px;margin-top:8px}
+.pp .pacts{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:12px}
+.pp .xgo{border:0;font:inherit;font-size:12px;font-weight:700;border-radius:999px;padding:6px 14px;text-decoration:none;cursor:pointer;background:var(--fg);color:var(--panel)}
+.pp .xgo:hover{opacity:.85}
+.pp .cardgo{background:var(--gold);color:#161a24}
+.pp .subgo{background:transparent;color:inherit;border:1px dashed currentColor}
+.pp .blk{margin-top:16px;text-align:left}
+.pp .bio{font-size:13px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:6px}
+.pp .none{color:var(--muted)}
+.pp .shots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:14px}
+.pp .shots a{display:block;aspect-ratio:1/1;border-radius:12px;overflow:hidden;background:var(--track)}
+.pp .shots a:only-child{grid-column:1/-1;aspect-ratio:16/10}
+.pp .shots img{width:100%;height:100%;object-fit:cover;display:block}
+.pp .pnote{margin-top:14px;text-align:left}
+.pp .lb{font-family:"Archivo",var(--f-body);font-weight:800;font-size:11px;letter-spacing:.18em;color:var(--gold);line-height:1.2}
+.pp .lb small{display:block;font-family:var(--f-body);font-weight:400;font-size:9px;letter-spacing:.05em;color:var(--muted);margin-top:2px}
+.pp .prt{display:flex;flex-direction:column;gap:12px;min-width:0}
+.pp .sts{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;min-width:0}
+.pp .sth{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:8px}
+.pp .pg{display:flex;align-items:center;gap:8px}
+.pp .pgn{font-family:"Archivo",var(--f-body);font-weight:800;font-size:13px;letter-spacing:.1em;min-width:44px;text-align:center}
+.pp .pgb{width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--gold);font-size:12px;display:grid;place-items:center;cursor:pointer}
+.pp .pgb:disabled{opacity:.3;cursor:default}
+.pp .car{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;border-radius:14px}
+.pp .car::-webkit-scrollbar{display:none}
+.pp .pgp{flex:0 0 100%;scroll-snap-align:start;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.pp .st{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:12px 14px;min-width:0;min-height:104px}
+.pp .st.w3{grid-column:1/-1;min-height:0}
+.pp .v{font-family:"Archivo Black",var(--f-disp);font-size:28px;line-height:1.1;margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp .v small{font-family:"Archivo",var(--f-body);font-weight:800;font-size:12px;letter-spacing:.08em;color:var(--muted);margin-left:4px}
+.pp .v.up{color:var(--ok,#16a34a)}.pp .v.dn{color:#e5484d}
+.pp .sub{font-family:var(--f-num);font-size:11px;color:var(--muted);margin-top:2px}
+.pp .bar{height:8px;border-radius:99px;background:var(--track);margin-top:8px;overflow:hidden;display:flex}
+.pp .bar i{display:block;height:100%;background:var(--gold)}.pp .bar i.b{background:var(--x)}
+.pp .dn2{display:flex;justify-content:space-between;font-family:"Archivo",var(--f-body);font-weight:800;font-size:11px;letter-spacing:.1em;margin-top:8px}
+.pp .dn2 span:first-child{color:var(--gold)}.pp .dn2 span:last-child{color:var(--x)}
+.pp .sts.tint{background:var(--cbg);border-color:var(--cline);color:var(--cfg)}
+.pp .sts.tint .st{background:var(--cpan);border-color:var(--cline)}
+.pp .sts.tint .lb{color:var(--cacc)}.pp .sts.tint .lb small,.pp .sts.tint .sub,.pp .sts.tint .v small{color:var(--cmut)}
+.pp .sts.tint .bar{background:var(--cline)}.pp .sts.tint .bar i:not(.b){background:var(--cacc)}.pp .sts.tint .dn2 span:first-child{color:var(--cacc)}
+.pp .sts.tint .pgb{background:var(--cpan);border-color:var(--cline);color:var(--cacc)}
+.pp .more .st{background:var(--panel);border-radius:18px}
+.pp .pth{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.pp .netgo{flex:none;border:1px solid var(--gold);background:transparent;color:inherit;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.pp .netgo:hover{background:var(--gold);color:#161a24}
+.pp .pt{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+.pp .pt button{display:flex;align-items:center;gap:8px;min-width:0;flex:1 1 150px;background:var(--bg);border:1px solid transparent;border-radius:12px;padding:6px 10px 6px 6px;color:inherit;text-align:left;cursor:pointer}
+.pp .pt button:hover{border-color:var(--gold)}
+.pp .pt .av{width:34px;height:34px;flex:none;font-size:14px;border-radius:50%}
+.pp .pt b{display:block;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp .pt span{font-family:var(--f-num);font-size:11px;color:var(--muted)}
+.pp .cm{font-size:13px;line-height:1.75;margin-top:6px;white-space:pre-wrap;overflow-wrap:anywhere}
+.pp .psplit{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start}
+.pp .psplit .card{margin:0;min-width:0}
+.pp .psplit .cal .grid{gap:3px}
+@media (max-width:1100px){.pp .psplit{grid-template-columns:minmax(0,1fr)}}
+
 .cal{padding:12px 16px 16px}
 .dow,.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
 .dow div{font-size:11px;color:var(--muted);text-align:center;padding-bottom:4px}
@@ -957,43 +1023,38 @@ function calCells(u){
   return cells;
 }
 function renderUser(){
-  const u=findU(state.uid),{y,m}=state,n=dim(y,m),tk=todayKey(),sk=startKey();
-  const tot=totals(u.id),tc=tot.map[tk]||0;
-  const first=new Date(y,m,1).getDay();
-  let cells='';
-  for(let i=0;i<first;i++) cells+='<div class="day out"></div>';
-  for(let d=1;d<=n;d++){
-    const k=ymd(y,m,d),c=tot.map[k]||0,a=c>=GOAL;
-    if(k>tk){cells+=`<div class="day future"><span class="d num"><span>${d}</span></span></div>`;continue}
-    cells+=`<button type="button" class="day${a?' done':''}${k===tk?' today':''}${k<sk?' pre':''}" data-k="${k}" aria-pressed="${state.day===k}"
-      aria-label="${m+1}月${d}日 ${c}本${a?' 達成':''}">
-      <span class="d num"><span>${d}</span></span>
-      <span class="c">${c}<small>本</small></span>
-      <span class="dbar"><b style="width:${Math.min(100,c/GOAL*100)}%"></b></span></button>`;
-  }
-  document.getElementById('main').innerHTML=`
-  <div class="topbar"><h1><button type="button" class="plrbtn" data-plr="${esc(u.id)}" title="選手紹介を見る" aria-label="${esc(u.name)}さんの選手紹介を見る">${av(u,'lg')}</button><span class="hname"><span class="hrow"><a class="xname" href="https://x.com/${encodeURIComponent(u.handle)}" target="_blank" rel="noopener">${esc(u.name)}</a> <small>@${esc(u.handle)}</small></span>${state.tags[u.handle.toLowerCase()]?`<span class="tagline">${esc(state.tags[u.handle.toLowerCase()])}</span>`:''}</span></h1>
-    <a class="xlink" href="https://x.com/${encodeURIComponent(u.handle)}" target="_blank" rel="noopener">Xアカウントへ ↗</a>
-    <button type="button" class="cardbtn" data-card="${esc(u.id)}">今日のカードを作る</button>
-    ${(sb=>sb?`<button type="button" class="sublink" data-u="${esc(sb.id)}" data-today="1">サブ垢チャレンジ中 →</button>`:'')(subOf(u))}
-    ${(mn=>mn?`<button type="button" class="sublink" data-u="${esc(mn.id)}" data-today="1">← メインアカウントへ</button>`:'')(mainOf(u))}${onair()}</div>
+  // PC の個人ページ：左に縦長のプロフィールカード、右にステータス・パートナー、その下にカレンダーとポスト
+  const u=findU(state.uid),tk=todayKey();
+  const P=plrParts(u),bc=state.colors[u.handle.toLowerCase()];
+  const m=document.getElementById('main');
+  m.innerHTML=`
+  <div class="topbar"><h1>${esc(u.name)}<small>@${esc(u.handle)}</small></h1>${onair()}</div>
   ${u.sub?`<div class="subnote">${(mn=>mn?`${esc(mn.name)}（@${esc(mn.handle)}）さん`:`@${esc(u.main)} さん`)(mainOf(u))}のサブアカウントです。一覧・ランキング・達成カレンダーには含まれません。</div>`:''}
-  <section class="card stats">
-    <div class="stat"><div class="k">今日</div><div class="v num" style="color:${tc>=GOAL?'var(--gold)':'var(--x)'}">${tc}<small>/ ${GOAL}本</small></div></div>
-    <div class="stat"><div class="k">達成日数</div><div class="v num">${tot.ach}<small>/ ${tot.days}日</small></div></div>
-    <div class="stat"><div class="k">達成率</div><div class="v num">${tot.days?Math.round(tot.ach/tot.days*100):0}<small>%</small></div></div>
-    <div class="stat"><div class="k">通算投稿</div><div class="v num">${tot.all}<small>本</small></div></div>
-    ${(f=>f?`<div class="stat"><div class="k">フォロワー</div><div class="v num">${f.now.toLocaleString()}<small style="color:${sgnc(f.day)}">前日比 ${sgn(f.day)}</small></div>
-      <div class="k num" style="color:${sgnc(f.total)}">${f.since.slice(5).replace('-','/')}から ${sgn(f.total)}</div></div>`
-      :`<div class="stat"><div class="k">フォロワー</div><div class="v num">—<small>記録待ち</small></div></div>`)(fol(u.handle))}
-  </section>
-  <div class="split">
-    <section class="card">
-      <div class="card-h"><h2>カレンダー</h2>${monthNav()}</div>
-      <div class="cal"><div class="dow">${DOW.map(d=>`<div>${d}</div>`).join('')}</div><div class="grid">${cells}</div></div>
-    </section>
-    <section class="card" id="tlCard">${timeline(u)}</section>
+  <div class="pp">
+    <aside class="pcd">
+      <div class="pbn"${u.bn?` style="background-image:url('${bnURL(u)}')"`:bc?` style="background:${bc}"`:''}></div>
+      <div class="pic" style="background:${ringBg(dayCount(u.id,tk),'var(--x)','var(--track)','var(--gold)')}">${P.pav(u)}</div>
+      <div class="nm">${esc(u.name)}</div><div class="hd">@${esc(u.handle)}</div>
+      ${P.tag?`<div class="tg">${esc(P.tag)}</div>`:''}
+      <div class="pacts"><a class="xgo" href="https://x.com/${encodeURIComponent(u.handle)}" target="_blank" rel="noopener">Xアカウントへ ↗</a>
+        <button type="button" class="xgo cardgo" data-card="${esc(u.id)}">今日のカードを作る</button>${P.subBtns('xgo subgo')}</div>
+      ${P.bioHTML}
+      ${P.shotsHTML}
+      ${P.note?`<div class="pnote">${P.noteHTML}</div>`:''}
+    </aside>
+    <div class="prt">
+      ${P.stsHTML}
+      <section class="more">${P.partnersHTML}</section>
+      <div class="psplit">
+        <section class="card">
+          <div class="card-h"><h2>カレンダー</h2>${monthNav()}</div>
+          <div class="cal"><div class="dow">${DOW.map(d=>`<div>${d}</div>`).join('')}</div><div class="grid">${calCells(u)}</div></div>
+        </section>
+        <section class="card" id="tlCard">${timeline(u)}</section>
+      </div>
+    </div>
   </div>`;
+  wireStatus(m);
 }
 function timeline(u){
   const k=state.day;
@@ -1361,15 +1422,14 @@ function playerStats(u){
   const partners=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(([h,c])=>({u:state.users.find(v=>v.handle===h),c})).filter(x=>x.u).slice(0,3);
   return{tot,usk,high,combo,day,night:posts.length-day,peak,quote,all:posts.length,partners,fol:fol(u.handle)};
 }
-function openPlayer(id,opt={}){
-  const u=findU(id);if(!u)return;closePlayer();
+// 個人ページの部品（スマホの個人ページと PC の個人ページで共通）
+function plrParts(u){
   const S=playerStats(u),t=S.tot,md=k=>`${Math.floor(k/100)%100}.${String(k%100).padStart(2,'0')}`;
   const L=(en,ja)=>`<div class="lb">${en}<small>${ja}</small></div>`;
   // アイコンはサイトに保存してある大きい画像を優先（なければXの画像、それもなければ頭文字）
   const pav=v=>`<span class="av" style="background-color:${v.color};background-image:url('avatars/${encodeURIComponent(v.handle.toLowerCase())}.jpg')${state.img[v.id]?`,url('${esc(state.img[v.id])}')`:''};background-size:cover;background-position:center" role="img" aria-label="${esc(v.name)}"></span>`;
   const pct=(a,b)=>b?Math.round(a/b*100):0;
   const g=S.fol?.total,joined=u.joined?new Date(u.joined):null,tag=state.tags[u.handle.toLowerCase()],note=state.notes[u.handle.toLowerCase()];
-  const el=document.createElement('div');el.id='plr';el.dataset.id=u.id;el.setAttribute('role','dialog');el.setAttribute('aria-label',u.name+'さんの選手紹介');
   const st=(cls,body)=>`<div class="st${cls}">${body}</div>`;
   // イメージカラー（colors.txt）。アイコンとステータスの部分だけ、その色に合わせて文字色なども決める
   const tint=(c=>{if(!c)return '';const P=cardPalette(c);
@@ -1390,15 +1450,43 @@ function openPlayer(id,opt={}){
           <div class="dn2"><span>DAY ${pct(S.day,S.all)}%</span><span>NIGHT ${pct(S.night,S.all)}%</span></div>
           <div class="bar"><i style="width:${pct(S.day,S.all)}%"></i><i class="b" style="flex:1"></i></div>
           <div class="sub">PEAK ${S.peak==null?'—':String(S.peak).padStart(2,'0')+':00'}</div>`)]];
-  // ---- スマホ：個人ページと選手紹介を1つにまとめた画面 ----
-  if(isPhone()){
-    const f=S.fol;
-    pages[2]=[
+  // 3ページ目：フォロワー数・増え方・引用・昼夜
+  {const f=S.fol;pages[2]=[
       st('',`${L('FOLLOWERS','フォロワー数')}<div class="v">${f?f.now.toLocaleString():'—'}</div>${f&&f.day!=null?`<div class="sub">前日比 ${sgn(f.day)}</div>`:''}`),
       st('',`${L('GROW UP','フォロワーの増え方')}<div class="v${g>0?' up':g<0?' dn':''}">${g==null?'—':sgn(g)}</div>${f?`<div class="sub">${f.since.slice(5).replace('-','.')}〜</div>`:''}`),
       st('',`${L('QUOTE','引用の割合')}<div class="v">${pct(S.quote,S.all)}<small>%</small></div><div class="bar"><i class="b" style="width:${pct(S.quote,S.all)}%"></i></div>`),
       st('',`${L('DAY / NIGHT','昼6〜18時／夜')}<div class="dn2"><span>DAY ${pct(S.day,S.all)}%</span><span>${pct(S.night,S.all)}%</span></div>
-          <div class="bar"><i style="width:${pct(S.day,S.all)}%"></i><i class="b" style="flex:1"></i></div><div class="sub">PEAK ${S.peak==null?'—':String(S.peak).padStart(2,'0')+':00'}</div>`)];
+          <div class="bar"><i style="width:${pct(S.day,S.all)}%"></i><i class="b" style="flex:1"></i></div><div class="sub">PEAK ${S.peak==null?'—':String(S.peak).padStart(2,'0')+':00'}</div>`)]}
+  const stsHTML=`<section class="sts${tint?' tint':''}"${tint} aria-roledescription="carousel" aria-label="ステータス">
+          <div class="sth"><div class="lb">STATUS<small>成績</small></div>
+            <div class="pg"><button type="button" class="pgb" data-pg="-1" aria-label="前のページ">◀︎</button><span class="pgn num" aria-live="polite">1 / ${pages.length}</span><button type="button" class="pgb" data-pg="1" aria-label="次のページ">▶︎</button></div></div>
+          <div class="car">${pages.map((p,i)=>`<div class="pgp" aria-label="${i+1} / ${pages.length}">${p.join('')}</div>`).join('')}</div>
+        </section>`;
+  const partnersHTML=st(' w3',`<div class="pth">${L('PARTNERS','よく交流している相手')}<button type="button" class="netgo" data-net="${esc(u.id)}">交流を見る ▶︎</button></div>
+            ${S.partners.length?`<div class="pt">${S.partners.map(p=>`<button type="button" data-plr="${esc(p.u.id)}" aria-label="${esc(p.u.name)}さんのページへ">${pav(p.u)}<span style="min-width:0"><b>${esc(p.u.name)}</b><span>${p.c} HITS</span></span></button>`).join('')}</div>`:'<div class="sub" style="margin-top:8px">—</div>'}`);
+  const shotsHTML=(ph=>ph.length?`<div class="shots">${ph.map(x=>`<a href="https://x.com/${encodeURIComponent(u.handle)}/status/${encodeURIComponent(x.post)}" target="_blank" rel="noopener" aria-label="元の投稿を見る"><img src="${esc(x.img)}${x.img.includes('?')?'':'?name=small'}" alt="" loading="lazy"></a>`).join('')}</div>`:'')(state.photos[u.handle]||[]);
+  const bioHTML=`<div class="blk">${L('BIO','自己紹介（Xのプロフィールより）')}<div class="bio${u.bio?'':' none'}">${u.bio?esc(u.bio):'—'}</div></div>`;
+  const noteHTML=note?st(' w3',`${L('COMMENTARY','実況席より')}<div class="cm">${esc(note)}</div>`):'';
+  const subBtns=(cls)=>`${(sb=>sb?`<button type="button" class="${cls}" data-u="${esc(sb.id)}" data-today="1">サブ垢 →</button>`:'')(subOf(u))}${(mn=>mn?`<button type="button" class="${cls}" data-u="${esc(mn.id)}" data-today="1">← メイン</button>`:'')(mainOf(u))}`;
+  return {S,pages,pav,L,st,tint,tag,note,stsHTML,partnersHTML,shotsHTML,bioHTML,noteHTML,subBtns};
+}
+// ステータスのページ送り：ボタンでも横スワイプでも切り替わり、「1 / 3」が追いかける
+function wireStatus(root){
+  const car=root.querySelector('.car');if(!car)return;const pgn=root.querySelector('.pgn'),pb=root.querySelectorAll('.pgb'),n=car.children.length;
+  const cur=()=>Math.round(car.scrollLeft/Math.max(1,car.clientWidth));
+  const upd=()=>{const i=cur();pgn.textContent=`${i+1} / ${n}`;pb[0].disabled=i===0;pb[1].disabled=i===n-1};
+  car.addEventListener('scroll',()=>requestAnimationFrame(upd),{passive:true});
+  pb.forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();car.scrollTo({left:(cur()+ +b.dataset.pg)*car.clientWidth,behavior:'smooth'})}));
+  upd();
+}
+function openPlayer(id,opt={}){
+  const u=findU(id);if(!u)return;closePlayer();
+  // PC：みんなの実況から開くときと同じ個人ページ（#main）に出す
+  if(!isPhone()){hidePeople();state.view='user';state.uid=u.id;const k=opt.day||todayKey();state.day=k;state.y=Math.floor(k/1e4);state.m=Math.floor(k/100)%100-1;render();window.scrollTo({top:0});return}
+  const {S,pages,pav,L,st,tint,tag,note,stsHTML,partnersHTML,shotsHTML,bioHTML,noteHTML,subBtns}=plrParts(u);
+  const el=document.createElement('div');el.id='plr';el.dataset.id=u.id;el.setAttribute('role','dialog');el.setAttribute('aria-label',u.name+'さんの選手紹介');
+  // ---- スマホ：個人ページと選手紹介を1つにまとめた画面 ----
+  {
     el.classList.add('uni');state.uid=u.id;
     if(opt.day)state.day=opt.day;else if(!state.day||opt.sec!=='post')state.day=todayKey();
     const sec={status:0,cal:1,post:2}[opt.sec||'status']??0;
@@ -1415,20 +1503,15 @@ function openPlayer(id,opt={}){
     </div>
     <div class="ucar">
       <div class="usec">
-        <section class="sts${tint?' tint':''}"${tint} aria-roledescription="carousel" aria-label="ステータス">
-          <div class="sth"><div class="lb">STATUS<small>成績</small></div>
-            <div class="pg"><button type="button" class="pgb" data-pg="-1" aria-label="前のページ">◀︎</button><span class="pgn num" aria-live="polite">1 / ${pages.length}</span><button type="button" class="pgb" data-pg="1" aria-label="次のページ">▶︎</button></div></div>
-          <div class="car">${pages.map((p,i)=>`<div class="pgp" aria-label="${i+1} / ${pages.length}">${p.join('')}</div>`).join('')}</div>
-        </section>
+        ${stsHTML}
         <section class="more">
-          ${st(' w3',`<div class="pth">${L('PARTNERS','よく交流している相手')}<button type="button" class="netgo" data-net="${esc(u.id)}">交流を見る ▶︎</button></div>
-            ${S.partners.length?`<div class="pt">${S.partners.map(p=>`<button type="button" data-plr="${esc(p.u.id)}" aria-label="${esc(p.u.name)}さんのページへ">${pav(p.u)}<span style="min-width:0"><b>${esc(p.u.name)}</b><span>${p.c} HITS</span></span></button>`).join('')}</div>`:'<div class="sub" style="margin-top:8px">—</div>'}`)}
+          ${partnersHTML}
         </section>
         <section class="side">
-          ${(ph=>ph.length?`<div class="shots">${ph.map(x=>`<a href="https://x.com/${encodeURIComponent(u.handle)}/status/${encodeURIComponent(x.post)}" target="_blank" rel="noopener" aria-label="元の投稿を見る"><img src="${esc(x.img)}${x.img.includes('?')?'':'?name=small'}" alt="" loading="lazy"></a>`).join('')}</div>`:'')(state.photos[u.handle]||[])}
-          <div class="blk">${L('BIO','自己紹介（Xのプロフィールより）')}<div class="bio${u.bio?'':' none'}">${u.bio?esc(u.bio):'—'}</div></div>
+          ${shotsHTML}
+          ${bioHTML}
         </section>
-        ${note?`<section class="more">${st(' w3',`${L('COMMENTARY','実況席より')}<div class="cm">${esc(note)}</div>`)}</section>`:''}
+        ${note?`<section class="more">${noteHTML}</section>`:''}
       </div>
       <div class="usec"><section class="card">
         <div class="cal"><div class="dow">${DOW.map(d=>`<div>${d}</div>`).join('')}</div><div class="grid">${calCells(u)}</div></div></section></div>
@@ -1439,41 +1522,8 @@ function openPlayer(id,opt={}){
     const usync=()=>{const i=Math.round(uc.scrollLeft/Math.max(1,uc.clientWidth));ujs.forEach(b=>b.setAttribute('aria-current',+b.dataset.uj===i))};
     uc.addEventListener('scroll',()=>requestAnimationFrame(usync),{passive:true});
     uc.scrollLeft=sec*uc.clientWidth;usync();
-  }else{
-  el.innerHTML=`<div class="in">
-  <div class="ph"><span class="tt">PLAYER PROFILE<small>選手紹介</small></span><div class="acts"><button type="button" class="back" data-go="live">TOPへ</button><button type="button" class="back" data-go="players">一覧に戻る</button></div></div>
-  <div class="grid">
-    <section class="hero${tint?' tint':''}${u.bn?' bn':''}"${tint}>${u.bn?`<i class="bnimg" style="background-image:url('${bnURL(u)}')"></i>`:''}
-      <div class="pic" style="background:${ringBg(dayCount(u.id,todayKey()),'var(--pb)','rgba(255,255,255,.16)','var(--pg)')}">${pav(u)}</div>
-      <div class="who2"><div class="nm">${esc(u.name)}</div><div class="hd">@${esc(u.handle)}</div>
-      ${tag?`<div class="tg">${esc(tag)}</div>`:''}
-      <a class="xgo" href="https://x.com/${encodeURIComponent(u.handle)}" target="_blank" rel="noopener">Xアカウントへ ↗</a></div>
-    </section>
-    <section class="sts${tint?' tint':''}"${tint} aria-roledescription="carousel" aria-label="ステータス">
-      <div class="sth"><div class="lb">STATUS<small>成績</small></div>
-        <div class="pg"><button type="button" class="pgb" data-pg="-1" aria-label="前のページ">◀︎</button><span class="pgn num" aria-live="polite">1 / ${pages.length}</span><button type="button" class="pgb" data-pg="1" aria-label="次のページ">▶︎</button></div></div>
-      <div class="car">${pages.map((p,i)=>`<div class="pgp" aria-label="${i+1} / ${pages.length}">${p.join('')}</div>`).join('')}</div>
-    </section>
-    <section class="side">
-      ${(ph=>ph.length?`<div class="shots">${ph.map(x=>`<a href="https://x.com/${encodeURIComponent(u.handle)}/status/${encodeURIComponent(x.post)}" target="_blank" rel="noopener" aria-label="元の投稿を見る"><img src="${esc(x.img)}${x.img.includes('?')?'':'?name=small'}" alt="" loading="lazy"></a>`).join('')}</div>`:'')(state.photos[u.handle]||[])}
-      <div class="blk">${L('BIO','自己紹介（Xのプロフィールより）')}<div class="bio${u.bio?'':' none'}">${u.bio?esc(u.bio):'—'}</div></div>
-    </section>
-    <section class="more">
-      ${st(' w3',`<div class="pth">${L('PARTNERS','よく交流している相手')}<button type="button" class="netgo" data-net="${esc(u.id)}">交流を見る ▶︎</button></div>
-          ${S.partners.length?`<div class="pt">${S.partners.map(p=>`<button type="button" data-plr="${esc(p.u.id)}" aria-label="${esc(p.u.name)}さんの選手紹介へ">${pav(p.u)}<span style="min-width:0"><b>${esc(p.u.name)}</b><span>${p.c} HITS</span></span></button>`).join('')}</div>`:'<div class="sub" style="margin-top:8px">—</div>'}`)}
-      ${note?st(' w3',`${L('COMMENTARY','実況席より')}<div class="cm">${esc(note)}</div>`):''}
-    </section>
-  </div></div>`;
-  document.body.appendChild(el);document.documentElement.style.overflow='hidden';
   }
-  // ページ送り：ボタンでも横スワイプでも切り替わり、「1 / 3」が追いかける
-  const car=el.querySelector('.car'),pgn=el.querySelector('.pgn'),pb=el.querySelectorAll('.pgb');
-  const cur=()=>Math.round(car.scrollLeft/Math.max(1,car.clientWidth));
-  const upd=()=>{const i=cur();pgn.textContent=`${i+1} / ${pages.length}`;pb[0].disabled=i===0;pb[1].disabled=i===pages.length-1};
-  car.addEventListener('scroll',()=>requestAnimationFrame(upd),{passive:true});
-  pb.forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();car.scrollTo({left:(cur()+ +b.dataset.pg)*car.clientWidth,behavior:'smooth'})}));
-  upd();
-  el.querySelector('[data-go="players"]')?.focus({preventScroll:true});
+  wireStatus(el);
 }
 function closePlayer(){const el=document.getElementById('plr');if(el){el.remove();document.documentElement.style.overflow=''}}
 addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('plr'))backOv(closePlayer)});
