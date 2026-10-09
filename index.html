@@ -186,6 +186,10 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .cd .sw button{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);padding:0}
 .cd .sw button[aria-pressed="true"]{border-color:var(--fg);box-shadow:0 0 0 2px var(--panel) inset}
 .cd .free{flex-direction:row;align-items:center;gap:6px;margin:0;font-size:12px;font-weight:700}
+.cd .bnrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
+.cd .bna{flex-direction:row;align-items:center;gap:8px;margin:0;font-size:12px;font-weight:700}
+.cd .bna input{width:120px;padding:0;border:0;background:none;accent-color:var(--gold)}
+.cd .bnrow:has(#cBn:not(:checked)) .bna{opacity:.4;pointer-events:none}
 .cd .bnsw{flex-direction:row;align-items:center;gap:6px;margin:0;font-size:12px;font-weight:700;cursor:pointer}
 .cd .bnsw input{width:18px;height:18px;padding:0;margin:0;accent-color:var(--gold);cursor:pointer}
 .cd .free input{width:36px;height:30px;padding:0;border-radius:6px;cursor:pointer}
@@ -567,7 +571,8 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
         <span class="bgl">背景の色</span>
         <div class="sw" id="cardSw"></div>
         <label class="free" for="cBg">自由に選ぶ<input type="color" id="cBg" value="#0e1116"></label>
-        <label class="bnsw" id="cBnW" hidden><input type="checkbox" id="cBn" checked>ヘッダー画像</label>
+        <span class="bnrow" id="cBnW" hidden><label class="bnsw"><input type="checkbox" id="cBn" checked>ヘッダー画像</label>
+          <label class="bna">なじませる<input type="range" id="cBnA" min="0" max="100" step="5" value="100" aria-label="ヘッダー画像を背景色になじませる強さ"></label></span>
       </div>
     </div>
     <div>
@@ -971,6 +976,7 @@ function timeline(u){
 /* ---------- 操作 ---------- */
 /* 個人カード：1×10×30 / One Ten Thirty Run */
 const CARD={bg:'#0e1116',panel:'#181d27',line:'#2a3140',fg:'#f2f4f8',muted:'#8c95a8',gold:'#f2b632'};
+const BN_BLEND=100; // 報告カードのヘッダー画像を背景色になじませる強さ（全員共通の初期値）
 let cardU=null,cardImg=null,cardBn=null,cardRaf=0,cardBg='#0e1116';
 const BG_PRESETS=[['#0e1116','インク'],['#14213d','ネイビー'],['#123629','ディープグリーン'],['#4a1424','ボルドー'],['#2a1c48','パープル'],['#3a3f4a','スレート'],['#7a2e12','テラコッタ'],['#f3f4f6','ホワイト']];
 const hexRgb=h=>{h=h.replace('#','');return[0,2,4].map(i=>parseInt(h.slice(i,i+2),16))};
@@ -1065,7 +1071,13 @@ function drawCard(){
   const bnOn=!!(cardBn&&cardBn.complete&&cardBn.naturalWidth&&document.getElementById('cBn').checked);
   if(bnOn){const x0=F,y0=306,w0=W-F*2,h0=294,iw=cardBn.naturalWidth,ih=cardBn.naturalHeight,sc=Math.max(w0/iw,h0/ih);
     ctx.save();ctx.beginPath();ctx.rect(x0,y0,w0,h0);ctx.clip();
-    ctx.drawImage(cardBn,x0+(w0-iw*sc)/2,y0+(h0-ih*sc)/2,iw*sc,ih*sc);ctx.restore()}
+    ctx.drawImage(cardBn,x0+(w0-iw*sc)/2,y0+(h0-ih*sc)/2,iw*sc,ih*sc);
+    // 背景色になじませる（スライダーの値。右側＝文字のある側ほど強く）
+    const v=(+document.getElementById('cBnA').value||0)/100;
+    if(v>0){const [r,g,b]=hexRgb(C.bg),gr=ctx.createLinearGradient(x0,0,x0+w0,0);
+      gr.addColorStop(0,`rgba(${r},${g},${b},${v*.25})`);gr.addColorStop(.3,`rgba(${r},${g},${b},${v*.6})`);gr.addColorStop(.45,`rgba(${r},${g},${b},${v*.9})`);gr.addColorStop(1,`rgba(${r},${g},${b},${v})`);
+      ctx.fillStyle=gr;ctx.fillRect(x0,y0,w0,h0)}
+    ctx.restore()}
   ctx.fillStyle=C.line;ctx.fillRect(P,306,W-P*2,3);
   // アイコン
   const ax=P,ay=350,ar=224;
@@ -1076,14 +1088,12 @@ function drawCard(){
   ctx.strokeStyle=C.gold;ctx.lineWidth=6;ctx.beginPath();ctx.arc(ax+ar/2,ay+ar/2,ar/2+7,0,Math.PI*2);ctx.stroke();
   // 名前・ハンドル・キャッチコピー
   const tx=ax+ar+48,tmax=W-P-tx;ctx.textAlign='left';
-  // 画像の上の文字は白にして、濃い影で読みやすくする
-  const tfg=bnOn?'#ffffff':C.fg,tmu=bnOn?'rgba(255,255,255,.88)':C.muted;
-  if(bnOn){ctx.save();ctx.shadowColor='rgba(0,0,0,.85)';ctx.shadowBlur=18;ctx.shadowOffsetY=2}
-  ctx.fillStyle=tfg;fit(ctx,u.name,tmax,60,`900 #px ${MIX}`);ctx.fillText(u.name,tx,ay+78);
-  ctx.fillStyle=tmu;ctx.font=`500 28px ${EN}`;ctx.fillText('@'+u.handle,tx,ay+124);
   const tag=state.tags[u.handle.toLowerCase()];
-  if(tag){ctx.fillStyle=tfg;ctx.font=`500 30px ${JP}`;wrap(ctx,tag,tmax,2).forEach((l,i)=>ctx.fillText(l,tx,ay+178+i*44))}
-  if(bnOn)ctx.restore();
+  ctx.font=`500 30px ${JP}`;const tagL=tag?wrap(ctx,tag,tmax,2):[];
+  const nmPx=fit(ctx,u.name,tmax,60,`900 #px ${MIX}`),nmW=ctx.measureText(u.name).width;
+  ctx.fillStyle=C.fg;ctx.font=`900 ${nmPx}px ${MIX}`;ctx.fillText(u.name,tx,ay+78);
+  ctx.fillStyle=C.muted;ctx.font=`500 28px ${EN}`;ctx.fillText('@'+u.handle,tx,ay+124);
+  if(tagL.length){ctx.fillStyle=C.fg;ctx.font=`500 30px ${JP}`;tagL.forEach((l,i)=>ctx.fillText(l,tx,ay+178+i*44))}
   // フォロワー数
   const vals=cardVals(),prev=prevVals(),labels=['X','Threads','note'],gap=24,bw=(W-P*2-gap*2)/3,by=624,bh=W-P-624;
   const fmt=v=>Number(v).toLocaleString('en-US');
@@ -1132,7 +1142,9 @@ async function openCard(id){
   cardBn=null;if(cardU.bn){const b=new Image();b.onload=redrawCard;b.src=bnURL(cardU);cardBn=b}
   // ヘッダー画像を使うかどうか（人ごとに覚えておく。ヘッダーのない人には出さない）
   document.getElementById('cBnW').hidden=!cardU.bn;
-  {let on=true;try{on=localStorage.getItem('cardbn:'+cardU.handle.toLowerCase())!=='0'}catch{}document.getElementById('cBn').checked=on}
+  // 「なじませる」の強さは全員共通（人ごとには覚えない）。どんなヘッダーでも名前が読めるよう、初期値は100
+  {let on=true,a=String(BN_BLEND);try{const k=cardU.handle.toLowerCase();on=localStorage.getItem('cardbn:'+k)!=='0';a=localStorage.getItem('cardbna')||a}catch{}
+   document.getElementById('cBn').checked=on;document.getElementById('cBnA').value=a}
   drawCard();
   const probe=new File([new Blob(['x'],{type:'image/png'})],'x.png',{type:'image/png'});
   document.getElementById('cardShare').hidden=!(navigator.canShare&&navigator.canShare({files:[probe]}));
@@ -1157,6 +1169,7 @@ document.getElementById('cardSave').onclick=()=>cardFile(f=>{
 document.getElementById('cardShare').onclick=()=>cardFile(async f=>{try{await navigator.share({files:[f]})}catch{}});
 document.getElementById('cardClose').onclick=()=>cardDlg.close();
 document.getElementById('cardX').onclick=()=>cardDlg.close();
+document.getElementById('cBnA').addEventListener('input',e=>{try{localStorage.setItem('cardbna',e.target.value)}catch{}redrawCard()});
 document.getElementById('cBn').addEventListener('change',e=>{try{localStorage.setItem('cardbn:'+cardU.handle.toLowerCase(),e.target.checked?'1':'0')}catch{}redrawCard()});
 
 /* 全員表示：全員を1画面に収める（スクショ用） */
