@@ -186,6 +186,8 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .cd .sw button{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);padding:0}
 .cd .sw button[aria-pressed="true"]{border-color:var(--fg);box-shadow:0 0 0 2px var(--panel) inset}
 .cd .free{flex-direction:row;align-items:center;gap:6px;margin:0;font-size:12px;font-weight:700}
+.cd .bnsw{flex-direction:row;align-items:center;gap:6px;margin:0;font-size:12px;font-weight:700;cursor:pointer}
+.cd .bnsw input{width:18px;height:18px;padding:0;margin:0;accent-color:var(--gold);cursor:pointer}
 .cd .free input{width:36px;height:30px;padding:0;border-radius:6px;cursor:pointer}
 .cd .acts{display:flex;flex-direction:column;gap:8px;margin-top:6px}
 .cd .acts .btn{width:100%;padding:9px 12px}
@@ -565,6 +567,7 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
         <span class="bgl">背景の色</span>
         <div class="sw" id="cardSw"></div>
         <label class="free" for="cBg">自由に選ぶ<input type="color" id="cBg" value="#0e1116"></label>
+        <label class="bnsw" id="cBnW" hidden><input type="checkbox" id="cBn" checked>ヘッダー画像</label>
       </div>
     </div>
     <div>
@@ -1059,7 +1062,7 @@ function drawCard(){
   ctx.fillStyle=C.muted;ctx.font=`800 28px ${EN}`;const subW=spaced(ctx,'ONE TEN THIRTY RUN',P+4,262,8.5);
   ctx.font='30px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';ctx.textAlign='left';ctx.fillText('🏆',P+4+subW+14,264);
   // ヘッダー画像：ロゴの下からフォロワー数の手前までに、色を重ねずそのまま敷く（比率はそのまま、はみ出た分を切る）
-  const bnOn=!!(cardBn&&cardBn.complete&&cardBn.naturalWidth);
+  const bnOn=!!(cardBn&&cardBn.complete&&cardBn.naturalWidth&&document.getElementById('cBn').checked);
   if(bnOn){const x0=F,y0=306,w0=W-F*2,h0=294,iw=cardBn.naturalWidth,ih=cardBn.naturalHeight,sc=Math.max(w0/iw,h0/ih);
     ctx.save();ctx.beginPath();ctx.rect(x0,y0,w0,h0);ctx.clip();
     ctx.drawImage(cardBn,x0+(w0-iw*sc)/2,y0+(h0-ih*sc)/2,iw*sc,ih*sc);ctx.restore()}
@@ -1127,6 +1130,9 @@ async function openCard(id){
   cardImg=new Image();cardImg.onload=redrawCard;cardImg.onerror=()=>{cardImg=null;redrawCard()};
   cardImg.src='avatars/'+encodeURIComponent(cardU.handle.toLowerCase())+'.jpg?d='+todayKey();
   cardBn=null;if(cardU.bn){const b=new Image();b.onload=redrawCard;b.src=bnURL(cardU);cardBn=b}
+  // ヘッダー画像を使うかどうか（人ごとに覚えておく。ヘッダーのない人には出さない）
+  document.getElementById('cBnW').hidden=!cardU.bn;
+  {let on=true;try{on=localStorage.getItem('cardbn:'+cardU.handle.toLowerCase())!=='0'}catch{}document.getElementById('cBn').checked=on}
   drawCard();
   const probe=new File([new Blob(['x'],{type:'image/png'})],'x.png',{type:'image/png'});
   document.getElementById('cardShare').hidden=!(navigator.canShare&&navigator.canShare({files:[probe]}));
@@ -1151,6 +1157,7 @@ document.getElementById('cardSave').onclick=()=>cardFile(f=>{
 document.getElementById('cardShare').onclick=()=>cardFile(async f=>{try{await navigator.share({files:[f]})}catch{}});
 document.getElementById('cardClose').onclick=()=>cardDlg.close();
 document.getElementById('cardX').onclick=()=>cardDlg.close();
+document.getElementById('cBn').addEventListener('change',e=>{try{localStorage.setItem('cardbn:'+cardU.handle.toLowerCase(),e.target.checked?'1':'0')}catch{}redrawCard()});
 
 /* 全員表示：全員を1画面に収める（スクショ用） */
 function wallLayout(n,W,H){
