@@ -343,7 +343,15 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #ppl .pm .wg{flex:1;min-height:0;display:grid;justify-content:center;align-content:center;padding-top:6px}
 #ppl .wsw{text-align:center;font-size:11px;color:var(--muted);padding:4px 0}
 #ppl .pr,#ppl .pl{overflow-y:auto;overscroll-behavior-y:contain}
-#ppl .pl .plive{padding-top:4px}
+#ppl .pl{padding-top:0}
+#ppl .pl .lhead{position:sticky;top:0;z-index:4;background:var(--bg);padding:8px 0 8px;margin-bottom:4px}
+#ppl .pl .lhead .topbar{flex-wrap:nowrap;gap:8px;align-items:center}
+#ppl .pl .lhead .topbar h1{font-size:17px;white-space:nowrap;flex:none;margin:0}
+#ppl .pl .lhead .onair{font-size:10.5px;gap:4px 6px;padding:3px 10px 3px 6px;min-width:0;line-height:1.35}
+#ppl .pl .ljump{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}
+#ppl .pl .ljump button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 4px;font-size:12px;font-weight:700;white-space:nowrap}
+#ppl .pl .card-h{position:sticky;top:var(--lh,96px);z-index:3;background:var(--panel);border-radius:12px 12px 0 0}
+#ppl .pl section.card{scroll-margin-top:var(--lh,96px)}
 .cmpwrap,.rankwrap{overscroll-behavior-x:contain}
 #ppl .pr .pgrid{padding:6px 0 16px}
 #ppl .wf{display:flex;flex-direction:column;align-items:center;min-width:0;overflow:hidden}
@@ -707,17 +715,19 @@ function renderLive(target){
      ${(f=>`<div class="r num" style="color:${sgnc(f?.total)}">${f?sgn(f.total):'—'}</div>`)(fol(u.handle))}</div>`).join('');
 
   const st=new Date(state.start);
+  // スマホのトップ（3ページの LIVE）では、見出しと3つの移動ボタンを上に固定する
+  const jump=target?`<div class="ljump"><button type="button" data-jump="board">途中経過</button><button type="button" data-jump="cal">カレンダー</button><button type="button" data-jump="rank">通算成績</button></div>`:'';
   (target||document.getElementById('main')).innerHTML=`
-  <div class="topbar"><h1>みんなの実況</h1>${onair()}</div>
-  <section class="card">
-    <div class="card-h"><h2>今日の途中経過</h2><span class="sub">本数の多い順（同数ならその本数に早く到達した順）・S＝今日いちばん早く10本に到達した人・カードを押すと今日の投稿へ</span></div>
+  <div class="lhead"><div class="topbar"><h1>みんなの実況</h1>${onair()}</div>${jump}</div>
+  <section class="card" data-sec="board">
+    <div class="card-h"><h2>今日の途中経過</h2></div>
     <div class="board">${board}</div>
   </section>
-  <section class="card">
+  <section class="card" data-sec="cal">
     <div class="card-h"><h2>達成カレンダー</h2>${monthNav()}<div class="key"><span><i style="background:var(--gold)"></i>10本達成</span><span><i style="background:var(--track)"></i>未達（数字は本数）</span></div></div>
     <div class="cmpwrap"><table class="cmp"><thead><tr><th></th>${head}<th>達成</th></tr></thead><tbody>${body}</tbody></table></div>
   </section>
-  <section class="card">
+  <section class="card" data-sec="rank">
     <div class="card-h"><h2>通算成績</h2><span class="sub">${st.getMonth()+1}/${st.getDate()} から今日まで・見出しを押すと並び替え</span></div>
     <div class="rankwrap"><div class="rank">
       <div class="rank-row h"><div class="stick"><span class="no"></span><button type="button" class="sortbtn" data-sort="name"${rs.k==='name'?` aria-sort="${rs.dir<0?'descending':'ascending'}"`:''}>参加者<span class="ar">${rs.k==='name'?(rs.dir<0?'▼':'▲'):''}</span></button></div>${sh('ach','達成日数')}${sh('rate','達成率')}${sh('all','投稿数')}${sh('avg','1日平均')}${sh('fol','フォロワー増減')}</div>
@@ -1065,6 +1075,7 @@ function pplTabs(){const el=pplShown();if(!el)return;const i=pplPage();
 function fillPeople(){const el=document.getElementById('ppl');if(!el)return;
   if(el.hidden){el.dataset.dirty=1;return}
   renderLive(el.querySelector('.plive'));
+  const lh=el.querySelector('.plive .lhead');if(lh)el.querySelector('.pl').style.setProperty('--lh',lh.offsetHeight+'px');
   const tk=todayKey(),n=new Date();
   const all=state.users.map(u=>({u,c:dayCount(u.id,tk)})).sort((a,b)=>Math.min(b.c,GOAL)-Math.min(a.c,GOAL));
   const done=all.filter(r=>r.c>=GOAL).length;
@@ -1354,6 +1365,8 @@ document.addEventListener('click',e=>{
     if(t==='live'&&!isPhone()){closeOverlays();state.view='live';render();pushNav();scrollTo({top:0});return}
     if(pplShown()){openPeople(pg);return}
     openPeople(pg);pushNav();return}
+  if(b.dataset.jump){const pl=document.querySelector('#ppl .pl'),sec=pl&&pl.querySelector(`[data-sec="${b.dataset.jump}"]`);
+    if(sec){const lh=pl.querySelector('.lhead').offsetHeight;pl.scrollTo({top:pl.scrollTop+sec.getBoundingClientRect().top-pl.getBoundingClientRect().top-lh,behavior:'smooth'})}return}
   if(b.dataset.pp){const c=document.querySelector('#ppl .pcar');c.scrollTo({left:+b.dataset.pp*c.clientWidth,behavior:'smooth'});return}
   if(b.id==='btnPplBack'){closePeople();pushNav();return}
   if(b.dataset.v){const w=state.wall;if(w)closeWall();if(w||state.view!==b.dataset.v){state.view=b.dataset.v;render();pushNav();scrollTo({top:0})}return}
