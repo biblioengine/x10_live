@@ -1558,10 +1558,6 @@ function openNet(focus){
     return{u,x:Math.cos(a)*r*220,y:y*220,z:Math.sin(a)*r*220,vx:0,vy:0,vz:0,img}});
   NET.idx=Object.fromEntries(NET.nodes.map((nd,i)=>[nd.u.handle.toLowerCase(),i]));
   NET.ix=(state.ix||[]).filter(x=>ids.has(x.from)&&ids.has(x.to)&&x.from!==x.to);
-  // 星くず：空間に小さな点を散らす（毎回同じ並び）。回すと手前ほど大きく速く動き、奥行きが出る
-  {let sd=7;const rnd=()=>(sd=(sd*16807)%2147483647)/2147483647;NET.stars=[];
-   for(let i=0;i<520;i++){const u=rnd()*2-1,a=rnd()*Math.PI*2,r=Math.sqrt(1-u*u),R=.35+Math.pow(rnd(),.6)*2.3;
-     NET.stars.push({x:Math.cos(a)*r*R,y:u*R,z:Math.sin(a)*r*R,s:.5+rnd()*.9})}}
   NET.hours=hours;NET.yaw=.4;NET.pitch=-.25;NET.zoom=1;NET.sel=-1;NET.alpha=1;NET.ptrs=new Map();
   NET.cv=el.querySelector('#netCv');
   const sl=el.querySelector('#netDay');
@@ -1634,14 +1630,6 @@ function netDraw(){
   const P=NET.nodes.map((p,i)=>{const x1=p.x*cy-p.z*sy,z1=p.x*sy+p.z*cy,y2=p.y*cp-z1*sp,z2=p.y*sp+z1*cp,k=D/(D-z2);
     return{i,sx:W/2+x1*k*sc,sy:H/2+y2*k*sc,k,z:z2,r:Math.max(6,Math.min(40,Math.min(W,H)*.032*k*NET.zoom))}});
   NET.P=P;
-  // 星くず（奥のものほど小さく薄く）
-  ctx.fillStyle=C.fg;
-  for(const st of NET.stars){const X=st.x*ext,Y=st.y*ext,Z=st.z*ext,x1=X*cy-Z*sy,z1=X*sy+Z*cy,y2=Y*cp-z1*sp,z2=Y*sp+z1*cp;
-    if(D-z2<ext*.3)continue;const k=D/(D-z2),px=W/2+x1*k*sc,py=H/2+y2*k*sc;if(px<-4||py<-4||px>W+4||py>H+4)continue;
-    ctx.globalAlpha=Math.max(.06,Math.min(.55,(k-.55)*.7));ctx.beginPath();ctx.arc(px,py,Math.min(2.2,Math.max(.4,st.s*k*k*.9*Math.sqrt(NET.zoom))),0,Math.PI*2);ctx.fill()}
-  ctx.globalAlpha=1;
-  // 奥行き：手前＝1、奥＝0（アイコンのにじみと薄さに使う）
-  const ks=P.map(q=>q.k),kmin=Math.min(...ks),kmax=Math.max(...ks),near=q=>kmax-kmin<1e-3?1:(q.k-kmin)/(kmax-kmin);
   const sel=NET.sel,nb=new Set();if(sel>=0)NET.edges.forEach(e=>{if(e.a===sel)nb.add(e.b);if(e.b===sel)nb.add(e.a)});
   const lit=i=>sel<0||i===sel||nb.has(i);
   // 線
@@ -1656,17 +1644,15 @@ function netDraw(){
   if(sel>=0){order.splice(order.findIndex(q=>q.i===sel),1);order.push(P[sel])}
   NET.order=order;
   for(const q of order){const nd=NET.nodes[q.i],on=lit(q.i);
-    const t=near(q),sharp=sel>=0&&on;
-    ctx.globalAlpha=on?(sharp?1:.5+.5*t):.13;
-    ctx.save();if(!sharp&&t<.75)ctx.filter=`blur(${((.75-t)*3.2).toFixed(1)}px)`;ctx.beginPath();ctx.arc(q.sx,q.sy,q.r,0,Math.PI*2);ctx.closePath();ctx.clip();
+    ctx.globalAlpha=on?1:.13;
+    ctx.save();ctx.beginPath();ctx.arc(q.sx,q.sy,q.r,0,Math.PI*2);ctx.closePath();ctx.clip();
     if(nd.img.complete&&nd.img.naturalWidth)ctx.drawImage(nd.img,q.sx-q.r,q.sy-q.r,q.r*2,q.r*2);
     else{ctx.fillStyle=nd.u.color;ctx.fillRect(q.sx-q.r,q.sy-q.r,q.r*2,q.r*2);ctx.fillStyle='#fff';ctx.font=`700 ${Math.round(q.r)}px ${cs.getPropertyValue('--f-body')}`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText([...nd.u.name][0]||'?',q.sx,q.sy+1)}
-    ctx.restore();if(!sharp&&t<.75)ctx.filter=`blur(${((.75-t)*3.2).toFixed(1)}px)`;
+    ctx.restore();
     // 投稿数のリング（1周で10本、10本で金色）
     const c=NET.cnt[q.i]||0,rw=Math.max(2,q.r*.2),rr=q.r+rw/2+1;
     ctx.lineWidth=rw;ctx.strokeStyle=C.track;ctx.beginPath();ctx.arc(q.sx,q.sy,rr,0,Math.PI*2);ctx.stroke();
     if(c){ctx.strokeStyle=c>=GOAL?C.gold:C.x;ctx.beginPath();ctx.arc(q.sx,q.sy,rr,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(c,GOAL)/GOAL);ctx.stroke()}
-    ctx.filter='none';
     if(q.i===sel){ctx.lineWidth=2;ctx.strokeStyle=C.fg;ctx.beginPath();ctx.arc(q.sx,q.sy,rr+rw/2+2,0,Math.PI*2);ctx.stroke()}
     if(sel>=0&&on){ctx.globalAlpha=1;ctx.font=`${q.i===sel?700:500} ${q.i===sel?13:11}px ${cs.getPropertyValue('--f-body')}`;ctx.textAlign='center';ctx.textBaseline='top';
       // 名前は「｜」より前だけ。繋がっている人は長いと重なるので短くする
