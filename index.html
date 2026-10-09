@@ -202,7 +202,7 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .face .sc{font-size:10px;color:var(--muted);margin-top:-4px}
 .wallbtn{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:5px 14px;font-size:13px;font-weight:700;white-space:nowrap}
 .wallbtn:hover{background:var(--hover)}
-#wall{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column;padding:calc(10px + env(safe-area-inset-top,0px)) 12px calc(10px + env(safe-area-inset-bottom,0px))}
+#wall{touch-action:pan-y pinch-zoom;will-change:transform;box-shadow:0 0 40px rgba(0,0,0,.18);position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column;padding:calc(10px + env(safe-area-inset-top,0px)) 12px calc(10px + env(safe-area-inset-bottom,0px))}
 #wall .wh{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:40px}
 #wall .wt{font-family:var(--f-disp);font-size:18px;line-height:1.2}
 #wall .wt em{font-style:normal;color:var(--gold)}
@@ -696,7 +696,7 @@ function renderPlayers(){
       <span class="pav" style="background-color:${u.color};background-image:url('avatars/${encodeURIComponent(u.handle.toLowerCase())}.jpg')${state.img[u.id]?`,url('${esc(state.img[u.id])}')`:''}"></span>
       <span class="pn">${esc(u.name)}</span><span class="ph2">@${esc(u.handle)}</span>${tag?`<span class="pt2">${esc(tag)}</span>`:''}</button>`};
   document.getElementById('main').innerHTML=`
-  <div class="topbar"><h1>PROFILE <small>参加者プロフィール ${state.users.length}人</small></h1><button type="button" class="wallbtn" data-v="member">◀︎ MEMBER</button>${onair()}</div>
+  <div class="topbar"><h1>PROFILE <small>参加者プロフィール ${state.users.length}人</small></h1><button type="button" class="wallbtn" id="btnToMember">◀︎ MEMBER</button>${onair()}</div>
   <section class="card"><div class="card-h"><h2>PLAYERS</h2><span class="sub">押すとその人の選手紹介ページ（Xのプロフィール文と、これまでの成績）・横にスワイプで MEMBER へ</span></div>
     <div class="pgrid">${state.users.map(card).join('')}</div></section>`;
 }
@@ -974,7 +974,7 @@ function renderWall(){
   const done=all.filter(r=>r.c>=GOAL).length,n=new Date();
   el.innerHTML=`<div class="wh"><span class="wt"><em>10</em>投稿チャレンジ</span>
     <span class="ws num">${n.getMonth()+1}/${n.getDate()} ${hm(n)}時点　本日達成 <b>${done}</b> / ${all.length}人</span>
-    <div class="wacts"><button type="button" class="back" id="btnWallBack">戻る</button><button type="button" class="back pf" data-v="players">PROFILE ▶︎</button></div></div><div class="wg"></div>
+    <div class="wacts"><button type="button" class="back" id="btnWallBack">戻る</button><button type="button" class="back pf" id="btnToProfile">PROFILE ▶︎</button></div></div><div class="wg"></div>
     <div class="wsw">横にスワイプで PROFILE へ</div>`;
   const g=el.querySelector('.wg');
   const W=g.clientWidth,H=g.clientHeight-6;
@@ -992,14 +992,44 @@ function renderWall(){
 }
 // MEMBER：全員を1画面に並べる表示を開く
 function goMember(){closeOverlays();state.wall=true;renderNav();renderWall();pushNav()}
-// MEMBER と PROFILE は横スワイプで行き来できる
-(()=>{let x0=null,y0=null;
-  addEventListener('touchstart',e=>{const t=e.touches[0];x0=t.clientX;y0=t.clientY},{passive:true});
-  addEventListener('touchend',e=>{if(x0===null)return;const t=e.changedTouches[0],dx=t.clientX-x0,dy=t.clientY-y0;x0=null;
-    if(Math.abs(dx)<70||Math.abs(dy)>Math.abs(dx)*.6)return;
-    if(document.getElementById('plr')||document.getElementById('net')||document.querySelector('dialog[open]'))return;
-    if(state.wall&&dx<0){closeWall();state.view='players';render();pushNav();scrollTo({top:0})}
-    else if(!state.wall&&state.view==='players'&&dx>0)goMember()},{passive:true});
+// MEMBER と PROFILE は横スワイプで行き来できる。指に合わせて画面が横に動き、離すとすべるように切り替わる
+// MEMBER（全員表示）は PROFILE の左隣にあるページとして扱う
+const SLIDE='transform .28s cubic-bezier(.2,.7,.2,1)';
+function slideWall(el,to,done){el.style.transition=SLIDE;el.style.transform=to;
+  let fin=false;const end=()=>{if(fin)return;fin=true;el.style.transition='';done&&done()};
+  el.addEventListener('transitionend',end,{once:true});setTimeout(end,400)}
+function showPlayersBelow(){state.view='players';renderNav();renderPlayers();scrollTo({top:0})}
+// MEMBER → PROFILE（全員表示が左へ抜けて、下の PROFILE が見える）
+function wallToPlayers(){const el=document.getElementById('wall');if(!el){showPlayersBelow();pushNav();return}
+  showPlayersBelow();slideWall(el,'translateX(-100%)',()=>{closeWall();pushNav()})}
+// PROFILE → MEMBER（全員表示が左から入ってくる）
+function playersToWall(){state.wall=true;renderWall();const el=document.getElementById('wall');
+  el.style.transform='translateX(-100%)';el.getBoundingClientRect();
+  slideWall(el,'translateX(0)',()=>{el.style.transform='';renderNav();pushNav()})}
+(()=>{let g=null;
+  const blocked=()=>document.getElementById('plr')||document.getElementById('net')||document.querySelector('dialog[open]');
+  addEventListener('touchstart',e=>{g=null;if(blocked())return;
+    const mode=state.wall?'w2p':(state.view==='players'?'p2w':null);if(!mode)return;
+    const t=e.touches[0];g={mode,x0:t.clientX,y0:t.clientY,t0:Date.now(),on:false,dx:0,prev:state.view}},{passive:true});
+  addEventListener('touchmove',e=>{if(!g)return;const t=e.touches[0],dx=t.clientX-g.x0,dy=t.clientY-g.y0;
+    if(!g.on){if(Math.abs(dy)>12&&Math.abs(dy)>Math.abs(dx)){g=null;return}
+      if(Math.abs(dx)<12||Math.abs(dx)<Math.abs(dy)*1.2)return;
+      if((g.mode==='w2p'&&dx>0)||(g.mode==='p2w'&&dx<0)){g=null;return}
+      g.on=true;
+      if(g.mode==='w2p'){showPlayersBelow()}
+      else{state.wall=true;renderWall()}
+      g.el=document.getElementById('wall');g.el.style.transition='none'}
+    g.dx=dx;const W=innerWidth;
+    g.el.style.transform=g.mode==='w2p'?`translateX(${Math.min(0,dx)}px)`:`translateX(${Math.max(0,dx)-W}px)`},{passive:true});
+  const end=()=>{if(!g||!g.on){g=null;return}const {mode,el,dx,t0,prev}=g;g=null;
+    const fast=Math.abs(dx)/Math.max(1,Date.now()-t0)>.5,go=Math.abs(dx)>innerWidth*.25||fast;
+    if(mode==='w2p'){
+      if(go)slideWall(el,'translateX(-100%)',()=>{closeWall();pushNav()});
+      else slideWall(el,'translateX(0)',()=>{el.style.transform='';state.view=prev;renderNav();({live:renderLive,players:renderPlayers,user:renderUser})[prev]?.()})}
+    else{
+      if(go)slideWall(el,'translateX(0)',()=>{el.style.transform='';renderNav();pushNav()});
+      else slideWall(el,'translateX(-100%)',()=>closeWall())}};
+  addEventListener('touchend',end,{passive:true});addEventListener('touchcancel',end,{passive:true});
 })();
 function closeWall(){const had=state.wall;state.wall=false;document.getElementById('wall')?.remove();document.documentElement.style.overflow='';if(had&&state.users.length)renderNav()}
 addEventListener('resize',()=>{if(state.wall)renderWall()});
@@ -1255,6 +1285,8 @@ document.addEventListener('click',e=>{
   hideTip();
   const b=e.target.closest('button');if(!b||b.disabled)return;
   if(b.id==='btnFaces'){faceIn.click();return}
+  if(b.id==='btnToProfile'){wallToPlayers();return}
+  if(b.id==='btnToMember'){playersToWall();return}
   if(b.dataset.v==='member'){goMember();return}
   if(b.dataset.v){const w=state.wall;if(w)closeWall();if(w||state.view!==b.dataset.v){state.view=b.dataset.v;render();pushNav();scrollTo({top:0})}return}
   if(b.dataset.card){openCard(b.dataset.card);return}
