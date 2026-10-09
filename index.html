@@ -320,6 +320,33 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .pcard .ph2{font-family:var(--f-num);font-size:11px;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pcard .pt2{font-size:11px;color:var(--muted);line-height:1.4;max-width:100%;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-top:2px}
 @media (max-width:720px){.pgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px}.pcard .pav{width:64px;height:64px}}
+/* MEMBER / PROFILE（横に2ページ） */
+#ppl{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column;padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(8px + env(safe-area-inset-bottom,0px))}
+#ppl .phd{display:flex;flex-direction:column;gap:8px}
+#ppl .pbrand{font-family:var(--f-disp);font-size:19px;letter-spacing:.02em;border:0;background:none;padding:0 4px;color:inherit;cursor:pointer;text-align:left;align-self:flex-start}
+#ppl .pbrand em{font-style:normal;color:var(--gold)}
+#ppl .nav.views{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+#ppl .tabs{display:flex;gap:6px;min-width:0}
+#ppl .tab{display:flex;flex-direction:column;align-items:flex-start;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:5px 12px;line-height:1.15;cursor:pointer}
+#ppl .tab b{font-family:"Archivo Black",var(--f-disp);font-weight:400;font-size:15px;letter-spacing:.08em}
+#ppl .tab small{font-size:9px;color:var(--muted)}
+#ppl .tab[aria-selected="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
+#ppl .pgn{font-family:"Archivo",var(--f-body);font-weight:800;font-size:12px;letter-spacing:.1em;color:var(--muted);margin-left:auto}
+#ppl .back{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:5px 14px;font-size:13px;font-weight:700;white-space:nowrap}
+#ppl .pcar{flex:1;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin:10px -16px 0}
+#ppl .pcar::-webkit-scrollbar{display:none}
+#ppl .pp{flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;min-width:0;height:100%;padding:0 16px}
+#ppl .pm{display:flex;flex-direction:column}
+#ppl .ws{font-size:12px;color:var(--muted)}#ppl .ws b{color:var(--fg)}
+#ppl .pm .wg{flex:1;min-height:0;display:grid;justify-content:center;align-content:center;padding-top:6px}
+#ppl .wsw{text-align:center;font-size:11px;color:var(--muted);padding:4px 0}
+#ppl .pr{overflow-y:auto;overscroll-behavior:contain}
+#ppl .pr .pgrid{padding:6px 0 16px}
+#ppl .wf{display:flex;flex-direction:column;align-items:center;min-width:0;overflow:hidden}
+#ppl .wr{border-radius:50%;position:relative;flex:none}
+#ppl .wr .av{width:100%;height:100%;border:var(--bw,2px) solid var(--bg);font-size:inherit}
+#ppl .wc{position:absolute;left:50%;transform:translateX(-50%);background:var(--gold);color:#161a24;font-weight:900;border-radius:999px;border:2px solid var(--bg);white-space:nowrap;line-height:1.3}
+#ppl .wn{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.25;margin-top:3px}
 .wall-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
 
 /* 個人ページ */
@@ -382,7 +409,10 @@ dialog::backdrop{background:rgba(10,15,25,.45)}
   .app{grid-template-columns:minmax(0,1fr)}
   aside{border-right:0;border-bottom:1px solid var(--line);padding:12px 16px;position:static;height:auto}
   .navlabel,.brand .s{display:none}
-  .nav.views{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .nav.views{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .nav.views button.big{padding:8px 10px}
+  .nav.views button.big b{font-size:15px;letter-spacing:.05em}
+  .nav.views button.big small{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
   .nav.views button{padding:6px 8px;border:1px solid var(--line)}
   .nav.views button[aria-current="true"]{box-shadow:none;border-color:var(--fg)}
   .navs{flex:none}
@@ -607,13 +637,15 @@ const hm=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'
 function ticks(v){let s='';for(let i=0;i<GOAL;i++)s+=`<i style="${i<v?`background:${v>=GOAL?'var(--gold)':'var(--x)'}`:''}"></i>`;return `<div class="ticks">${s}</div>`}
 
 /* ---------- 描画 ---------- */
-function render(){if(state.wall)renderWall();renderNav();({live:renderLive,roster:renderRoster,players:renderPlayers,user:renderUser})[state.view]()}
+function render(){if(state.wall)renderWall();if(document.getElementById('ppl'))fillPeople();renderNav();({live:renderLive,roster:renderRoster,players:renderPlayers,user:renderUser})[state.view]()}
+// 上のタブ（LIVE・MEMBER・PROFILE）。トップと MEMBER/PROFILE の画面で同じものを出す
+function tabsHTML(active){
+  return [['live','LIVE','みんなの実況'],['member','MEMBER',`参加者一覧 ${state.users.length}人`],['profile','PROFILE','参加者プロフィール']]
+    .map(([k,en,ja])=>`<button type="button" class="big" data-tab="${k}" aria-current="${active===k}"><b>${en}</b><small>${ja}</small></button>`).join('');
+}
 function renderNav(){
   const tk=todayKey(),done=state.users.filter(u=>dayCount(u.id,tk)>=GOAL).length;
-  // 上のメニューは MEMBER（全員一覧）と PROFILE（参加者プロフィール）の2つ。トップ（実況）はタイトルから
-  document.getElementById('navViews').innerHTML=`
-    <button type="button" class="big" data-v="member" aria-current="${!!state.wall}"><b>MEMBER</b><small>参加者一覧 ${state.users.length}人</small></button>
-    <button type="button" class="big" data-v="players" aria-current="${state.view==='players'&&!state.wall}"><b>PROFILE</b><small>参加者プロフィール</small></button>`;
+  document.getElementById('navViews').innerHTML=tabsHTML(state.view==='live'?'live':null);
   document.getElementById('navUsers').innerHTML=state.users.map(u=>{const c=dayCount(u.id,tk);
     return `<button type="button" data-u="${esc(u.id)}" aria-current="${state.view==='user'&&state.uid===u.id}">${av(u)}
     <span class="who">${esc(u.name)}<span>@${esc(u.handle)}</span></span><span class="navcnt${c>=GOAL?' done':''}">${c}/${GOAL}</span></button>`}).join('');
@@ -991,46 +1023,53 @@ function renderWall(){
       ${showName?`<span class="wn" style="font-size:${Math.max(9,Math.min(12,Math.round(cell*.15)))}px">${esc(u.name)}</span>`:''}</div>`}).join('');
 }
 // MEMBER：全員を1画面に並べる表示を開く
-function goMember(){closeOverlays();state.wall=true;renderNav();renderWall();pushNav()}
-// MEMBER と PROFILE は横スワイプで行き来できる。指に合わせて画面が横に動き、離すとすべるように切り替わる
-// MEMBER（全員表示）は PROFILE の左隣にあるページとして扱う
-const SLIDE='transform .28s cubic-bezier(.2,.7,.2,1)';
-function slideWall(el,to,done){el.style.transition=SLIDE;el.style.transform=to;
-  let fin=false;const end=()=>{if(fin)return;fin=true;el.style.transition='';done&&done()};
-  el.addEventListener('transitionend',end,{once:true});setTimeout(end,400)}
-function showPlayersBelow(){state.view='players';renderNav();renderPlayers();scrollTo({top:0})}
-// MEMBER → PROFILE（全員表示が左へ抜けて、下の PROFILE が見える）
-function wallToPlayers(){const el=document.getElementById('wall');if(!el){showPlayersBelow();pushNav();return}
-  showPlayersBelow();slideWall(el,'translateX(-100%)',()=>{closeWall();pushNav()})}
-// PROFILE → MEMBER（全員表示が左から入ってくる）
-function playersToWall(){state.wall=true;renderWall();const el=document.getElementById('wall');
-  el.style.transform='translateX(-100%)';el.getBoundingClientRect();
-  slideWall(el,'translateX(0)',()=>{el.style.transform='';renderNav();pushNav()})}
-(()=>{let g=null;
-  const blocked=()=>document.getElementById('plr')||document.getElementById('net')||document.querySelector('dialog[open]');
-  addEventListener('touchstart',e=>{g=null;if(blocked())return;
-    const mode=state.wall?'w2p':(state.view==='players'?'p2w':null);if(!mode)return;
-    const t=e.touches[0];g={mode,x0:t.clientX,y0:t.clientY,t0:Date.now(),on:false,dx:0,prev:state.view}},{passive:true});
-  addEventListener('touchmove',e=>{if(!g)return;const t=e.touches[0],dx=t.clientX-g.x0,dy=t.clientY-g.y0;
-    if(!g.on){if(Math.abs(dy)>12&&Math.abs(dy)>Math.abs(dx)){g=null;return}
-      if(Math.abs(dx)<12||Math.abs(dx)<Math.abs(dy)*1.2)return;
-      if((g.mode==='w2p'&&dx>0)||(g.mode==='p2w'&&dx<0)){g=null;return}
-      g.on=true;
-      if(g.mode==='w2p'){showPlayersBelow()}
-      else{state.wall=true;renderWall()}
-      g.el=document.getElementById('wall');g.el.style.transition='none'}
-    g.dx=dx;const W=innerWidth;
-    g.el.style.transform=g.mode==='w2p'?`translateX(${Math.min(0,dx)}px)`:`translateX(${Math.max(0,dx)-W}px)`},{passive:true});
-  const end=()=>{if(!g||!g.on){g=null;return}const {mode,el,dx,t0,prev}=g;g=null;
-    const fast=Math.abs(dx)/Math.max(1,Date.now()-t0)>.5,go=Math.abs(dx)>innerWidth*.25||fast;
-    if(mode==='w2p'){
-      if(go)slideWall(el,'translateX(-100%)',()=>{closeWall();pushNav()});
-      else slideWall(el,'translateX(0)',()=>{el.style.transform='';state.view=prev;renderNav();({live:renderLive,players:renderPlayers,user:renderUser})[prev]?.()})}
-    else{
-      if(go)slideWall(el,'translateX(0)',()=>{el.style.transform='';renderNav();pushNav()});
-      else slideWall(el,'translateX(-100%)',()=>closeWall())}};
-  addEventListener('touchend',end,{passive:true});addEventListener('touchcancel',end,{passive:true});
-})();
+function goMember(){openPeople(0);pushNav()}
+/* ---------- MEMBER / PROFILE：2ページを横に並べ、スワイプかタブで切り替える（選手紹介のステータスと同じ動き） ---------- */
+function pplPage(){const c=document.querySelector('#ppl .pcar');return c?Math.round(c.scrollLeft/Math.max(1,c.clientWidth)):0}
+function openPeople(page=0){
+  const old=document.getElementById('ppl');
+  if(old){closePlayer();closeNet();const c=old.querySelector('.pcar');c.scrollTo({left:page*c.clientWidth,behavior:'smooth'});return}
+  closeOverlays();
+  const el=document.createElement('div');el.id='ppl';document.body.appendChild(el);document.documentElement.style.overflow='hidden';
+  el.innerHTML=`<div class="phd"><button type="button" class="pbrand" data-tab="live" aria-label="トップ（みんなの実況）へ"><em>10</em>投稿チャレンジ実況</button>
+    <nav class="nav views">${tabsHTML(page?'profile':'member')}</nav></div>
+    <div class="pcar"><section class="pp pm" aria-label="MEMBER 参加者一覧"><div class="ws num"></div><div class="wg"></div><div class="wsw">横にスワイプで PROFILE ▶︎</div></section>
+      <section class="pp pr" aria-label="PROFILE 参加者プロフィール"><div class="wsw">◀︎ 横にスワイプで MEMBER　・　押すとその人の選手紹介</div><div class="pgrid"></div></section></div>`;
+  fillPeople();
+  const car=el.querySelector('.pcar');car.scrollLeft=page*car.clientWidth;
+  car.addEventListener('scroll',()=>requestAnimationFrame(pplTabs),{passive:true});
+  pplTabs();
+}
+function pplTabs(){const el=document.getElementById('ppl');if(!el)return;const i=pplPage();
+  el.querySelectorAll('[data-tab]').forEach(t=>{if(t.classList.contains('big'))t.setAttribute('aria-current',t.dataset.tab===(i?'profile':'member'))});
+  // 履歴には今のページを覚えておく（戻ったときに同じページで開く）
+  try{const cur=history.state;if(cur&&cur.x10&&cur.ov&&cur.ov.startsWith('ppl:')&&cur.ov.split('|').length===1)history.replaceState({...cur,ov:'ppl:'+i},'')}catch{}
+}
+function fillPeople(){const el=document.getElementById('ppl');if(!el)return;
+  const tk=todayKey(),n=new Date();
+  const all=state.users.map(u=>({u,c:dayCount(u.id,tk)})).sort((a,b)=>Math.min(b.c,GOAL)-Math.min(a.c,GOAL));
+  const done=all.filter(r=>r.c>=GOAL).length;
+  el.querySelector('.ws').innerHTML=`${n.getMonth()+1}/${n.getDate()} ${hm(n)}時点　本日達成 <b>${done}</b> / ${all.length}人`;
+  // MEMBER：全員を1画面に収める
+  const g=el.querySelector('.wg'),W=g.clientWidth,H=g.clientHeight-6;
+  const {c,w}=wallLayout(all.length,W,H);
+  const cell=Math.floor(w),ring=Math.floor(cell*.86),showName=cell>=46;
+  g.style.gridTemplateColumns=`repeat(${c},${cell}px)`;g.style.gridAutoRows=`${Math.floor(cell*1.3)}px`;
+  g.innerHTML=all.map(({u,c:k})=>{const a=k>=GOAL;
+    const bg=a?'var(--gold)':`conic-gradient(var(--x) 0 ${k/GOAL*360}deg, var(--track) 0)`;
+    const pad=Math.max(2,Math.round(ring*.06)),bw=Math.max(1,Math.round(ring*.04));
+    return `<div class="wf"><span class="wr" style="width:${ring}px;height:${ring}px;padding:${pad}px;--bw:${bw}px;background:${bg};font-size:${Math.round(ring*.32)}px">
+      ${av(u)}
+      ${a&&ring>=36?`<span class="wc" style="bottom:${-Math.round(ring*.06)}px;font-size:${Math.max(8,Math.round(ring*.13))}px;padding:0 ${Math.round(ring*.08)}px">達成</span>`:''}</span>
+      ${showName?`<span class="wn" style="font-size:${Math.max(9,Math.min(12,Math.round(cell*.15)))}px">${esc(u.name)}</span>`:''}</div>`}).join('');
+  // PROFILE：全員のカード
+  el.querySelector('.pgrid').innerHTML=state.users.map(u=>{const tag=state.tags[u.handle.toLowerCase()];
+    return `<button type="button" class="pcard" data-plr="${esc(u.id)}" aria-label="${esc(u.name)}さんの選手紹介">
+      <span class="pav" style="background-color:${u.color};background-image:url('avatars/${encodeURIComponent(u.handle.toLowerCase())}.jpg')${state.img[u.id]?`,url('${esc(state.img[u.id])}')`:''}"></span>
+      <span class="pn">${esc(u.name)}</span><span class="ph2">@${esc(u.handle)}</span>${tag?`<span class="pt2">${esc(tag)}</span>`:''}</button>`}).join('');
+}
+function closePeople(){const el=document.getElementById('ppl');if(el){el.remove();document.documentElement.style.overflow=''}}
+addEventListener('resize',()=>{const el=document.getElementById('ppl');if(!el)return;const i=pplPage();fillPeople();const c=el.querySelector('.pcar');c.scrollLeft=i*c.clientWidth});
 function closeWall(){const had=state.wall;state.wall=false;document.getElementById('wall')?.remove();document.documentElement.style.overflow='';if(had&&state.users.length)renderNav()}
 addEventListener('resize',()=>{if(state.wall)renderWall()});
 
@@ -1255,13 +1294,17 @@ function netPointer(cv){
 
 /* ---------- 戻る：ブラウザやスマホの「戻る」で前の画面に戻れるようにする ---------- */
 // 画面を切り替えるたびに履歴を1つ積み、「戻る」でその時の画面（と開いていた重ね画面）を復元する
-const curOv=()=>document.getElementById('plr')?'plr:'+document.getElementById('plr').dataset.id:document.getElementById('net')?'net:'+(document.getElementById('net').dataset.id||''):state.wall?'wall':null;
+const curOv=()=>{const o=[];if(document.getElementById('ppl'))o.push('ppl:'+pplPage());if(state.wall)o.push('wall');
+  if(document.getElementById('net'))o.push('net:'+(document.getElementById('net').dataset.id||''));if(document.getElementById('plr'))o.push('plr:'+document.getElementById('plr').dataset.id);return o.length?o.join('|'):null};
 const snap=()=>({x10:1,view:state.view,uid:state.uid,day:state.day,y:state.y,m:state.m,ov:curOv(),sy:0});
 function pushNav(){try{const cur=history.state;if(cur&&cur.x10)history.replaceState({...cur,sy:scrollY},'');history.pushState(snap(),'')}catch{}}
-function closeOverlays(){closeWall();closeNet();closePlayer();const cd=document.getElementById('cardDlg');if(cd&&cd.open)cd.close()}
-function openOv(ov){if(!ov)return;if(ov==='wall'){state.wall=true;renderWall()}else if(ov.startsWith('net'))openNet(ov.slice(4)||undefined);else if(ov.startsWith('plr:'))openPlayer(ov.slice(4))}
+function closeOverlays(){closePeople();closeWall();closeNet();closePlayer();const cd=document.getElementById('cardDlg');if(cd&&cd.open)cd.close()}
+function openOv(ov){if(!ov)return;for(const o of ov.split('|')){if(o.startsWith('ppl:'))openPeople(+o.slice(4)||0);else if(o==='wall'){state.wall=true;renderWall()}else if(o.startsWith('net'))openNet(o.slice(4)||undefined);else if(o.startsWith('plr:'))openPlayer(o.slice(4))}}
 addEventListener('popstate',e=>{const s=e.state;if(!s||!s.x10)return;
-  closeOverlays();Object.assign(state,{view:s.view,uid:s.uid,day:s.day,y:s.y,m:s.m});render();openOv(s.ov);
+  // MEMBER/PROFILE の上に重ねた画面から戻るときは、下の一覧（スクロール位置も）をそのまま残す
+  const keep=s.ov&&s.ov.startsWith('ppl:')&&document.getElementById('ppl');
+  if(keep){closePlayer();closeNet();const cd=document.getElementById('cardDlg');if(cd&&cd.open)cd.close()}else closeOverlays();
+  Object.assign(state,{view:s.view,uid:s.uid,day:s.day,y:s.y,m:s.m});render();openOv(s.ov);
   if(!s.ov)requestAnimationFrame(()=>scrollTo({top:s.sy||0}))});
 // 重ね画面の「戻る」ボタン：履歴があれば履歴で戻る（ブラウザの戻ると同じ動き）
 function backOv(close){const cur=history.state;if(cur&&cur.x10&&cur.ov&&cur.ov===curOv())history.back();else close()}
@@ -1285,9 +1328,12 @@ document.addEventListener('click',e=>{
   hideTip();
   const b=e.target.closest('button');if(!b||b.disabled)return;
   if(b.id==='btnFaces'){faceIn.click();return}
-  if(b.id==='btnToProfile'){wallToPlayers();return}
-  if(b.id==='btnToMember'){playersToWall();return}
-  if(b.dataset.v==='member'){goMember();return}
+  if(b.dataset.tab){const t=b.dataset.tab;
+    if(t==='live'){closeOverlays();state.view='live';render();pushNav();scrollTo({top:0});return}
+    if(document.getElementById('ppl')){openPeople(t==='member'?0:1);return}
+    openPeople(t==='member'?0:1);pushNav();return}
+  if(b.dataset.pp){const c=document.querySelector('#ppl .pcar');c.scrollTo({left:+b.dataset.pp*c.clientWidth,behavior:'smooth'});return}
+  if(b.id==='btnPplBack'){closePeople();pushNav();return}
   if(b.dataset.v){const w=state.wall;if(w)closeWall();if(w||state.view!==b.dataset.v){state.view=b.dataset.v;render();pushNav();scrollTo({top:0})}return}
   if(b.dataset.card){openCard(b.dataset.card);return}
   if(b.id==='btnWall'){state.wall=true;renderWall();pushNav();return}
@@ -1295,7 +1341,7 @@ document.addEventListener('click',e=>{
   if(b.id==='btnNet'){openNet();pushNav();return}
   if(b.dataset.plr){closePlayer();openPlayer(b.dataset.plr);pushNav();return}
   if(b.id==='btnPlrBack'){backOv(closePlayer);return}
-  if(b.dataset.go==='member'){goMember();return}
+  if(b.dataset.go==='member'||b.dataset.go==='players'){openPeople(b.dataset.go==='member'?0:1);pushNav();return}
   if(b.dataset.go){closeOverlays();state.view=b.dataset.go;render();pushNav();scrollTo({top:0});return}
   if(b.dataset.net){const id=b.dataset.net;closeOverlays();openNet(id);pushNav();return}
   if(b.id==='btnNetBack'){backOv(closeNet);return}
@@ -1345,7 +1391,7 @@ faceIn.onchange=async()=>{
   let y0=null,d=0,busy=false;const TH=70;
   const show=(dy,txt,go)=>{ind.style.transform=`translate(-50%,${Math.min(dy,90)-50}px)`;ind.textContent=txt;ind.classList.toggle('go',!!go)};
   const hide=()=>{ind.style.transition='transform .2s';ind.style.transform='translate(-50%,-60px)';setTimeout(()=>ind.style.transition='',220)};
-  addEventListener('touchstart',e=>{if(busy||scrollY>0||document.getElementById('plr')||document.getElementById('net')||document.getElementById('wall')||document.querySelector('dialog[open]')){y0=null;return}
+  addEventListener('touchstart',e=>{if(busy||scrollY>0||document.getElementById('plr')||document.getElementById('net')||document.getElementById('wall')||document.getElementById('ppl')||document.querySelector('dialog[open]')){y0=null;return}
     y0=e.touches[0].clientY;d=0},{passive:true});
   addEventListener('touchmove',e=>{if(y0===null)return;d=(e.touches[0].clientY-y0)*.5;if(d<=0||scrollY>0){d=0;hide();return}
     show(d,d>TH?'↻ 離して更新':'↓ 引っぱって更新',d>TH)},{passive:true});
