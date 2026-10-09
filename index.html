@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="X毎日10投稿チャレンジの非公式実況ページ">
-<title>10投稿チャレンジ実況</title>
+<title>1日10投稿チャレンジ実況</title>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Dela+Gothic+One&family=Roboto+Mono:wght@500;700&family=Archivo+Black&family=Archivo:wght@500;700;800;900&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap">
@@ -36,7 +36,7 @@ button:focus-visible{outline:2px solid var(--x);outline-offset:2px}
 .app{display:grid;grid-template-columns:244px minmax(0,1fr);min-height:100%}
 aside{background:var(--panel);border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:12px;position:sticky;top:0;height:100vh;height:100dvh;min-height:0}
 .brand{padding:0 8px;line-height:1.25}
-.brand .t{font-family:var(--f-disp);font-size:19px;letter-spacing:.02em;border:0;background:none;padding:0;color:inherit;cursor:pointer;text-align:left}
+.brand .t{font-family:var(--f-disp);font-size:20px;letter-spacing:.02em;border:0;background:none;padding:0;color:inherit;cursor:pointer;text-align:left}
 .brand .t em{font-style:normal;color:var(--gold)}
 .brand .s{font-size:11px;color:var(--muted)}
 .ptr{position:fixed;left:50%;top:0;z-index:40;transform:translate(-50%,-60px);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:12px;font-weight:700;color:var(--muted);box-shadow:0 4px 14px rgba(0,0,0,.12);pointer-events:none;white-space:nowrap}
@@ -54,6 +54,9 @@ aside{background:var(--panel);border-right:1px solid var(--line);padding:18px 12
 .nav.views button.big.t-live[aria-current="true"]{background:var(--live);border-color:var(--livesel);box-shadow:inset 0 0 0 var(--livesw) var(--livesel)}
 .nav.views button.big svg.tico{width:.55em;height:.55em}
 .nav.views button.big[aria-current="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg);background:var(--hover)}
+.brow{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.themebtn{flex:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--fg);display:grid;place-items:center;font-size:15px;line-height:1;cursor:pointer;padding:0}
+.themebtn:hover{background:var(--hover)}
 .navlabel{font-size:11px;color:var(--muted);letter-spacing:.08em;padding:4px 8px 0}
 .navs{flex:1;min-height:0;display:flex;flex-direction:column;gap:4px}
 .nav{display:flex;flex-direction:column;gap:2px}
@@ -333,7 +336,7 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 /* MEMBER / PROFILE（横に2ページ） */
 #ppl{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column;padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(8px + env(safe-area-inset-bottom,0px))}
 #ppl .phd{display:flex;flex-direction:column;gap:8px}
-#ppl .pbrand{font-family:var(--f-disp);font-size:19px;letter-spacing:.02em;border:0;background:none;padding:0 4px;color:inherit;cursor:pointer;text-align:left;align-self:flex-start}
+#ppl .pbrand{font-family:var(--f-disp);font-size:22px;line-height:1.2;letter-spacing:.02em;border:0;background:none;padding:0 4px;color:inherit;cursor:pointer;text-align:left;align-self:flex-start}
 #ppl .pbrand em{font-style:normal;color:var(--gold)}
 #ppl .nav.views{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 #ppl .tabs{display:flex;gap:6px;min-width:0}
@@ -459,6 +462,7 @@ dialog::backdrop{background:rgba(10,15,25,.45)}
   .app{grid-template-columns:minmax(0,1fr)}
   aside{border-right:0;border-bottom:1px solid var(--line);padding:12px 16px;position:static;height:auto}
   .navlabel,.brand .s{display:none}
+  .brand .t{font-size:22px;line-height:1.2}
   .nav.views{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
   .nav.views button.big{padding:8px 10px}
   .nav.views button.big b{font-size:15px;letter-spacing:.05em}
@@ -497,7 +501,7 @@ body{margin:0}img{max-width:100%}[hidden]{display:none!important}
 <body>
 <div class="app">
   <aside>
-    <div class="brand"><button type="button" class="t" data-go="live" aria-label="トップ（みんなの実況）へ"><em>10</em>投稿チャレンジ実況</button><div class="s">X に毎日10本。野次馬による非公式の観戦ページ</div></div>
+    <div class="brand"><div class="brow"><button type="button" class="t" data-go="live" aria-label="トップ（みんなの実況）へ">1日<em>10</em>投稿チャレンジ実況</button><button type="button" class="themebtn" data-theme-toggle aria-label="ライト／ダークの切り替え"></button></div><div class="s">X に毎日10本。野次馬による非公式の観戦ページ</div></div>
     <nav class="nav views" id="navViews"></nav>
     <div class="navs">
       <div class="navlabel">参加者</div>
@@ -1114,7 +1118,7 @@ function openPeople(page=0){
     const c=old.querySelector('.pcar');c.style.overflowX='';c.scrollTo({left:page*c.clientWidth,behavior:wasHidden?'auto':'smooth'});pplTabs();clearTimeout(c._t);c._t=setTimeout(()=>pplLock(c),wasHidden?0:600);return}
   closeOverlays();
   const el=document.createElement('div');el.id='ppl';document.body.appendChild(el);document.documentElement.style.overflow='hidden';
-  el.innerHTML=`<div class="phd"><button type="button" class="pbrand" data-tab="live" aria-label="トップ（みんなの実況）へ"><em>10</em>投稿チャレンジ実況</button>
+  el.innerHTML=`<div class="phd"><div class="brow"><button type="button" class="pbrand" data-tab="live" aria-label="トップ（みんなの実況）へ">1日<em>10</em>投稿チャレンジ実況</button><button type="button" class="themebtn" data-theme-toggle aria-label="ライト／ダークの切り替え"></button></div>
     <nav class="nav views">${tabsHTML(PTABS[page])}</nav></div>
     <div class="pcar"><section class="pp pl" aria-label="LIVE みんなの実況"><div class="plive"></div></section>
       <section class="pp pm" aria-label="MEMBER 参加者一覧"><div class="ws num"></div><div class="wg"></div><div class="wsw">◀︎ LIVE　・　横にスワイプで移動　・　PROFILE ▶︎</div></section>
@@ -1485,6 +1489,7 @@ document.addEventListener('click',e=>{
     if(pplShown()){const had=!!document.getElementById('plr');openPeople(pg);if(had)pushNav();return}
     openPeople(pg);pushNav();return}
   if(b.dataset.uj){const c=document.querySelector('#plr .ucar');if(c)c.scrollTo({left:+b.dataset.uj*c.clientWidth,behavior:'smooth'});return}
+  if(b.hasAttribute('data-theme-toggle')){const t=themeNow()==='dark'?'light':'dark';document.documentElement.dataset.theme=t;try{localStorage.setItem('x10theme',t)}catch{}themeIcons();return}
   if(b.dataset.lj){const c=document.querySelector('#ppl .lcar');if(c)c.scrollTo({left:+b.dataset.lj*c.clientWidth,behavior:'smooth'});return}
   if(b.dataset.pp){const c=document.querySelector('#ppl .pcar');c.scrollTo({left:+b.dataset.pp*c.clientWidth,behavior:'smooth'});return}
   if(b.id==='btnPplBack'){closePeople();pushNav();return}
@@ -1548,6 +1553,12 @@ faceIn.onchange=async()=>{
   faceIn.value='';render();
   toast(`${hit}人分のアイコンを設定しました${miss?`（${miss}件はハンドル名と一致せず）`:''}`);
 };
+/* ライト／ダークの切り替え（選んだ方を覚えておく。選んでいなければスマホの設定に合わせる） */
+const themeNow=()=>document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+function themeIcons(){const d=themeNow()==='dark';document.querySelectorAll('[data-theme-toggle]').forEach(b=>{const i=d?'☀︎':'☾';if(b.textContent!==i){b.textContent=i;b.title=d?'ライトモードにする':'ダークモードにする'}})}
+try{const t=localStorage.getItem('x10theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch{}
+new MutationObserver(themeIcons).observe(document.body,{childList:true,subtree:true});themeIcons();
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',themeIcons);
 /* 引っぱって更新：いちばん上で下に引っぱって離すと、最新のデータを読み直す（スマホ） */
 (()=>{const ind=Object.assign(document.createElement('div'),{className:'ptr'});document.body.appendChild(ind);
   let y0=null,d=0,busy=false;const TH=70;
