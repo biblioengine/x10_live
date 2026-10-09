@@ -13,7 +13,7 @@
 :root{
   --bg:#f3f4f8; --panel:#ffffff; --line:#e1e4ec; --fg:#161a24; --muted:#687087;
   --x:#2f62f0; --x-soft:#dfe7ff; --gold:#f0a800; --gold-soft:#fff3cc; --live:#e8364f;
-  --track:#e9ecf3; --hover:#f0f2f8;
+  --track:#e9ecf3; --livesel:#f8a800; --livesw:2px; --hover:#f0f2f8;
   --f-body:"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
   --f-disp:"Dela Gothic One","Noto Sans JP",sans-serif;
   --f-num:"Roboto Mono",ui-monospace,Menlo,monospace;
@@ -21,11 +21,11 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0f1218; --panel:#181c25; --line:#2a303c; --fg:#eceff5; --muted:#9aa3b6;
   --x:#6c90ff; --x-soft:#1f2a4a; --gold:#ffc53d; --gold-soft:#3a2f10; --live:#ff5c72;
-  --track:#252b37; --hover:#20252f; color-scheme:dark}}
+  --track:#252b37; --livesel:var(--fg); --livesw:1px; --hover:#20252f; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0f1218; --panel:#181c25; --line:#2a303c; --fg:#eceff5; --muted:#9aa3b6;
   --x:#6c90ff; --x-soft:#1f2a4a; --gold:#ffc53d; --gold-soft:#3a2f10; --live:#ff5c72;
-  --track:#252b37; --hover:#20252f; color-scheme:dark}
+  --track:#252b37; --livesel:var(--fg); --livesw:1px; --hover:#20252f; color-scheme:dark}
 *{box-sizing:border-box}
 html,body{height:100%}
 body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.6}
@@ -45,6 +45,14 @@ aside{background:var(--panel);border-right:1px solid var(--line);padding:18px 12
 .nav.views button.big{display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:10px 14px}
 .nav.views button.big b{font-family:"Archivo Black",var(--f-disp);font-weight:400;font-size:20px;letter-spacing:.08em;line-height:1.1}
 .nav.views button.big small{font-size:10px;color:var(--muted);font-weight:400}
+.nav.views button.big b{display:flex;align-items:center;gap:.35em}
+.tico{flex:none;width:.5em;height:.5em;fill:currentColor}
+.tico.tlive{display:inline-block;border-radius:50%;background:var(--live);animation:blink 1.4s infinite}
+.nav.views button.big.t-live{background:var(--live);border-color:var(--live);color:#fff}
+.nav.views button.big.t-live small{color:rgba(255,255,255,.85)}
+.nav.views button.big.t-live .tico.tlive{background:#fff}
+.nav.views button.big.t-live[aria-current="true"]{background:var(--live);border-color:var(--livesel);box-shadow:inset 0 0 0 var(--livesw) var(--livesel)}
+.nav.views button.big svg.tico{width:.55em;height:.55em}
 .nav.views button.big[aria-current="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg);background:var(--hover)}
 .navlabel{font-size:11px;color:var(--muted);letter-spacing:.08em;padding:4px 8px 0}
 .navs{flex:1;min-height:0;display:flex;flex-direction:column;gap:4px}
@@ -661,8 +669,12 @@ function ticks(v){let s='';for(let i=0;i<GOAL;i++)s+=`<i style="${i<v?`backgroun
 function render(){if(state.wall)renderWall();if(document.getElementById('ppl'))fillPeople();renderNav();({live:renderLive,roster:renderRoster,players:renderPlayers,user:renderUser})[state.view]()}
 // 上のタブ（LIVE・MEMBER・PROFILE）。トップと MEMBER/PROFILE の画面で同じものを出す
 function tabsHTML(active){
+  // 文字の左の小さな印：LIVE は赤く点滅する丸、MEMBER は丸が2×2の四角（参加者一覧）、PROFILE は縦長のカード
+  const ico={live:'<i class="tico tlive" aria-hidden="true"></i>',
+    member:'<svg class="tico" viewBox="0 0 10 10" aria-hidden="true"><circle cx="2.5" cy="2.5" r="2"/><circle cx="7.5" cy="2.5" r="2"/><circle cx="2.5" cy="7.5" r="2"/><circle cx="7.5" cy="7.5" r="2"/></svg>',
+    profile:'<svg class="tico" viewBox="0 0 8 11" aria-hidden="true"><rect x=".6" y=".6" width="6.8" height="9.8" rx="1.3" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="4" cy="3.7" r="1.3"/><rect x="2" y="6.4" width="4" height="1" rx=".5"/><rect x="2" y="8.1" width="2.8" height="1" rx=".5"/></svg>'};
   return [['live','LIVE','みんなの実況'],['member','MEMBER',`参加者一覧 ${state.users.length}人`],['profile','PROFILE','参加者プロフィール']]
-    .map(([k,en,ja])=>`<button type="button" class="big" data-tab="${k}" aria-current="${active===k}"><b>${en}</b><small>${ja}</small></button>`).join('');
+    .map(([k,en,ja])=>`<button type="button" class="big t-${k}" data-tab="${k}" aria-current="${active===k}"><b>${ico[k]}${en}</b><small>${ja}</small></button>`).join('');
 }
 function renderNav(){
   const tk=todayKey(),done=state.users.filter(u=>dayCount(u.id,tk)>=GOAL).length;
@@ -675,7 +687,7 @@ function onair(compact){
   const n=new Date(),left=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1)-n;
   // スマホのトップ用の短い表示：DAY（企画の何日目か）・現在時刻・今日の残り
   if(compact){const s0=new Date(state.start),day=Math.round((new Date(n.getFullYear(),n.getMonth(),n.getDate())-new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()))/864e5)+1;
-    return `<span class="onair cmp"><span class="dot">LIVE</span><span class="dno">DAY ${day}</span><span class="num">${hm(n)}</span><span class="mut">残り${Math.floor(left/36e5)}時間${Math.floor(left%36e5/6e4)}分</span></span>`}
+    return `<span class="onair cmp"><span class="dno">DAY ${day}</span><span class="num">${hm(n)}</span><span class="mut">残り${Math.floor(left/36e5)}時間${Math.floor(left%36e5/6e4)}分</span></span>`}
   const upd=state.updated?`<span class="mut">データ更新 ${hm(state.updated)}</span>`:'';
   return `<span class="onair"><span class="dot">LIVE</span><span class="num">${n.getMonth()+1}/${n.getDate()} ${hm(n)}</span><span class="mut">今日の残り ${Math.floor(left/36e5)}時間${Math.floor(left%36e5/6e4)}分</span>${upd}</span>`;
 }
