@@ -277,6 +277,10 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #net .ws{font-size:12px;color:var(--muted)}
 #net .ws b{color:var(--fg)}
 #net .nacts{margin-left:auto;display:flex;gap:6px}
+#net .nback{width:36px;height:36px;flex:none;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--fg);font-size:14px;display:grid;place-items:center;cursor:pointer;padding:0}
+#net .nback:hover{border-color:var(--fg)}
+#net .nplay{width:34px;height:34px;flex:none;border-radius:50%;border:0;background:var(--fg);color:var(--panel);font-size:13px;display:grid;place-items:center;cursor:pointer;padding:0}
+#net .nb select{font:inherit;font-size:12px;font-weight:700;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:8px;padding:5px 6px}
 #net .back{white-space:nowrap;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:5px 14px;font-size:13px;font-weight:700}
 #net .nc{flex:1;min-height:0;position:relative}
 #net canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab;display:block}
@@ -1539,10 +1543,12 @@ function openNet(focus){
   const s0=new Date(state.start),t0=new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()).getTime(),now=Date.now(),hours=[];
   for(let t=t0+36e5;t<now;t+=36e5)hours.push(t);
   hours.push(now);
-  el.innerHTML=`<div class="wh"><span class="wt">参加者の交流</span><span class="ws" id="netInfo"></span>
-    <div class="nacts"><button type="button" class="back" data-go="member">参加者一覧</button><button type="button" class="back" data-go="live">TOPへ</button><button type="button" class="back" id="btnNetBack">戻る</button></div></div>
+  el.innerHTML=`<div class="wh"><button type="button" class="nback" id="btnNetBack" aria-label="元の画面に戻る">◀︎</button><span class="wt">参加者の交流</span><span class="ws" id="netInfo"></span>
+    <div class="nacts"><button type="button" class="back" data-go="member">参加者一覧</button><button type="button" class="back" data-go="live">TOPへ</button></div></div>
     <div class="nc"><canvas id="netCv" aria-label="参加者どうしの交流の繋がり"></canvas><div class="nt" id="netDate" aria-live="polite"></div></div>
-    <div class="nb"><span>${s0.getMonth()+1}/${s0.getDate()}</span><input type="range" id="netDay" min="0" max="${hours.length-1}" value="${hours.length-1}" aria-label="いつまでの交流を表示するか"><span>今</span></div>
+    <div class="nb"><button type="button" class="nplay" id="netPlay" aria-label="再生">▶︎</button>
+      <select id="netSpd" aria-label="再生速度"><option value="1">×1</option><option value="2" selected>×2</option><option value="4">×4</option><option value="8">×8</option></select>
+      <span>${s0.getMonth()+1}/${s0.getDate()}</span><input type="range" id="netDay" min="0" max="${hours.length-1}" value="${hours.length-1}" aria-label="いつまでの交流を表示するか"><span>今</span></div>
     <div class="nh">ドラッグで回転・ピンチ（ホイール）で拡大縮小・アイコンを押すとその人の繋がり</div>`;
   const ids=new Set(state.users.map(u=>u.id));
   // 位置は球の表面に均等に置いてから、繋がりの力で動かす（毎回同じ初期配置）
@@ -1552,17 +1558,30 @@ function openNet(focus){
     return{u,x:Math.cos(a)*r*220,y:y*220,z:Math.sin(a)*r*220,vx:0,vy:0,vz:0,img}});
   NET.idx=Object.fromEntries(NET.nodes.map((nd,i)=>[nd.u.handle.toLowerCase(),i]));
   NET.ix=(state.ix||[]).filter(x=>ids.has(x.from)&&ids.has(x.to)&&x.from!==x.to);
+  // 星くず：空間に小さな点を散らす（毎回同じ並び）。回すと手前ほど大きく速く動き、奥行きが出る
+  {let sd=7;const rnd=()=>(sd=(sd*16807)%2147483647)/2147483647;NET.stars=[];
+   for(let i=0;i<520;i++){const u=rnd()*2-1,a=rnd()*Math.PI*2,r=Math.sqrt(1-u*u),R=.35+Math.pow(rnd(),.6)*2.3;
+     NET.stars.push({x:Math.cos(a)*r*R,y:u*R,z:Math.sin(a)*r*R,s:.5+rnd()*.9})}}
   NET.hours=hours;NET.yaw=.4;NET.pitch=-.25;NET.zoom=1;NET.sel=-1;NET.alpha=1;NET.ptrs=new Map();
   NET.cv=el.querySelector('#netCv');
   const sl=el.querySelector('#netDay');
-  sl.addEventListener('input',()=>{netEdges(+sl.value);NET.alpha=Math.max(NET.alpha,.6)});
+  sl.addEventListener('input',()=>{netStop();netEdges(+sl.value);NET.alpha=Math.max(NET.alpha,.6)});
+  // 再生：×1 で1秒に3時間ぶん進む。最後まで来たら止まる（最後にいるときに押すと最初から）
+  const pb=el.querySelector('#netPlay'),spd=el.querySelector('#netSpd');
+  pb.addEventListener('click',()=>{if(NET.play){netStop();return}
+    if(+sl.value>=+sl.max)sl.value=0;NET.play=true;NET.acc=0;NET.last=performance.now();pb.textContent='❚❚';pb.setAttribute('aria-label','一時停止');
+    netEdges(+sl.value);NET.alpha=Math.max(NET.alpha,.6)});
   // 選手紹介から来たときは、その人を選んだ状態で開く
   if(focus){const i=NET.nodes.findIndex(nd=>nd.u.id===focus);if(i>=0)NET.sel=i}
   netEdges(hours.length-1);netPointer(NET.cv);
-  const loop=()=>{if(!document.getElementById('net'))return;netStep();netDraw();NET.raf=requestAnimationFrame(loop)};
+  const loop=()=>{if(!document.getElementById('net'))return;
+    if(NET.play){const t=performance.now();NET.acc+=(t-NET.last)/1000*3*(+spd.value||1);NET.last=t;
+      if(NET.acc>=1){const v=Math.min(+sl.max,+sl.value+Math.floor(NET.acc));NET.acc%=1;sl.value=v;netEdges(v);NET.alpha=Math.max(NET.alpha,.35);if(v>=+sl.max)netStop()}}
+    netStep();netDraw();NET.raf=requestAnimationFrame(loop)};
   NET.raf=requestAnimationFrame(loop);
 }
-function closeNet(){cancelAnimationFrame(NET.raf);const el=document.getElementById('net');if(el){el.remove();document.documentElement.style.overflow=''}}
+function netStop(){NET.play=false;const b=document.getElementById('netPlay');if(b){b.textContent='▶︎';b.setAttribute('aria-label','再生')}}
+function closeNet(){NET.play=false;cancelAnimationFrame(NET.raf);const el=document.getElementById('net');if(el){el.remove();document.documentElement.style.overflow=''}}
 // 選んだ日までの交流を、2人の組ごとにまとめる
 function netEdges(di){
   const lim=NET.hours[di],m=new Map();
@@ -1615,6 +1634,14 @@ function netDraw(){
   const P=NET.nodes.map((p,i)=>{const x1=p.x*cy-p.z*sy,z1=p.x*sy+p.z*cy,y2=p.y*cp-z1*sp,z2=p.y*sp+z1*cp,k=D/(D-z2);
     return{i,sx:W/2+x1*k*sc,sy:H/2+y2*k*sc,k,z:z2,r:Math.max(6,Math.min(40,Math.min(W,H)*.032*k*NET.zoom))}});
   NET.P=P;
+  // 星くず（奥のものほど小さく薄く）
+  ctx.fillStyle=C.fg;
+  for(const st of NET.stars){const X=st.x*ext,Y=st.y*ext,Z=st.z*ext,x1=X*cy-Z*sy,z1=X*sy+Z*cy,y2=Y*cp-z1*sp,z2=Y*sp+z1*cp;
+    if(D-z2<ext*.3)continue;const k=D/(D-z2),px=W/2+x1*k*sc,py=H/2+y2*k*sc;if(px<-4||py<-4||px>W+4||py>H+4)continue;
+    ctx.globalAlpha=Math.max(.06,Math.min(.55,(k-.55)*.7));ctx.beginPath();ctx.arc(px,py,Math.min(2.2,Math.max(.4,st.s*k*k*.9*Math.sqrt(NET.zoom))),0,Math.PI*2);ctx.fill()}
+  ctx.globalAlpha=1;
+  // 奥行き：手前＝1、奥＝0（アイコンのにじみと薄さに使う）
+  const ks=P.map(q=>q.k),kmin=Math.min(...ks),kmax=Math.max(...ks),near=q=>kmax-kmin<1e-3?1:(q.k-kmin)/(kmax-kmin);
   const sel=NET.sel,nb=new Set();if(sel>=0)NET.edges.forEach(e=>{if(e.a===sel)nb.add(e.b);if(e.b===sel)nb.add(e.a)});
   const lit=i=>sel<0||i===sel||nb.has(i);
   // 線
@@ -1629,15 +1656,17 @@ function netDraw(){
   if(sel>=0){order.splice(order.findIndex(q=>q.i===sel),1);order.push(P[sel])}
   NET.order=order;
   for(const q of order){const nd=NET.nodes[q.i],on=lit(q.i);
-    ctx.globalAlpha=on?1:.13;
-    ctx.save();ctx.beginPath();ctx.arc(q.sx,q.sy,q.r,0,Math.PI*2);ctx.closePath();ctx.clip();
+    const t=near(q),sharp=sel>=0&&on;
+    ctx.globalAlpha=on?(sharp?1:.5+.5*t):.13;
+    ctx.save();if(!sharp&&t<.75)ctx.filter=`blur(${((.75-t)*3.2).toFixed(1)}px)`;ctx.beginPath();ctx.arc(q.sx,q.sy,q.r,0,Math.PI*2);ctx.closePath();ctx.clip();
     if(nd.img.complete&&nd.img.naturalWidth)ctx.drawImage(nd.img,q.sx-q.r,q.sy-q.r,q.r*2,q.r*2);
     else{ctx.fillStyle=nd.u.color;ctx.fillRect(q.sx-q.r,q.sy-q.r,q.r*2,q.r*2);ctx.fillStyle='#fff';ctx.font=`700 ${Math.round(q.r)}px ${cs.getPropertyValue('--f-body')}`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText([...nd.u.name][0]||'?',q.sx,q.sy+1)}
-    ctx.restore();
+    ctx.restore();if(!sharp&&t<.75)ctx.filter=`blur(${((.75-t)*3.2).toFixed(1)}px)`;
     // 投稿数のリング（1周で10本、10本で金色）
     const c=NET.cnt[q.i]||0,rw=Math.max(2,q.r*.2),rr=q.r+rw/2+1;
     ctx.lineWidth=rw;ctx.strokeStyle=C.track;ctx.beginPath();ctx.arc(q.sx,q.sy,rr,0,Math.PI*2);ctx.stroke();
     if(c){ctx.strokeStyle=c>=GOAL?C.gold:C.x;ctx.beginPath();ctx.arc(q.sx,q.sy,rr,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(c,GOAL)/GOAL);ctx.stroke()}
+    ctx.filter='none';
     if(q.i===sel){ctx.lineWidth=2;ctx.strokeStyle=C.fg;ctx.beginPath();ctx.arc(q.sx,q.sy,rr+rw/2+2,0,Math.PI*2);ctx.stroke()}
     if(sel>=0&&on){ctx.globalAlpha=1;ctx.font=`${q.i===sel?700:500} ${q.i===sel?13:11}px ${cs.getPropertyValue('--f-body')}`;ctx.textAlign='center';ctx.textBaseline='top';
       // 名前は「｜」より前だけ。繋がっている人は長いと重なるので短くする
