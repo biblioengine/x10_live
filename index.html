@@ -354,6 +354,9 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #ppl .pl .ljump button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 4px;font-size:12px;font-weight:700;white-space:nowrap}
 #ppl .pl .card-h{position:sticky;top:var(--lh,96px);z-index:3;background:var(--panel);border-radius:12px 12px 0 0}
 #ppl .pl section.card{scroll-margin-top:var(--lh,96px)}
+#ppl .pl [data-sec=cal] .card-h{flex-wrap:nowrap}
+#ppl .pl [data-sec=cal] .card-h h2{white-space:nowrap}
+#ppl .pl [data-sec=cal] .key{flex-wrap:nowrap;gap:8px;font-size:11px;white-space:nowrap;margin-left:auto}
 .cmpwrap,.rankwrap{overscroll-behavior-x:contain}
 #ppl .pr .pgrid{padding:6px 0 16px}
 #ppl .wf{display:flex;flex-direction:column;align-items:center;min-width:0;overflow:hidden}
@@ -729,7 +732,7 @@ function renderLive(target){
     <div class="board">${board}</div>
   </section>
   <section class="card" data-sec="cal">
-    <div class="card-h"><h2>達成カレンダー</h2>${monthNav()}<div class="key"><span><i style="background:var(--gold)"></i>10本達成</span><span><i style="background:var(--track)"></i>未達（数字は本数）</span></div></div>
+    <div class="card-h"><h2>達成カレンダー</h2>${target?'':monthNav()}<div class="key"><span><i style="background:var(--gold)"></i>10本達成</span><span><i style="background:var(--track)"></i>未達（数字は本数）</span></div></div>
     <div class="cmpwrap"><table class="cmp"><thead><tr><th></th>${head}<th>達成</th></tr></thead><tbody>${body}</tbody></table></div>
   </section>
   <section class="card" data-sec="rank">
