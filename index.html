@@ -718,9 +718,9 @@ function renderLive(target){
   // スマホのトップ（3ページの LIVE）では、見出しと3つの移動ボタンを上に固定する
   const jump=target?`<div class="ljump"><button type="button" data-jump="board">途中経過</button><button type="button" data-jump="cal">カレンダー</button><button type="button" data-jump="rank">通算成績</button></div>`:'';
   (target||document.getElementById('main')).innerHTML=`
-  <div class="lhead"><div class="topbar"><h1>みんなの実況</h1>${onair()}</div>${jump}</div>
+  ${target?`<div class="lhead"><div class="topbar"><h1>みんなの実況</h1>${onair()}</div>${jump}</div>`:`<div class="topbar"><h1>みんなの実況</h1>${onair()}</div>`}
   <section class="card" data-sec="board">
-    <div class="card-h"><h2>今日の途中経過</h2></div>
+    <div class="card-h"><h2>今日の途中経過</h2>${target?'':'<span class="sub">本数の多い順（同数ならその本数に早く到達した順）・S＝今日いちばん早く10本に到達した人・カードを押すと今日の投稿へ</span>'}</div>
     <div class="board">${board}</div>
   </section>
   <section class="card" data-sec="cal">
