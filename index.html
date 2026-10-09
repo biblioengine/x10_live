@@ -346,8 +346,10 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #ppl .pl{padding-top:0}
 #ppl .pl .lhead{position:sticky;top:0;z-index:4;background:var(--bg);padding:8px 0 8px;margin-bottom:4px}
 #ppl .pl .lhead .topbar{flex-wrap:nowrap;gap:8px;align-items:center}
-#ppl .pl .lhead .topbar h1{font-size:17px;white-space:nowrap;flex:none;margin:0}
-#ppl .pl .lhead .onair{font-size:10.5px;gap:4px 6px;padding:3px 10px 3px 6px;min-width:0;line-height:1.35}
+#ppl .pl .lhead .topbar h1{font-size:clamp(14px,4.4vw,17px);white-space:nowrap;flex:none;margin:0}
+#ppl .pl .lhead .onair{font-size:clamp(10px,3vw,12px);gap:clamp(4px,1.6vw,8px);padding:4px 10px 4px 6px;min-width:0;flex-wrap:nowrap;white-space:nowrap}
+#ppl .pl .lhead .onair .num{font-weight:700}
+#ppl .pl .lhead .onair .dno{font-family:"Archivo",var(--f-body);font-weight:800;letter-spacing:.04em}
 #ppl .pl .ljump{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}
 #ppl .pl .ljump button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 4px;font-size:12px;font-weight:700;white-space:nowrap}
 #ppl .pl .card-h{position:sticky;top:var(--lh,96px);z-index:3;background:var(--panel);border-radius:12px 12px 0 0}
@@ -662,8 +664,11 @@ function renderNav(){
     return `<button type="button" data-u="${esc(u.id)}" aria-current="${state.view==='user'&&state.uid===u.id}">${av(u)}
     <span class="who">${esc(u.name)}<span>@${esc(u.handle)}</span></span><span class="navcnt${c>=GOAL?' done':''}">${c}/${GOAL}</span></button>`}).join('');
 }
-function onair(){
+function onair(compact){
   const n=new Date(),left=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1)-n;
+  // スマホのトップ用の短い表示：DAY（企画の何日目か）・現在時刻・今日の残り
+  if(compact){const s0=new Date(state.start),day=Math.round((new Date(n.getFullYear(),n.getMonth(),n.getDate())-new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()))/864e5)+1;
+    return `<span class="onair cmp"><span class="dot">LIVE</span><span class="dno">DAY ${day}</span><span class="num">${hm(n)}</span><span class="mut">残り${Math.floor(left/36e5)}時間${Math.floor(left%36e5/6e4)}分</span></span>`}
   const upd=state.updated?`<span class="mut">データ更新 ${hm(state.updated)}</span>`:'';
   return `<span class="onair"><span class="dot">LIVE</span><span class="num">${n.getMonth()+1}/${n.getDate()} ${hm(n)}</span><span class="mut">今日の残り ${Math.floor(left/36e5)}時間${Math.floor(left%36e5/6e4)}分</span>${upd}</span>`;
 }
@@ -718,7 +723,7 @@ function renderLive(target){
   // スマホのトップ（3ページの LIVE）では、見出しと3つの移動ボタンを上に固定する
   const jump=target?`<div class="ljump"><button type="button" data-jump="board">途中経過</button><button type="button" data-jump="cal">カレンダー</button><button type="button" data-jump="rank">通算成績</button></div>`:'';
   (target||document.getElementById('main')).innerHTML=`
-  ${target?`<div class="lhead"><div class="topbar"><h1>みんなの実況</h1>${onair()}</div>${jump}</div>`:`<div class="topbar"><h1>みんなの実況</h1>${onair()}</div>`}
+  ${target?`<div class="lhead"><div class="topbar"><h1>みんなの実況</h1>${onair(true)}</div>${jump}</div>`:`<div class="topbar"><h1>みんなの実況</h1>${onair()}</div>`}
   <section class="card" data-sec="board">
     <div class="card-h"><h2>今日の途中経過</h2>${target?'':'<span class="sub">本数の多い順（同数ならその本数に早く到達した順）・S＝今日いちばん早く10本に到達した人・カードを押すと今日の投稿へ</span>'}</div>
     <div class="board">${board}</div>
@@ -1486,7 +1491,7 @@ async function pull(first){
   catch{if(first)load(sample(),true);return false}
 }
 pull(true).then(ok=>{if(isPhone())openPeople(0);try{history.replaceState(snap(),'')}catch{}if(ok)setInterval(()=>pull(false),5*60*1000)});
-setInterval(()=>document.querySelectorAll('.onair').forEach(el=>el.outerHTML=onair()),30000);
+setInterval(()=>document.querySelectorAll('.onair').forEach(el=>el.outerHTML=onair(el.classList.contains('cmp'))),30000);
 })();
 </script>
 </body>
