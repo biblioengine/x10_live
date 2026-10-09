@@ -342,21 +342,25 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #ppl .ws{font-size:12px;color:var(--muted)}#ppl .ws b{color:var(--fg)}
 #ppl .pm .wg{flex:1;min-height:0;display:grid;justify-content:center;align-content:center;padding-top:6px}
 #ppl .wsw{text-align:center;font-size:11px;color:var(--muted);padding:4px 0}
-#ppl .pr,#ppl .pl{overflow-y:auto;overscroll-behavior-y:contain}
-#ppl .pl{padding-top:0}
-#ppl .pl .lhead{position:sticky;top:0;z-index:4;background:var(--bg);padding:8px 0 8px;margin-bottom:4px}
+#ppl .pr{overflow-y:auto;overscroll-behavior-y:contain}
+#ppl .pl{display:flex;flex-direction:column;overflow:hidden}
+#ppl .pl .plive{flex:1;min-height:0;display:flex;flex-direction:column}
+#ppl .pl .lhead{flex:none;background:var(--bg);padding:8px 0}
 #ppl .pl .lhead .topbar{flex-wrap:nowrap;gap:8px;align-items:center}
 #ppl .pl .lhead .topbar h1{font-size:clamp(14px,4.4vw,17px);white-space:nowrap;flex:none;margin:0}
 #ppl .pl .lhead .onair{font-size:clamp(10px,3vw,12px);gap:clamp(4px,1.6vw,8px);padding:4px 10px 4px 6px;min-width:0;flex-wrap:nowrap;white-space:nowrap}
 #ppl .pl .lhead .onair .num{font-weight:700}
 #ppl .pl .lhead .onair .dno{font-family:"Archivo",var(--f-body);font-weight:800;letter-spacing:.04em}
 #ppl .pl .ljump{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}
-#ppl .pl .ljump button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 4px;font-size:12px;font-weight:700;white-space:nowrap}
-#ppl .pl .card-h{position:sticky;top:var(--lh,96px);z-index:3;background:var(--panel);border-radius:12px 12px 0 0}
-#ppl .pl section.card{scroll-margin-top:var(--lh,96px)}
-#ppl .pl [data-sec=cal] .card-h{flex-wrap:nowrap}
-#ppl .pl [data-sec=cal] .card-h h2{white-space:nowrap}
-#ppl .pl [data-sec=cal] .key{flex-wrap:nowrap;gap:8px;font-size:11px;white-space:nowrap;margin-left:auto}
+#ppl .pl .ljump button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 4px;font-size:12px;font-weight:700;white-space:nowrap;color:var(--muted)}
+#ppl .pl .ljump button[aria-current="true"]{background:var(--fg);border-color:var(--fg);color:var(--panel)}
+#ppl .pl .lcar{flex:1;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 -16px}
+#ppl .pl .lcar::-webkit-scrollbar{display:none}
+#ppl .pl .lsec{flex:0 0 100%;min-width:0;overflow-y:auto;overscroll-behavior-y:contain;scroll-snap-align:start;scroll-snap-stop:always;padding:0 16px 16px}
+#ppl .pl .lsec .card{margin:0}
+#ppl .pl .cmpwrap,#ppl .pl .rankwrap{overscroll-behavior-x:auto}
+#ppl .pl [data-sec=cal] .card-h,#ppl .pl [data-sec=rank] .card-h{padding:10px 14px}
+#ppl .pl [data-sec=cal] .key{flex-wrap:nowrap;gap:10px;font-size:11px;white-space:nowrap;margin-left:0}
 .cmpwrap,.rankwrap{overscroll-behavior-x:contain}
 #ppl .pr .pgrid{padding:6px 0 16px}
 #ppl .wf{display:flex;flex-direction:column;align-items:center;min-width:0;overflow:hidden}
@@ -724,23 +728,25 @@ function renderLive(target){
 
   const st=new Date(state.start);
   // スマホのトップ（3ページの LIVE）では、見出しと3つの移動ボタンを上に固定する
-  const jump=target?`<div class="ljump"><button type="button" data-jump="board">途中経過</button><button type="button" data-jump="cal">カレンダー</button><button type="button" data-jump="rank">通算成績</button></div>`:'';
+  const jump=target?`<div class="ljump" role="tablist"><button type="button" data-lj="0" aria-current="true">途中経過</button><button type="button" data-lj="1" aria-current="false">カレンダー</button><button type="button" data-lj="2" aria-current="false">通算成績</button></div>`:'';
+  // スマホでは3つを横に並べ、スワイプかボタンで切り替える（見出しはボタンで分かるので出さない）
+  const L1=target?'<div class="lcar"><div class="lsec">':'',LM=target?'</div><div class="lsec">':'',L2=target?'</div></div>':'';
   (target||document.getElementById('main')).innerHTML=`
   ${target?`<div class="lhead"><div class="topbar"><h1>みんなの実況</h1>${onair(true)}</div>${jump}</div>`:`<div class="topbar"><h1>みんなの実況</h1>${onair()}</div>`}
-  <section class="card" data-sec="board">
-    <div class="card-h"><h2>今日の途中経過</h2>${target?'':'<span class="sub">本数の多い順（同数ならその本数に早く到達した順）・S＝今日いちばん早く10本に到達した人・カードを押すと今日の投稿へ</span>'}</div>
+  ${L1}<section class="card" data-sec="board">
+    ${target?'':`<div class="card-h"><h2>今日の途中経過</h2>`}${target?'':'<span class="sub">本数の多い順（同数ならその本数に早く到達した順）・S＝今日いちばん早く10本に到達した人・カードを押すと今日の投稿へ</span></div>'}
     <div class="board">${board}</div>
   </section>
-  <section class="card" data-sec="cal">
-    <div class="card-h"><h2>達成カレンダー</h2>${target?'':monthNav()}<div class="key"><span><i style="background:var(--gold)"></i>10本達成</span><span><i style="background:var(--track)"></i>未達（数字は本数）</span></div></div>
+  ${LM}<section class="card" data-sec="cal">
+    <div class="card-h">${target?'':`<h2>達成カレンダー</h2>${monthNav()}`}<div class="key"><span><i style="background:var(--gold)"></i>10本達成</span><span><i style="background:var(--track)"></i>未達（数字は本数）</span></div></div>
     <div class="cmpwrap"><table class="cmp"><thead><tr><th></th>${head}<th>達成</th></tr></thead><tbody>${body}</tbody></table></div>
   </section>
-  <section class="card" data-sec="rank">
-    <div class="card-h"><h2>通算成績</h2><span class="sub">${st.getMonth()+1}/${st.getDate()} から今日まで・見出しを押すと並び替え</span></div>
+  ${LM}<section class="card" data-sec="rank">
+    <div class="card-h">${target?'':'<h2>通算成績</h2>'}<span class="sub">${st.getMonth()+1}/${st.getDate()} から今日まで・見出しを押すと並び替え</span></div>
     <div class="rankwrap"><div class="rank">
       <div class="rank-row h"><div class="stick"><span class="no"></span><button type="button" class="sortbtn" data-sort="name"${rs.k==='name'?` aria-sort="${rs.dir<0?'descending':'ascending'}"`:''}>参加者<span class="ar">${rs.k==='name'?(rs.dir<0?'▼':'▲'):''}</span></button></div>${sh('ach','達成日数')}${sh('rate','達成率')}${sh('all','投稿数')}${sh('avg','1日平均')}${sh('fol','フォロワー増減')}</div>
       ${rank}</div></div>
-  </section>`;
+  </section>${L2}`;
 }
 
 /* 参加者紹介：全員の入口。押すと選手紹介ページ */
@@ -1082,8 +1088,12 @@ function pplTabs(){const el=pplShown();if(!el)return;const i=pplPage();
 }
 function fillPeople(){const el=document.getElementById('ppl');if(!el)return;
   if(el.hidden){el.dataset.dirty=1;return}
-  renderLive(el.querySelector('.plive'));
-  const lh=el.querySelector('.plive .lhead');if(lh)el.querySelector('.pl').style.setProperty('--lh',lh.offsetHeight+'px');
+  // LIVE を描き直しても、見ていた3つのうちどれか・スクロール位置はそのまま
+  const pv=el.querySelector('.plive'),oc=pv.querySelector('.lcar'),li=oc?Math.round(oc.scrollLeft/Math.max(1,oc.clientWidth)):0,tops=oc?[...oc.children].map(x=>x.scrollTop):[];
+  renderLive(pv);
+  const nc=pv.querySelector('.lcar');
+  if(nc){nc.scrollLeft=li*nc.clientWidth;[...nc.children].forEach((x,i)=>x.scrollTop=tops[i]||0);liveTabs(nc);
+    nc.addEventListener('scroll',()=>requestAnimationFrame(()=>liveTabs(nc)),{passive:true})}
   const tk=todayKey(),n=new Date();
   const all=state.users.map(u=>({u,c:dayCount(u.id,tk)})).sort((a,b)=>Math.min(b.c,GOAL)-Math.min(a.c,GOAL));
   const done=all.filter(r=>r.c>=GOAL).length;
@@ -1105,6 +1115,9 @@ function fillPeople(){const el=document.getElementById('ppl');if(!el)return;
       <span class="pring" style="background:${ringBg(k)}"><span class="pav" style="background-color:${u.color};background-image:url('avatars/${encodeURIComponent(u.handle.toLowerCase())}.jpg')${state.img[u.id]?`,url('${esc(state.img[u.id])}')`:''}"></span>${k>=GOAL?'<span class="pdone">達成</span>':''}</span>
       <span class="pn">${esc(u.name)}</span><span class="ph2">@${esc(u.handle)}</span>${tag?`<span class="pt2">${esc(tag)}</span>`:''}</button>`}).join('');
 }
+function livePage(){const c=document.querySelector('#ppl .lcar');return c?Math.round(c.scrollLeft/Math.max(1,c.clientWidth)):0}
+function liveTabs(c){const i=Math.round(c.scrollLeft/Math.max(1,c.clientWidth));
+  document.querySelectorAll('#ppl .ljump [data-lj]').forEach(b=>b.setAttribute('aria-current',+b.dataset.lj===i))}
 function closePeople(){const el=document.getElementById('ppl');if(el){const shown=!el.hidden;el.remove();if(shown)document.documentElement.style.overflow=''}}
 addEventListener('resize',()=>{const el=pplShown();if(!el)return;const i=pplPage();fillPeople();const c=el.querySelector('.pcar');c.scrollLeft=i*c.clientWidth;pplLock(c)});
 
@@ -1373,8 +1386,7 @@ document.addEventListener('click',e=>{
     if(t==='live'&&!isPhone()){closeOverlays();state.view='live';render();pushNav();scrollTo({top:0});return}
     if(pplShown()){openPeople(pg);return}
     openPeople(pg);pushNav();return}
-  if(b.dataset.jump){const pl=document.querySelector('#ppl .pl'),sec=pl&&pl.querySelector(`[data-sec="${b.dataset.jump}"]`);
-    if(sec){const lh=pl.querySelector('.lhead').offsetHeight;pl.scrollTo({top:pl.scrollTop+sec.getBoundingClientRect().top-pl.getBoundingClientRect().top-lh,behavior:'smooth'})}return}
+  if(b.dataset.lj){const c=document.querySelector('#ppl .lcar');if(c)c.scrollTo({left:+b.dataset.lj*c.clientWidth,behavior:'smooth'});return}
   if(b.dataset.pp){const c=document.querySelector('#ppl .pcar');c.scrollTo({left:+b.dataset.pp*c.clientWidth,behavior:'smooth'});return}
   if(b.id==='btnPplBack'){closePeople();pushNav();return}
   if(b.dataset.v){const w=state.wall;if(w)closeWall();if(w||state.view!==b.dataset.v){state.view=b.dataset.v;render();pushNav();scrollTo({top:0})}return}
@@ -1437,7 +1449,9 @@ faceIn.onchange=async()=>{
   const show=(dy,txt,go)=>{ind.style.transform=`translate(-50%,${Math.min(dy,90)-50}px)`;ind.textContent=txt;ind.classList.toggle('go',!!go)};
   const hide=()=>{ind.style.transition='transform .2s';ind.style.transform='translate(-50%,-60px)';setTimeout(()=>ind.style.transition='',220)};
   // スマホのトップ（LIVE/MEMBER/PROFILE）は各ページの中でスクロールするので、そのページがいちばん上かを見る
-  const top=()=>{const p=pplShown();return p?(p.querySelector('.pcar').children[pplPage()]?.scrollTop||0):scrollY};
+  const top=()=>{const p=pplShown();if(!p)return scrollY;const i=pplPage();
+    if(i===0){const c=p.querySelector('.lcar');return c?(c.children[livePage()]?.scrollTop||0):0}
+    return p.querySelector('.pcar').children[i]?.scrollTop||0};
   let x0=0;
   addEventListener('touchstart',e=>{if(busy||top()>0||document.getElementById('plr')||document.getElementById('net')||document.getElementById('wall')||document.querySelector('dialog[open]')){y0=null;return}
     y0=e.touches[0].clientY;x0=e.touches[0].clientX;d=0},{passive:true});
