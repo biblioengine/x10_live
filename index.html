@@ -283,6 +283,12 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #plr .pgp{flex:0 0 100%;scroll-snap-align:start;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:10px}
 #plr .pgp .st{min-height:118px}
 #plr .pgp .st.w2{grid-column:1/-1}
+#plr .hero{--sb:#10141c}
+#plr .hero.bn{position:relative;overflow:hidden;isolation:isolate}
+#plr .hero .bnimg{position:absolute;inset:0;z-index:-1;background-size:cover;background-position:center}
+#plr .hero .bnimg::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,color-mix(in srgb,var(--sb) 25%,transparent),color-mix(in srgb,var(--sb) 82%,transparent) 55%,color-mix(in srgb,var(--sb) 90%,transparent))}
+@media (max-width:720px){#plr .hero .bnimg::after{background:linear-gradient(to right,color-mix(in srgb,var(--sb) 20%,transparent),color-mix(in srgb,var(--sb) 80%,transparent) 42%,color-mix(in srgb,var(--sb) 88%,transparent))}}
+#plr .hero.tint{--sb:var(--cbg)}
 #plr .hero.tint{background:var(--cbg);border-color:var(--cline);color:var(--cfg)}
 #plr .hero.tint .hd,#plr .hero.tint .tg{color:var(--cmut)}
 #plr .hero.tint .pic .av{border-color:var(--cbg)}
@@ -342,6 +348,16 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .pcard .pn{font-weight:700;font-size:13px;line-height:1.35;max-width:100%;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .pcard .ph2{font-family:var(--f-num);font-size:11px;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pcard .pt2{font-size:11px;color:var(--muted);line-height:1.4;max-width:100%;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-top:2px}
+#ppl .pcard.tc{background:#fff;border:0;border-radius:14px;padding:5px;gap:0;justify-content:flex-start;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+#ppl .pcard.tc:hover{box-shadow:0 2px 10px rgba(0,0,0,.18)}
+#ppl .tc .tct{display:flex;justify-content:center;width:100%;background:var(--tcd);border-radius:10px 10px 3px 3px;padding:14px 0 12px}
+#ppl .tc .tcb{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;width:100%;background:var(--tcl);border-radius:3px 3px 10px 10px;margin-top:4px;padding:9px 8px 12px}
+#ppl .tc .tct{background-size:cover;background-position:center;position:relative}
+#ppl .tc .pring{margin-bottom:0}
+#ppl .tc .pav{border-color:var(--tcd)}
+#ppl .tc .pdone{border-color:var(--tcd)}
+#ppl .tc .pn{color:var(--tct)}
+#ppl .tc .ph2,#ppl .tc .pt2{color:var(--tcm)}
 @media (max-width:720px){.pgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px}.pcard .pav{width:64px;height:64px}}
 /* MEMBER / PROFILE（横に2ページ） */
 #ppl{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column;padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(8px + env(safe-area-inset-bottom,0px))}
@@ -642,7 +658,7 @@ function normalize(raw){
   }
   if(!Array.isArray(items)) throw new Error('配列形式ではありません');
   const users=[],seen={},posts=[];
-  const addUser=(h,name,avatar,ex={})=>{if(seen[h])return;seen[h]=1;users.push({id:h,handle:h,name:name||h,avatar,bio:ex.bio||'',joined:ex.joined||'',color:COLORS[users.length%COLORS.length]})};
+  const addUser=(h,name,avatar,ex={})=>{if(seen[h])return;seen[h]=1;users.push({id:h,handle:h,name:name||h,avatar,bio:ex.bio||'',joined:ex.joined||'',bn:ex.bn?1:0,color:COLORS[users.length%COLORS.length]})};
   roster.forEach(u=>addUser(String(u.handle).replace(/^@/,''),u.name,u.avatar,u));
   // サブアカウント：一覧・ランキングには入れず、本人の個人ページからだけ開く
   const subs=[];
@@ -947,7 +963,7 @@ function timeline(u){
 /* ---------- 操作 ---------- */
 /* 個人カード：1×10×30 / One Ten Thirty Run */
 const CARD={bg:'#0e1116',panel:'#181d27',line:'#2a3140',fg:'#f2f4f8',muted:'#8c95a8',gold:'#f2b632'};
-let cardU=null,cardImg=null,cardRaf=0,cardBg='#0e1116';
+let cardU=null,cardImg=null,cardBn=null,cardRaf=0,cardBg='#0e1116';
 const BG_PRESETS=[['#0e1116','インク'],['#14213d','ネイビー'],['#123629','ディープグリーン'],['#4a1424','ボルドー'],['#2a1c48','パープル'],['#3a3f4a','スレート'],['#7a2e12','テラコッタ'],['#f3f4f6','ホワイト']];
 const hexRgb=h=>{h=h.replace('#','');return[0,2,4].map(i=>parseInt(h.slice(i,i+2),16))};
 const rgbHex=a=>'#'+a.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');
@@ -1037,6 +1053,14 @@ function drawCard(){
   for(const [s,col] of parts){ctx.fillStyle=col;ctx.fillText(s,x,208);x+=ctx.measureText(s).width+6}
   ctx.fillStyle=C.muted;ctx.font=`800 28px ${EN}`;const subW=spaced(ctx,'ONE TEN THIRTY RUN',P+4,262,8.5);
   ctx.font='30px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';ctx.textAlign='left';ctx.fillText('🏆',P+4+subW+14,264);
+  // ヘッダー画像：ロゴの下に敷き、カードの地の色をかぶせて文字を読みやすくする。下はフォロワー数の手前で地の色に溶かす
+  const bnOn=!!(cardBn&&cardBn.complete&&cardBn.naturalWidth);
+  if(bnOn){const x0=F,y0=306,w0=W-F*2,h0=Math.round(w0/3),iw=cardBn.naturalWidth,ih=cardBn.naturalHeight,sc=Math.max(w0/iw,h0/ih);
+    const ca=(a)=>{const [r,g,b]=hexRgb(C.bg);return `rgba(${r},${g},${b},${a})`};
+    ctx.save();ctx.beginPath();ctx.rect(x0,y0,w0,h0);ctx.clip();
+    ctx.drawImage(cardBn,x0+(w0-iw*sc)/2,y0+(h0-ih*sc)/2,iw*sc,ih*sc);
+    const g=ctx.createLinearGradient(0,y0,0,y0+h0);g.addColorStop(0,ca(.55));g.addColorStop(.5,ca(.68));g.addColorStop(.85,ca(.93));g.addColorStop(1,ca(1));
+    ctx.fillStyle=g;ctx.fillRect(x0,y0,w0,h0);ctx.restore()}
   ctx.fillStyle=C.line;ctx.fillRect(P,306,W-P*2,3);
   // アイコン
   const ax=P,ay=350,ar=224;
@@ -1047,10 +1071,12 @@ function drawCard(){
   ctx.strokeStyle=C.gold;ctx.lineWidth=6;ctx.beginPath();ctx.arc(ax+ar/2,ay+ar/2,ar/2+7,0,Math.PI*2);ctx.stroke();
   // 名前・ハンドル・キャッチコピー
   const tx=ax+ar+48,tmax=W-P-tx;ctx.textAlign='left';
+  if(bnOn){ctx.save();ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=14}
   ctx.fillStyle=C.fg;fit(ctx,u.name,tmax,60,`900 #px ${MIX}`);ctx.fillText(u.name,tx,ay+78);
   ctx.fillStyle=C.muted;ctx.font=`500 28px ${EN}`;ctx.fillText('@'+u.handle,tx,ay+124);
   const tag=state.tags[u.handle.toLowerCase()];
   if(tag){ctx.fillStyle=C.fg;ctx.font=`500 30px ${JP}`;wrap(ctx,tag,tmax,2).forEach((l,i)=>ctx.fillText(l,tx,ay+178+i*44))}
+  if(bnOn)ctx.restore();
   // フォロワー数
   const vals=cardVals(),prev=prevVals(),labels=['X','Threads','note'],gap=24,bw=(W-P*2-gap*2)/3,by=624,bh=W-P-624;
   const fmt=v=>Number(v).toLocaleString('en-US');
@@ -1096,6 +1122,7 @@ async function openCard(id){
     '900 60px "Zen Kaku Gothic New"','500 30px "Zen Kaku Gothic New"','500 36px "Zen Kaku Gothic New"'].map(f=>document.fonts.load(f,txt)))}catch{}
   cardImg=new Image();cardImg.onload=redrawCard;cardImg.onerror=()=>{cardImg=null;redrawCard()};
   cardImg.src='avatars/'+encodeURIComponent(cardU.handle.toLowerCase())+'.jpg?d='+todayKey();
+  cardBn=null;if(cardU.bn){const b=new Image();b.onload=redrawCard;b.src=bnURL(cardU);cardBn=b}
   drawCard();
   const probe=new File([new Blob(['x'],{type:'image/png'})],'x.png',{type:'image/png'});
   document.getElementById('cardShare').hidden=!(navigator.canShare&&navigator.canShare({files:[probe]}));
@@ -1213,13 +1240,35 @@ function fillPeople(){const el=document.getElementById('ppl');if(!el)return;
       ${showName?`<span class="wn" style="font-size:${Math.max(9,Math.min(12,Math.round(cell*.15)))}px">${esc(u.name)}</span>`:''}</div>`}).join('');
   // PROFILE：全員のカード（アイコンに今日の投稿数のリング）
   el.querySelector('.pgrid').innerHTML=state.users.map(u=>{const tag=state.tags[u.handle.toLowerCase()],k=dayCount(u.id,tk);
-    return `<button type="button" class="pcard" data-plr="${esc(u.id)}" aria-label="${esc(u.name)}さんの選手紹介（今日 ${k}本）">
-      <span class="pring" style="background:${ringBg(k)}"><span class="pav" style="background-color:${u.color};background-image:url('avatars/${encodeURIComponent(u.handle.toLowerCase())}.jpg')${state.img[u.id]?`,url('${esc(state.img[u.id])}')`:''}"></span>${k>=GOAL?'<span class="pdone">達成</span>':''}</span>
-      <span class="pn">${esc(u.name)}</span><span class="ph2">@${esc(u.handle)}</span>${tag?`<span class="pt2">${esc(tag)}</span>`:''}</button>`}).join('');
+    return `<button type="button" class="pcard tc" data-plr="${esc(u.id)}" style="${tcStyle(state.colors[u.handle.toLowerCase()])}" aria-label="${esc(u.name)}さんの選手紹介（今日 ${k}本）">
+      <span class="tct"${u.bn?` style="background-image:url('${bnURL(u)}')"`:''}><span class="pring" style="background:${ringBg(k,'#ffffff','rgba(255,255,255,.22)')}"><span class="pav" style="background-color:${u.color};background-image:url('avatars/${encodeURIComponent(u.handle.toLowerCase())}.jpg')${state.img[u.id]?`,url('${esc(state.img[u.id])}')`:''}"></span>${k>=GOAL?'<span class="pdone">達成</span>':''}</span></span>
+      <span class="tcb"><span class="pn">${esc(u.name)}</span><span class="ph2">@${esc(u.handle)}</span>${tag?`<span class="pt2">${esc(tag)}</span>`:''}</span></button>`}).join('');
+  // colors.txt に色がない人は、ヘッダー画像の色から下の色を決める
+  state.users.forEach(u=>{if(!u.bn||state.colors[u.handle.toLowerCase()])return;
+    bannerAvg(u,hex=>{const b=el.querySelector(`.pcard[data-plr="${CSS.escape(u.id)}"]`);if(b)b.setAttribute('style',tcStyle(hex))})});
 }
 function livePage(){const c=document.querySelector('#ppl .lcar');return c?Math.round(c.scrollLeft/Math.max(1,c.clientWidth)):0}
 function liveTabs(c){const i=Math.round(c.scrollLeft/Math.max(1,c.clientWidth));
   document.querySelectorAll('#ppl .ljump [data-lj]').forEach(b=>b.setAttribute('aria-current',+b.dataset.lj===i))}
+// ヘッダー画像（banners/ に保存したもの）
+const bnURL=u=>u&&u.bn?'banners/'+encodeURIComponent(u.handle.toLowerCase())+'.jpg?d='+todayKey():'';
+// ヘッダー画像の代表色（色の濃い部分を重く数えた平均）。トレカ風カードの下の色に使う
+state.bavg={};
+function bannerAvg(u,cb){const k=u.handle.toLowerCase();if(k in state.bavg){if(state.bavg[k])cb(state.bavg[k]);return}
+  const im=new Image();im.onload=()=>{try{const c=document.createElement('canvas');c.width=36;c.height=12;const x=c.getContext('2d');x.drawImage(im,0,0,36,12);
+      const d=x.getImageData(0,0,36,12).data;let R=0,G=0,B=0,W=0;
+      for(let i=0;i<d.length;i+=4){const mx=Math.max(d[i],d[i+1],d[i+2]),mn=Math.min(d[i],d[i+1],d[i+2]),w=(mx-mn)/255+.04;R+=d[i]*w;G+=d[i+1]*w;B+=d[i+2]*w;W+=w}
+      state.bavg[k]=rgbHex([R/W,G/W,B/W]);cb(state.bavg[k])}catch{state.bavg[k]=''}};
+  im.onerror=()=>state.bavg[k]='';im.src=bnURL(u)}
+// トレカ風カードの色：colors.txt の色の色相・彩度はそのまま、明るさだけを変えて濃い色と薄い色を作る
+const TC_DEFAULT='#5c6577';
+function tcStyle(hex){
+  const [r,g,b]=hexRgb(hex||TC_DEFAULT).map(v=>v/255),mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn,l=(mx+mn)/2;
+  let h=0,sat=0;
+  if(d){sat=d/(1-Math.abs(2*l-1));h=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4;h=(h*60+360)%360}
+  const c=L=>`hsl(${h.toFixed(1)} ${(sat*100).toFixed(1)}% ${L}%)`;
+  return `--tcd:${c(30)};--tcl:${c(89)};--tct:${c(14)};--tcm:${c(36)}`;
+}
 function closePeople(){const el=document.getElementById('ppl');if(el){const shown=!el.hidden;el.remove();if(shown)document.documentElement.style.overflow=''}}
 addEventListener('resize',()=>{const el=pplShown();if(!el)return;const i=pplPage();fillPeople();const c=el.querySelector('.pcar');c.scrollLeft=i*c.clientWidth;pplLock(c)});
 
@@ -1287,7 +1336,7 @@ function openPlayer(id,opt={}){
     const sec={status:0,cal:1,post:2}[opt.sec||'status']??0;
     el.innerHTML=`<div class="uh">
       <nav class="nav views">${tabsHTML(null)}</nav>
-      <section class="hero${tint?' tint':''}"${tint}>
+      <section class="hero${tint?' tint':''}${u.bn?' bn':''}"${tint}>${u.bn?`<i class="bnimg" style="background-image:url('${bnURL(u)}')"></i>`:''}
         <div class="pic" style="background:${ringBg(dayCount(u.id,todayKey()),'var(--pb)','rgba(255,255,255,.16)','var(--pg)')}">${pav(u)}</div>
         <div class="who2"><div class="nm">${esc(u.name)}</div><div class="hd">@${esc(u.handle)}</div>
         ${tag?`<div class="tg">${esc(tag)}</div>`:''}
@@ -1326,7 +1375,7 @@ function openPlayer(id,opt={}){
   el.innerHTML=`<div class="in">
   <div class="ph"><span class="tt">PLAYER PROFILE<small>選手紹介</small></span><div class="acts"><button type="button" class="back" data-go="live">TOPへ</button><button type="button" class="back" data-go="players">一覧に戻る</button></div></div>
   <div class="grid">
-    <section class="hero${tint?' tint':''}"${tint}>
+    <section class="hero${tint?' tint':''}${u.bn?' bn':''}"${tint}>${u.bn?`<i class="bnimg" style="background-image:url('${bnURL(u)}')"></i>`:''}
       <div class="pic" style="background:${ringBg(dayCount(u.id,todayKey()),'var(--pb)','rgba(255,255,255,.16)','var(--pg)')}">${pav(u)}</div>
       <div class="who2"><div class="nm">${esc(u.name)}</div><div class="hd">@${esc(u.handle)}</div>
       ${tag?`<div class="tg">${esc(tag)}</div>`:''}

@@ -27,6 +27,7 @@ MANUAL = os.path.join(ROOT, "manual_posts.txt")
 SUBS = os.path.join(ROOT, "subaccounts.txt")
 PHOTOS = os.path.join(ROOT, "photos.txt")
 AVATARS = os.path.join(ROOT, "avatars")
+BANNERS = os.path.join(ROOT, "banners")
 API = "https://api.x.com/2"
 TOKEN = os.environ.get("X_BEARER_TOKEN", "").strip()
 
@@ -105,12 +106,13 @@ def refresh_users(data, handles):
     if targets:
         for i in range(0, len(targets), 100):
             res = api("/users/by", {"usernames": ",".join(targets[i:i + 100]),
-                                    "user.fields": "name,profile_image_url,public_metrics,description,created_at"})
+                                    "user.fields": "name,profile_image_url,profile_banner_url,public_metrics,description,created_at"})
             for u in res.get("data", []):
                 # bio（プロフィール文）と joined（Xを始めた日）は選手紹介ページで使う
                 known[u["username"].lower()] = {"handle": u["username"], "id": u["id"], "name": u.get("name") or u["username"],
                                                 "avatar": u.get("profile_image_url", ""),
-                                                "bio": u.get("description", ""), "joined": u.get("created_at", "")}
+                                                "bio": u.get("description", ""), "joined": u.get("created_at", ""),
+                                                "banner": u.get("profile_banner_url", "")}
                 fc = u.get("public_metrics", {}).get("followers_count")
                 if fc is not None:
                     followers.setdefault(u["username"], {})[today] = fc
@@ -441,6 +443,40 @@ def save_avatars(data):
     return n
 
 
+def save_banners(data):
+    """ヘッダー画像を banners/ に保存する（参加者カード・選手紹介・個人カードの背景に使う）。
+    アイコンと同じく、カードに描いて書き出せるように同じサイトに置く。URLが変わったときだけ取り直す。
+    ヘッダーを外した人は保存していた画像も消す。保存できている人には bn=1 を付ける。"""
+    st = data.setdefault("state", {})
+    os.makedirs(BANNERS, exist_ok=True)
+    src = st.setdefault("banner_src", {})
+    n = 0
+    for u in data["users"]:
+        if "banner" not in u:  # まだヘッダーのURLを取得していない（次のプロフィール更新で入る）
+            continue
+        url = u.get("banner") or ""
+        key = u["handle"].lower()
+        path = os.path.join(BANNERS, key + ".jpg")
+        if not url:
+            if os.path.exists(path):
+                os.remove(path)
+            src.pop(key, None)
+        elif not (os.path.exists(path) and src.get(key) == url):
+            try:
+                req = urllib.request.Request(url.rstrip("/") + "/1080x360", headers={"User-Agent": "x10-live"})
+                with urllib.request.urlopen(req, timeout=20) as r:
+                    body = r.read()
+                if body:
+                    with open(path, "wb") as f:
+                        f.write(body)
+                    src[key] = url
+                    n += 1
+            except Exception as e:
+                print(f"  ヘッダー画像を保存できませんでした: {u['handle']} ({e})")
+        u["bn"] = 1 if os.path.exists(path) else 0
+    return n
+
+
 def main():
     if not TOKEN:
         sys.exit("X_BEARER_TOKEN が設定されていません（GitHub の Settings → Secrets に登録してください）")
@@ -484,6 +520,12 @@ def main():
             print(f"アイコン保存 {n}件")
     except Exception as e:
         print("アイコンの保存に失敗しました:", e)
+    try:
+        n = save_banners(data)
+        if n:
+            print(f"ヘッダー画像保存 {n}件")
+    except Exception as e:
+        print("ヘッダー画像の保存に失敗しました:", e)
     data["posts"].sort(key=lambda p: p["created_at"])
     print(f"交流（引用）{quote_interactions(data)}件")
     data["interactions"].sort(key=lambda x: x["created_at"])
