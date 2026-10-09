@@ -188,7 +188,9 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .cd .acts .btn{width:100%;padding:9px 12px}
 @media (max-width:640px){.cd{grid-template-columns:minmax(0,1fr);padding:0 14px 14px;gap:14px}
   /* スマホ：カードと背景の色はいつも上に見えるように固定し、入力欄だけがスクロールする */
-  .cd .cdl{position:sticky;top:0;z-index:2;background:var(--panel);padding:12px 0 8px;border-bottom:1px solid var(--line)}
+  .cd .cdl{position:sticky;top:0;z-index:2;background:var(--panel);margin:0 -14px;padding:12px 14px 8px}
+  .cd .cdl::after{content:'';position:absolute;left:0;right:0;top:100%;height:22px;background:linear-gradient(var(--panel),transparent);pointer-events:none;opacity:0;transition:opacity .15s}
+  #cardDlg.scrolled .cd .cdl::after{opacity:1}
   .cd canvas{width:auto;max-height:36vh;margin:0 auto}
   .cd .bgpick{margin:10px 0 0;gap:6px}.cd .bgpick .bgl{width:auto;margin-right:2px}
   .cd .sw button{width:24px;height:24px}}
@@ -722,7 +724,7 @@ function tabsHTML(active){
     .map(([k,en,ja])=>`<button type="button" class="big t-${k}" data-tab="${k}" aria-current="${active===k}"><b>${ico[k]}${en}</b><small>${ja}</small></button>`).join('');
 }
 // カレンダーを横に送ったときだけ、アイコン列の右端をぼかす
-document.addEventListener('scroll',e=>{const w=e.target;if(w.classList&&w.classList.contains('cmpwrap'))w.classList.toggle('scrolled',w.scrollLeft>2)},true);
+document.addEventListener('scroll',e=>{const w=e.target;if(!w.classList)return;if(w.classList.contains('cmpwrap'))w.classList.toggle('scrolled',w.scrollLeft>2);else if(w.id==='cardDlg')w.classList.toggle('scrolled',w.scrollTop>2)},true);
 function renderNav(){
   const tk=todayKey(),done=state.users.filter(u=>dayCount(u.id,tk)>=GOAL).length;
   document.getElementById('navViews').innerHTML=tabsHTML(state.view==='live'?'live':null);
@@ -1087,7 +1089,7 @@ async function openCard(id){
   {const t=new Date();cDate.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`}
   let bg='#0e1116';try{bg=localStorage.getItem('cardbg:'+cardU.handle.toLowerCase())||bg}catch{}
   setBg(bg,false);
-  cardDlg.showModal();
+  cardDlg.showModal();cardDlg.scrollTop=0;cardDlg.classList.remove('scrolled');
   // 名前・キャッチコピーに使う文字の分まで、フォントを読み込んでから描く
   const txt=cardU.name+(state.tags[cardU.handle.toLowerCase()]||'')+MSG_DEFAULT+cMsg.value+'1×10×30 ONE TEN THIRTY RUN DAY FOLLOWERS Threads note 0123456789,./—@'+cardU.handle;
   try{await Promise.all(['150px "Archivo Black"','800 40px "Archivo"','500 28px "Archivo"','700 22px "Archivo"','900 60px "Archivo"',
