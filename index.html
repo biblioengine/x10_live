@@ -1731,8 +1731,8 @@ function netDraw(){
   }
   // CLEAR! のポップアップ（1.4秒で上に浮かんで消える）
   const tn=performance.now();NET.fx=(NET.fx||[]).filter(f=>tn-f.t<1400);
-  // 誰かを選んでいるときは、その人と繋がっている人にだけ出す
-  for(const f of NET.fx){const q=P[f.i];if(!q||!lit(f.i))continue;const a=(tn-f.t)/1400,pop=a<.15?.6+a/.15*.5:a<.25?1.1-(a-.15)*1:1;
+  // 選んでいる人にだけ出す（誰も選んでいないときは出さない）
+  for(const f of NET.fx){const q=P[f.i];if(!q||f.i!==sel)continue;const a=(tn-f.t)/1400,pop=a<.15?.6+a/.15*.5:a<.25?1.1-(a-.15)*1:1;
     ctx.globalAlpha=a>.7?(1-a)/.3:1;ctx.save();ctx.translate(q.sx,q.sy-q.r-14-a*26);ctx.scale(pop,pop);
     ctx.font=`900 ${Math.max(14,Math.min(26,q.r*.75))}px "Archivo Black","Archivo",sans-serif`;ctx.textAlign='center';ctx.textBaseline='bottom';
     ctx.lineWidth=5;ctx.lineJoin='round';ctx.strokeStyle='#161a24';ctx.strokeText('CLEAR!',0,0);ctx.fillStyle=C.gold;ctx.fillText('CLEAR!',0,0);ctx.restore()}
