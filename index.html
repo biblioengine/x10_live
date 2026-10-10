@@ -307,11 +307,23 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 @keyframes nflu{0%{background:rgba(43,138,94,.28)}100%{background:transparent}}
 @keyframes nfld{0%{background:rgba(232,54,79,.25)}100%{background:transparent}}
 #net .nst{overflow:visible}
-#net .nst .clr{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.4);font-family:"Archivo Black","Archivo",sans-serif;font-size:42px;color:var(--gold);
-  -webkit-text-stroke:2px #161a24;paint-order:stroke fill;letter-spacing:.04em;opacity:0;pointer-events:none;white-space:nowrap;text-shadow:0 0 18px rgba(255,197,61,.6)}
-#net .nst .clr.go{animation:nclr 1.6s ease-out}
-@keyframes nclr{0%{opacity:0;transform:translate(-50%,-50%) scale(.4) rotate(-8deg)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.15) rotate(-4deg)}30%{transform:translate(-50%,-50%) scale(1) rotate(-4deg)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-60%) scale(1) rotate(-4deg)}}#net .nst .v.up{color:#2b8a5e}#net .nst .v.dn{color:var(--live)}
-@media (max-width:720px){#net .nt .d{font-size:14px}#net .nt .h{font-size:34px}#net .nst{padding:8px 10px;width:min(200px,52%)}#net .nst .v{font-size:15px}#net .nst .k{font-size:10.5px}}
+#net .nst .clr{display:inline-block;margin-left:6px;font-family:"Archivo Black","Archivo",sans-serif;font-size:11px;letter-spacing:.04em;line-height:1.5;padding:0 7px;border-radius:99px;background:var(--gold);color:#161a24;opacity:0;transform:scale(.5);vertical-align:1px}
+#net .nst .clr.go{animation:nclr 2.4s ease-out}
+@keyframes nclr{0%{opacity:0;transform:scale(.5)}12%{opacity:1;transform:scale(1.25)}24%{transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:scale(1)}}
+#net .nst .r.flc{animation:nflc 1.2s}
+@keyframes nflc{0%{background:color-mix(in srgb,var(--gold) 35%,transparent)}100%{background:transparent}}
+/* PC：右上に重ねる（ヘッダーの下）。スマホ：グラフの下に1行で並べて、グラフに重ねない */
+@media (min-width:721px){#net .nst{top:64px;right:16px}}
+@media (max-width:720px){#net .nt .d{font-size:14px}#net .nt .h{font-size:34px}
+  #net .nst{position:static;width:auto;margin-top:6px;padding:8px 10px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));column-gap:8px;box-shadow:none}
+  #net .nst[hidden]{display:none}
+  #net .nst .nm{grid-column:1/-1;font-size:12px;margin-bottom:4px}
+  #net .nst .r{border-top:0;padding:2px 0;border-radius:6px}
+  #net .nst .rh{flex-direction:column;align-items:flex-start;gap:2px}
+  #net .nst .k{font-size:9.5px;line-height:1.25;min-height:2.5em}
+  #net .nst .v{font-size:15px}#net .nst .v small{font-size:10px}
+  #net .nst .clr{margin-left:0;display:block;width:max-content;position:absolute;top:-9px;right:0;transform-origin:right}
+  #net .nst .r[data-r="c"]{position:relative}}
 #net .nh{font-size:11px;color:var(--muted);text-align:center;padding-top:4px}
 /* 選手紹介（ゲームのステータス画面風） */
 .plrbtn{border:0;background:none;padding:0;border-radius:50%;cursor:pointer;flex:none;display:inline-flex}
@@ -1567,7 +1579,7 @@ function openNet(focus){
   hours.push(now);
   el.innerHTML=`<div class="wh"><button type="button" class="nback" id="btnNetBack" aria-label="元の画面に戻る">◀︎</button><span class="wt">参加者の交流</span><span class="ws" id="netInfo"></span>
     <div class="nacts"><button type="button" class="back" data-go="member">参加者一覧</button><button type="button" class="back" data-go="live">TOPへ</button></div></div>
-    <div class="nc"><canvas id="netCv" aria-label="参加者どうしの交流の繋がり"></canvas><div class="nt" id="netDate" aria-live="polite"></div><div class="nst" id="netSt" hidden></div></div>
+    <div class="nc"><canvas id="netCv" aria-label="参加者どうしの交流の繋がり"></canvas><div class="nt" id="netDate" aria-live="polite"></div></div><div class="nst" id="netSt" hidden></div>
     <div class="nb"><button type="button" class="nplay" id="netPlay" aria-label="再生">▶︎</button>
       <select id="netSpd" aria-label="再生速度"><option value="1">×1</option><option value="2" selected>×2</option><option value="4">×4</option><option value="8">×8</option></select>
       <span>${s0.getMonth()+1}/${s0.getDate()}</span><input type="range" id="netDay" min="0" max="${hours.length-1}" value="${hours.length-1}" aria-label="いつまでの交流を表示するか"><span>今</span></div>
@@ -1630,15 +1642,15 @@ function netStats(){
   const c=NET.cnt[NET.sel]||0,g=fNow!=null&&fFirst!=null?fNow-fFirst:null;
   // 人が変わったときだけ枠を作り直す。数字は前の値から目標の値へ数えるように動かす
   if(NET.stSel!==NET.sel){NET.stSel=NET.sel;
-    const row=(id,k,gauge)=>`<div class="r" data-r="${id}"><div class="rh"><span class="k">${k}</span><span class="v num"><b>—</b>${id==='c'?`<small>/ ${GOAL}</small>`:''}</span></div>${gauge?'<div class="gg"><i></i></div>':''}</div>`;
-    box.innerHTML=`<div class="nm">${esc(u.name)}</div>${row('f','その日のフォロワー数')}${row('c','その日の投稿数',1)}${row('a','通算投稿数',1)}${row('g','フォロワー通算増減')}<div class="clr" aria-hidden="true">CLEAR!</div>`;
+    const row=(id,k,gauge)=>`<div class="r" data-r="${id}"><div class="rh"><span class="k">${k}${id==='c'?'<span class="clr" aria-hidden="true">CLEAR!</span>':''}</span><span class="v num"><b>—</b>${id==='c'?`<small>/ ${GOAL}</small>`:''}</span></div>${gauge?'<div class="gg"><i></i></div>':''}</div>`;
+    box.innerHTML=`<div class="nm">${esc(u.name)}</div>${row('f','その日のフォロワー数')}${row('c','その日の投稿数',1)}${row('a','通算投稿数',1)}${row('g','フォロワー通算増減')}`;
     NET.stEl=null;NET.stLast={};NET.stv={f:fNow,c,a:all,g};NET.stt={f:fNow,c,a:all,g};netStatPaint(true)}
   else{
     const pv=NET.stt;
     // 数字が変わった行を一瞬光らせる（増えたら緑、減ったら赤）
     [['f',fNow],['g',g]].forEach(([k,v])=>{if(pv[k]!=null&&v!=null&&v!==pv[k]){const r=box.querySelector(`[data-r="${k}"]`);r.classList.remove('flu','fld');void r.offsetWidth;r.classList.add(v>pv[k]?'flu':'fld')}});
     // 10本に届いた瞬間は CLEAR!
-    if(pv.c<GOAL&&c>=GOAL){const e=box.querySelector('.clr');e.classList.remove('go');void e.offsetWidth;e.classList.add('go')}
+    if(pv.c<GOAL&&c>=GOAL){const e=box.querySelector('.clr'),r=box.querySelector('[data-r="c"]');[e,r].forEach(x=>x.classList.remove('go','flc'));void e.offsetWidth;e.classList.add('go');r.classList.add('flc')}
     NET.stt={f:fNow,c,a:all,g};NET.stMove=true}
   box.hidden=false;
 }
