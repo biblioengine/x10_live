@@ -288,8 +288,30 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #net .nb{display:flex;align-items:center;gap:12px;padding-top:8px;font-size:12px;color:var(--muted)}
 #net .nb input{flex:1;accent-color:var(--x)}
 #net .nt{position:absolute;left:4px;top:4px;pointer-events:none;display:flex;flex-direction:column;line-height:1.1}
-#net .nt .d{font-size:14px;font-weight:700;color:var(--muted)}
-#net .nt .h{font-family:var(--f-num);font-size:30px;font-weight:700;color:var(--fg)}
+#net .nt .d{font-size:20px;font-weight:700;color:var(--muted)}
+#net .nt .h{font-family:var(--f-num);font-size:56px;font-weight:700;color:var(--fg);letter-spacing:-.02em}
+#net .nst{position:absolute;right:4px;top:4px;width:min(260px,46%);background:color-mix(in srgb,var(--panel) 92%,transparent);border:1px solid var(--line);border-radius:14px;padding:12px 14px;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+#net .nst .nm{font-weight:700;font-size:14px;margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#net .nst .r{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid var(--line)}
+#net .nst .k{font-size:12px;color:var(--muted)}
+#net .nst .v{font-size:20px;font-weight:700}
+#net .nst .v small{font-size:12px;color:var(--muted);margin-left:3px}
+#net .nst .v.ok{color:var(--gold)}
+#net .nst .r{flex-direction:column;align-items:stretch;justify-content:flex-start;transition:background .4s}
+#net .nst .rh{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+#net .nst .v b{font-weight:700}
+#net .nst .gg{height:6px;border-radius:99px;background:var(--track);overflow:hidden;margin-top:4px}
+#net .nst .gg i{display:block;height:100%;width:0;background:var(--x);border-radius:99px;transition:width .35s ease-out}
+#net .nst .gg i.full{background:var(--gold);box-shadow:0 0 8px var(--gold)}
+#net .nst .r.flu{animation:nflu .9s}#net .nst .r.fld{animation:nfld .9s}
+@keyframes nflu{0%{background:rgba(43,138,94,.28)}100%{background:transparent}}
+@keyframes nfld{0%{background:rgba(232,54,79,.25)}100%{background:transparent}}
+#net .nst{overflow:visible}
+#net .nst .clr{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.4);font-family:"Archivo Black","Archivo",sans-serif;font-size:42px;color:var(--gold);
+  -webkit-text-stroke:2px #161a24;paint-order:stroke fill;letter-spacing:.04em;opacity:0;pointer-events:none;white-space:nowrap;text-shadow:0 0 18px rgba(255,197,61,.6)}
+#net .nst .clr.go{animation:nclr 1.6s ease-out}
+@keyframes nclr{0%{opacity:0;transform:translate(-50%,-50%) scale(.4) rotate(-8deg)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.15) rotate(-4deg)}30%{transform:translate(-50%,-50%) scale(1) rotate(-4deg)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-60%) scale(1) rotate(-4deg)}}#net .nst .v.up{color:#2b8a5e}#net .nst .v.dn{color:var(--live)}
+@media (max-width:720px){#net .nt .d{font-size:14px}#net .nt .h{font-size:34px}#net .nst{padding:8px 10px;width:min(200px,52%)}#net .nst .v{font-size:15px}#net .nst .k{font-size:10.5px}}
 #net .nh{font-size:11px;color:var(--muted);text-align:center;padding-top:4px}
 /* 選手紹介（ゲームのステータス画面風） */
 .plrbtn{border:0;background:none;padding:0;border-radius:50%;cursor:pointer;flex:none;display:inline-flex}
@@ -1545,7 +1567,7 @@ function openNet(focus){
   hours.push(now);
   el.innerHTML=`<div class="wh"><button type="button" class="nback" id="btnNetBack" aria-label="元の画面に戻る">◀︎</button><span class="wt">参加者の交流</span><span class="ws" id="netInfo"></span>
     <div class="nacts"><button type="button" class="back" data-go="member">参加者一覧</button><button type="button" class="back" data-go="live">TOPへ</button></div></div>
-    <div class="nc"><canvas id="netCv" aria-label="参加者どうしの交流の繋がり"></canvas><div class="nt" id="netDate" aria-live="polite"></div></div>
+    <div class="nc"><canvas id="netCv" aria-label="参加者どうしの交流の繋がり"></canvas><div class="nt" id="netDate" aria-live="polite"></div><div class="nst" id="netSt" hidden></div></div>
     <div class="nb"><button type="button" class="nplay" id="netPlay" aria-label="再生">▶︎</button>
       <select id="netSpd" aria-label="再生速度"><option value="1">×1</option><option value="2" selected>×2</option><option value="4">×4</option><option value="8">×8</option></select>
       <span>${s0.getMonth()+1}/${s0.getDate()}</span><input type="range" id="netDay" min="0" max="${hours.length-1}" value="${hours.length-1}" aria-label="いつまでの交流を表示するか"><span>今</span></div>
@@ -1558,6 +1580,7 @@ function openNet(focus){
     return{u,x:Math.cos(a)*r*220,y:y*220,z:Math.sin(a)*r*220,vx:0,vy:0,vz:0,img}});
   NET.idx=Object.fromEntries(NET.nodes.map((nd,i)=>[nd.u.handle.toLowerCase(),i]));
   NET.ix=(state.ix||[]).filter(x=>ids.has(x.from)&&ids.has(x.to)&&x.from!==x.to);
+  NET.di=null;NET.cnt=null;NET.fx=[];NET.stSel=-1;NET.stt=null;
   NET.hours=hours;NET.yaw=.4;NET.pitch=-.25;NET.zoom=1;NET.sel=-1;NET.alpha=1;NET.ptrs=new Map();
   NET.cv=el.querySelector('#netCv');
   const sl=el.querySelector('#netDay');
@@ -1573,7 +1596,7 @@ function openNet(focus){
   const loop=()=>{if(!document.getElementById('net'))return;
     if(NET.play){const t=performance.now();NET.acc+=(t-NET.last)/1000*3*(+spd.value||1);NET.last=t;
       if(NET.acc>=1){const v=Math.min(+sl.max,+sl.value+Math.floor(NET.acc));NET.acc%=1;sl.value=v;netEdges(v);NET.alpha=Math.max(NET.alpha,.35);if(v>=+sl.max)netStop()}}
-    netStep();netDraw();NET.raf=requestAnimationFrame(loop)};
+    NET.raf=requestAnimationFrame(loop);netStep();netDraw();try{netStatPaint()}catch(e){NET.stMove=false}};
   NET.raf=requestAnimationFrame(loop);
 }
 function netStop(){NET.play=false;const b=document.getElementById('netPlay');if(b){b.textContent='▶︎';b.setAttribute('aria-label','再生')}}
@@ -1585,14 +1608,61 @@ function netEdges(di){
     const a=NET.idx[x.from.toLowerCase()],b=NET.idx[x.to.toLowerCase()];if(a===undefined||b===undefined)continue;
     const k=a<b?a+'-'+b:b+'-'+a;let e=m.get(k);if(!e){e={a:Math.min(a,b),b:Math.max(a,b),w:0,t:{reply:0,quote:0,retweet:0}};m.set(k,e)}
     e.w++;e.t[x.type]=(e.t[x.type]||0)+1}
+  const forward=NET.di!=null&&di>NET.di&&di-NET.di<=6,prevCnt=NET.cnt;
   NET.edges=[...m.values()];NET.di=di;
   // その日の0時から選んだ時刻までの投稿数（リング用）
   const d0=new Date(lim);d0.setHours(0,0,0,0);
   NET.cnt=NET.nodes.map(nd=>(state.byUser[nd.u.id]||[]).reduce((c,p)=>c+(p.ts>=d0.getTime()&&p.ts<=lim),0));
+  // 少しずつ進めているときに10本に届いた人には、アイコンの上に CLEAR! を出す
+  if(forward&&prevCnt){NET.fx=NET.fx||[];NET.cnt.forEach((c,i)=>{if(c>=GOAL&&(prevCnt[i]||0)<GOAL)NET.fx.push({i,t:performance.now()})})}
   const d=new Date(lim);document.getElementById('netDate').innerHTML=`<span class="d">${d.getMonth()+1}/${d.getDate()}（${DOW[d.getDay()]}）</span><span class="h num">${hm(lim)}</span>`;
   netInfo();
 }
+// 選んでいる人の、スライダーの時点での数字（その日のフォロワー数・その日の投稿数・通算投稿数・フォロワーの通算増減）
+function netStats(){
+  const box=document.getElementById('netSt');if(!box)return;
+  if(NET.sel<0){box.hidden=true;NET.stSel=-1;return}
+  const u=NET.nodes[NET.sel].u,lim=NET.hours[NET.di],d=new Date(lim),usk=totals(u.id).usk;
+  const dk=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const m=state.followers[u.handle]||{},ds=Object.keys(m).sort(),upto=ds.filter(k=>k<=dk);
+  const fNow=upto.length?m[upto[upto.length-1]]:null,fFirst=ds.length?m[ds[0]]:null;
+  const all=(state.byUser[u.id]||[]).reduce((c,p)=>c+(p.ts<=lim&&dkey(p.ts)>=usk),0);
+  const c=NET.cnt[NET.sel]||0,g=fNow!=null&&fFirst!=null?fNow-fFirst:null;
+  // 人が変わったときだけ枠を作り直す。数字は前の値から目標の値へ数えるように動かす
+  if(NET.stSel!==NET.sel){NET.stSel=NET.sel;
+    const row=(id,k,gauge)=>`<div class="r" data-r="${id}"><div class="rh"><span class="k">${k}</span><span class="v num"><b>—</b>${id==='c'?`<small>/ ${GOAL}</small>`:''}</span></div>${gauge?'<div class="gg"><i></i></div>':''}</div>`;
+    box.innerHTML=`<div class="nm">${esc(u.name)}</div>${row('f','その日のフォロワー数')}${row('c','その日の投稿数',1)}${row('a','通算投稿数',1)}${row('g','フォロワー通算増減')}<div class="clr" aria-hidden="true">CLEAR!</div>`;
+    NET.stEl=null;NET.stLast={};NET.stv={f:fNow,c,a:all,g};NET.stt={f:fNow,c,a:all,g};netStatPaint(true)}
+  else{
+    const pv=NET.stt;
+    // 数字が変わった行を一瞬光らせる（増えたら緑、減ったら赤）
+    [['f',fNow],['g',g]].forEach(([k,v])=>{if(pv[k]!=null&&v!=null&&v!==pv[k]){const r=box.querySelector(`[data-r="${k}"]`);r.classList.remove('flu','fld');void r.offsetWidth;r.classList.add(v>pv[k]?'flu':'fld')}});
+    // 10本に届いた瞬間は CLEAR!
+    if(pv.c<GOAL&&c>=GOAL){const e=box.querySelector('.clr');e.classList.remove('go');void e.offsetWidth;e.classList.add('go')}
+    NET.stt={f:fNow,c,a:all,g};NET.stMove=true}
+  box.hidden=false;
+}
+// 表示中の数字を目標へ少しずつ近づける。動いている間だけ画面を書き換える（止まっているときは何もしない）
+function netStatPaint(now){
+  if(!NET.stt||(!now&&!NET.stMove))return;
+  const box=document.getElementById('netSt');if(!box||box.hidden&&!now)return;
+  const T=NET.stt,V=NET.stv;let moving=false;
+  for(const k of ['f','c','a','g']){if(T[k]==null){V[k]=null;continue}if(V[k]==null||now){V[k]=T[k];continue}
+    const dv=T[k]-V[k];if(Math.abs(dv)<.5)V[k]=T[k];else{V[k]+=dv*.2;moving=true}}
+  NET.stMove=moving;
+  const R=v=>Math.round(v),out={f:V.f==null?'—':R(V.f).toLocaleString(),c:String(R(V.c)),a:R(V.a).toLocaleString(),g:V.g==null?'—':sgn(R(V.g))};
+  const cls={c:R(V.c)>=GOAL?' ok':'',g:V.g>0?' up':V.g<0?' dn':''};
+  const last=NET.stLast||(NET.stLast={});
+  if(!NET.stEl||NET.stEl.box!==box)NET.stEl={box,...Object.fromEntries(['f','c','a','g'].map(k=>[k,{b:box.querySelector(`[data-r="${k}"] b`),v:box.querySelector(`[data-r="${k}"] .v`)}])),gc:box.querySelector('[data-r="c"] .gg i'),ga:box.querySelector('[data-r="a"] .gg i')};
+  const E=NET.stEl;
+  for(const k of ['f','c','a','g']){const key=out[k]+'|'+(cls[k]||'');if(last[k]===key)continue;last[k]=key;E[k].b.textContent=out[k];if(k in cls)E[k].v.className='v num'+cls[k]}
+  // ゲージ：その日の投稿は10本で満タン、通算は30日×10本で満タン
+  const wc=Math.min(100,Math.round(V.c/GOAL*100)),wa=Math.min(100,Math.round(V.a/(GOAL*30)*100));
+  if(last.wc!==wc){last.wc=wc;E.gc.style.width=wc+'%';E.gc.classList.toggle('full',V.c>=GOAL)}
+  if(last.wa!==wa){last.wa=wa;E.ga.style.width=wa+'%'}
+}
 function netInfo(){
+  netStats();
   const el=document.getElementById('netInfo');if(!el)return;
   if(NET.sel<0){const p=new Set();NET.edges.forEach(e=>{p.add(e.a);p.add(e.b)});
     el.innerHTML=`繋がり <b>${NET.edges.length}</b> 組・交流のある人 <b>${p.size}</b> / ${NET.nodes.length}人`;return}
@@ -1659,6 +1729,13 @@ function netDraw(){
       const nm=q.i===sel?nd.u.name:(t=>t.length>10?t.slice(0,10)+'…':t)([...nd.u.name.split(/[｜|]/)[0].trim()||nd.u.name].join(''));
       ctx.lineWidth=3;ctx.strokeStyle=C.bg;const ly=q.sy+q.r*1.25+6;ctx.strokeText(nm,q.sx,ly);ctx.fillStyle=C.fg;ctx.fillText(nm,q.sx,ly)}
   }
+  // CLEAR! のポップアップ（1.4秒で上に浮かんで消える）
+  const tn=performance.now();NET.fx=(NET.fx||[]).filter(f=>tn-f.t<1400);
+  // 誰かを選んでいるときは、その人と繋がっている人にだけ出す
+  for(const f of NET.fx){const q=P[f.i];if(!q||!lit(f.i))continue;const a=(tn-f.t)/1400,pop=a<.15?.6+a/.15*.5:a<.25?1.1-(a-.15)*1:1;
+    ctx.globalAlpha=a>.7?(1-a)/.3:1;ctx.save();ctx.translate(q.sx,q.sy-q.r-14-a*26);ctx.scale(pop,pop);
+    ctx.font=`900 ${Math.max(14,Math.min(26,q.r*.75))}px "Archivo Black","Archivo",sans-serif`;ctx.textAlign='center';ctx.textBaseline='bottom';
+    ctx.lineWidth=5;ctx.lineJoin='round';ctx.strokeStyle='#161a24';ctx.strokeText('CLEAR!',0,0);ctx.fillStyle=C.gold;ctx.fillText('CLEAR!',0,0);ctx.restore()}
   ctx.globalAlpha=1;
 }
 function netPointer(cv){
