@@ -280,6 +280,10 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #venue .vgoin{position:absolute;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%)}
 #venue .vopen{border:0;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;color:#161a24;background:#ffd23d;box-shadow:0 0 18px rgba(255,210,61,.55);white-space:nowrap}
 #venue[hidden]{display:none}
+.musbtn{margin-right:6px;font-size:16px}
+#net .back.musn{font-size:15px;padding:5px 12px}#net .back.musn.off{opacity:.5;text-decoration:line-through}
+#ppl .brow:has(.musbtn) .pbrand{font-size:clamp(14px,4.4vw,17px);white-space:nowrap}.musbtn.off{opacity:.5;text-decoration:line-through}
+#net .back.vbk{border:0;color:#fff;background:linear-gradient(90deg,#ff3d7f,#8a5bff,#3dd6ff)}
 #venue{position:fixed;inset:0;z-index:40;background:#07080d;color:#eef1f7;touch-action:none;user-select:none;-webkit-user-select:none}
 #venue .vcv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #venue .vload{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-weight:700;color:#cfd5e2;gap:10px}
@@ -1797,7 +1801,7 @@ function netPointer(cv){
 }
 
 /* ---------- 実況会場（3Dの会場。venue/venue.js を開いたときだけ読み込む） ---------- */
-let VEN=null,VAU=null;
+let VEN=null,VAU=null,VSYNC=0,VMUS=null;
 async function openVenue(){
   if(document.getElementById('venue'))return;
   const el=Object.assign(document.createElement('div'),{id:'venue'});document.body.appendChild(el);document.documentElement.style.overflow='hidden';
@@ -1807,7 +1811,7 @@ async function openVenue(){
   let mi=0,mOn=true;try{mOn=localStorage.getItem('x10vmusic')!=='0'}catch{}
   const au=new Audio();au.preload='auto';au.volume=.55;au.src=PL[0];au.onended=()=>{mi=(mi+1)%PL.length;au.src=PL[mi];if(mOn)au.play().catch(()=>{})};
   if(mOn)au.play().catch(()=>{});VAU=au;
-  const music={on:()=>mOn,toggle(){mOn=!mOn;try{localStorage.setItem('x10vmusic',mOn?'1':'0')}catch{}if(mOn)au.play().catch(()=>{});else au.pause();return mOn}};
+  const music={on:()=>mOn,toggle(){setTimeout(musicBtns);mOn=!mOn;try{localStorage.setItem('x10vmusic',mOn?'1':'0')}catch{}if(mOn)au.play().catch(()=>{});else au.pause();return mOn}};VMUS=music;
   const api={users:()=>state.users,avatar:u=>'avatars/'+encodeURIComponent(u.handle.toLowerCase())+'.jpg',tag:u=>state.tags[u.handle.toLowerCase()],
     dayCount,todayKey,totals,GOAL,tickerData,ix:()=>state.ix||[],music,peek:venuePeek,
     days:()=>{const s0=new Date(state.start),o=[];for(let i=0;i<30;i++)o.push(dkey(new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()+i).getTime()));return o},
@@ -1819,8 +1823,8 @@ async function openVenue(){
 const venuePeeking=()=>{const v=document.getElementById('venue');return !!(v&&v.hidden)};
 function venuePeek(kind,id){
   const v=document.getElementById('venue');if(!v)return;
-  v.dataset.ppl=pplShown()?String(pplPage()):'';v._prev={view:state.view,uid:state.uid,day:state.day,ls:state.ls,y:state.y,m:state.m};try{VEN&&VEN.pause()}catch{}if(VAU)VAU.pause();v.hidden=true;document.documentElement.style.overflow='';
-  let r=document.getElementById('vret');if(!r){r=Object.assign(document.createElement('button'),{id:'vret',type:'button',textContent:'◀︎ 会場に戻る'});r.onclick=venueBack;document.body.appendChild(r)}r.hidden=false;
+  v.dataset.ppl=pplShown()?String(pplPage()):'';v._prev={view:state.view,uid:state.uid,day:state.day,ls:state.ls,y:state.y,m:state.m};try{VEN&&VEN.pause()}catch{}v.hidden=true;document.documentElement.style.overflow='';
+  let r=document.getElementById('vret');if(!r){r=Object.assign(document.createElement('button'),{id:'vret',type:'button',textContent:'◀︎ 会場に戻る'});r.onclick=venueBack;document.body.appendChild(r)}r.hidden=true;clearInterval(VSYNC);VSYNC=setInterval(venueSync,400);
   const live=i=>{if(isPhone()){openPeople(0);requestAnimationFrame(()=>{const c=document.querySelector('#ppl .lcar');if(c)c.scrollLeft=i*c.clientWidth})}
     else{hidePeople();state.view='live';state.ls=i;render();scrollTo({top:0})}};
   if(kind==='player')openPlayer(id);
@@ -1829,9 +1833,36 @@ function venuePeek(kind,id){
   else if(kind==='board')live(0);
   else if(kind==='cal')live(1);
   else if(kind==='rank')live(2);
+  requestAnimationFrame(venueSync);
+}
+// 覗いている画面に合わせて「会場に戻る」の出し方を変える
+//  ・LIVE（途中経過・カレンダー・通算成績）：「実況会場へ」ボタンを「会場へ戻る」に変える
+//  ・交流画面：上のボタンの並びに「会場に戻る」を足す
+//  ・それ以外：右下に浮かぶボタン
+function venueSync(){
+  const pk=venuePeeking();
+  document.querySelectorAll('[data-venue]').forEach(b=>{const t=pk?'◀︎ 会場へ戻る':'実況会場へ ▶︎';if(b.textContent!==t)b.textContent=t});
+  const net=document.getElementById('net');
+  if(net){const a=net.querySelector('.nacts'),k=a&&a.querySelector('.vbk');
+    if(pk&&a&&!k)a.insertAdjacentHTML('afterbegin','<button type="button" class="back vbk" data-venue="1">◀︎ 会場に戻る</button><button type="button" class="back musn" data-music="1" aria-label="音楽のオン・オフ">♪</button>');
+    if(!pk&&k){k.remove();a.querySelector('.musn')?.remove()}}
+  const plr=document.getElementById('plr');
+  const liveVis=!plr&&!net&&(isPhone()?(pplShown()&&pplPage()===0):(!pplShown()&&state.view==='live'));
+  const r=document.getElementById('vret');if(r)r.hidden=!pk||!!net||liveVis;
+  musicBtns();
+}
+// ライト／ダークの切り替えボタンの横に、音楽のオン・オフ（会場を開いている間だけ）
+function musicBtns(){
+  const has=!!document.getElementById('venue')&&!!VAU;
+  document.querySelectorAll('[data-theme-toggle]').forEach(t=>{let m=t.previousElementSibling;if(!(m&&m.classList.contains('musbtn')))m=null;
+    if(!has){m&&m.remove();return}
+    if(!m){m=Object.assign(document.createElement('button'),{type:'button',className:'themebtn musbtn',textContent:'♪'});m.dataset.music='1';m.setAttribute('aria-label','音楽のオン・オフ');t.before(m)}
+    const on=!VAU.paused;m.classList.toggle('off',!on);m.setAttribute('aria-pressed',on)});
+  // 交流画面の上の並びの ♪
+  document.querySelectorAll('.musn').forEach(m=>{if(!has){m.remove();return}const on=!VAU.paused;m.classList.toggle('off',!on);m.setAttribute('aria-pressed',on)});
 }
 function venueBack(){
-  const v=document.getElementById('venue');document.getElementById('vret')?.setAttribute('hidden','');
+  clearInterval(VSYNC);const v=document.getElementById('venue');document.getElementById('vret')?.setAttribute('hidden','');
   if(!v)return;closePlayer();closeNet();
   // 会場に入る前に開いていたスマホのトップ（LIVE など）はそのまま残す
   if(v.dataset.ppl==='')hidePeople();else if(pplShown()||document.getElementById('ppl'))openPeople(+v.dataset.ppl||0);const cd=document.getElementById('cardDlg');if(cd&&cd.open)cd.close();
@@ -1840,7 +1871,7 @@ function venueBack(){
   v.hidden=false;document.documentElement.style.overflow='hidden';try{VEN&&VEN.resume()}catch{}
   try{if(VAU&&localStorage.getItem('x10vmusic')!=='0')VAU.play().catch(()=>{})}catch{}
 }
-function closeVenue(){document.getElementById('vret')?.setAttribute('hidden','');if(VAU){VAU.pause();VAU.removeAttribute('src');VAU.load();VAU=null}const el=document.getElementById('venue');if(!el)return;try{VEN&&VEN.close()}catch{}VEN=null;el.remove();
+function closeVenue(){clearInterval(VSYNC);document.getElementById('vret')?.setAttribute('hidden','');if(VAU){VAU.pause();VAU.removeAttribute('src');VAU.load();VAU=null}VMUS=null;const el=document.getElementById('venue');if(!el){musicBtns();return}try{VEN&&VEN.close()}catch{}VEN=null;el.remove();musicBtns();venueSync();
   if(!document.getElementById('plr')&&!document.getElementById('net')&&!pplShown())document.documentElement.style.overflow=''}
 
 /* ---------- 戻る：ブラウザやスマホの「戻る」で前の画面に戻れるようにする ---------- */
@@ -1904,6 +1935,7 @@ document.addEventListener('click',e=>{
   if(b.dataset.go==='member'||b.dataset.go==='players'){openPeople(b.dataset.go==='member'?1:2);pushNav();return}
   if(b.dataset.go==='live'&&isPhone()){openPeople(0);pushNav();return}
   if(b.dataset.go){closeOverlays();state.view=b.dataset.go;render();pushNav();scrollTo({top:0});return}
+  if(b.dataset.music){VMUS&&VMUS.toggle();return}
   if(b.dataset.venue){if(venuePeeking()){venueBack();return}openVenue();pushNav();return}
   if(b.dataset.vclose){backOv(closeVenue);return}
   if(b.dataset.net){const id=b.dataset.net;closeOverlays();openNet(id);pushNav();return}
