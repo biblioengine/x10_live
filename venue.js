@@ -1,0 +1,306 @@
+// 実況会場：歩き回れる3Dの会場（野外ステージ＋オーロラビジョン、光る床、群衆、劇場5棟、地下鉄の入口）
+// index.html から import() で読み込み、start(root, api) で開く。three.js は index.html の importmap から。
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+
+const BASE = new URL('./', import.meta.url).href;
+const MOB = matchMedia('(pointer:coarse)').matches;
+
+// world と同じ詰め方の形データを THREE の形に戻す
+function assetGeo(A, smooth){
+  const bin=(b64,T)=>{const s=atob(b64);const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return new T(u.buffer)};
+  const q=bin(A.p,Uint16Array),idx=bin(A.i,A.u32?Uint32Array:Uint16Array),pos=new Float32Array(q.length);
+  for(let i=0;i<q.length/3;i++)for(let j=0;j<3;j++)pos[i*3+j]=A.lo[j]+q[i*3+j]/65535*A.sc[j];
+  let g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setIndex(new THREE.BufferAttribute(idx,1));
+  if(!smooth)g=g.toNonIndexed();g.computeVertexNormals();return g;
+}
+
+export async function start(root, X){
+  let alive=true;const cleanups=[];
+  const on=(t,ev,fn,o)=>{t.addEventListener(ev,fn,o);cleanups.push(()=>t.removeEventListener(ev,fn,o))};
+  root.innerHTML=`<canvas class="vcv"></canvas>
+    <div class="vtop"><button type="button" class="vback" aria-label="会場を出る">◀︎</button><span class="vtt">実況会場</span></div>
+    <button type="button" class="vsnd" aria-label="音楽のオン・オフ"></button>
+    <div class="vload">会場を準備中…</div>
+    <div class="vhint">${MOB?'左下を押して動かすと歩く（大きく倒すと走る）・右側をドラッグで見回す':'WASD／矢印キーで歩く・Shiftで走る・ドラッグで見回す'}</div>
+    <div class="vstick" hidden><i></i></div>
+    <div class="vbtns"><button type="button" class="vdance" hidden>踊る</button><button type="button" class="vexit" hidden>会場を出る</button></div>
+    <div class="vslide" hidden><button type="button" data-sl="-1" aria-label="前のカード">◀︎</button><span class="vsn"></span><button type="button" data-sl="1" aria-label="次のカード">▶︎</button></div>`;
+  const cv=root.querySelector('.vcv'),ld=root.querySelector('.vload'),hint=root.querySelector('.vhint');
+  const bDance=root.querySelector('.vdance'),bExit=root.querySelector('.vexit'),slide=root.querySelector('.vslide'),stickEl=root.querySelector('.vstick');
+  root.querySelector('.vback').onclick=()=>X.close();
+  {const sb=root.querySelector('.vsnd'),paint=()=>{const o=X.music.on();sb.textContent=o?'♪':'♪';sb.classList.toggle('off',!o);sb.setAttribute('aria-pressed',o)};paint();sb.onclick=()=>{X.music.toggle();paint()}}bExit.onclick=()=>X.close();
+  setTimeout(()=>hint.classList.add('fade'),7000);
+
+  // ---------- 描画の準備 ----------
+  const R=new THREE.WebGLRenderer({canvas:cv,antialias:!MOB,powerPreference:'high-performance'});
+  R.setPixelRatio(Math.min(devicePixelRatio||1,MOB?1.5:2));R.outputColorSpace=THREE.SRGBColorSpace;
+  const scene=new THREE.Scene();const BG=0x07080d;scene.background=new THREE.Color(BG);scene.fog=new THREE.Fog(BG,34,100);
+  const cam=new THREE.PerspectiveCamera(55,1,.1,300);
+  scene.add(new THREE.HemisphereLight(0x9aa6ff,0x1a1420,1.1));
+  const sun=new THREE.DirectionalLight(0xffffff,.9);sun.position.set(-10,20,15);scene.add(sun);
+  const resize=()=>{const w=root.clientWidth,h=root.clientHeight;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()};
+  on(window,'resize',resize);resize();
+
+  // ---------- 光る床：2mの升目が、それぞれの色で点滅する ----------
+  const floorMat=new THREE.ShaderMaterial({uniforms:{uT:{value:0},uFog:{value:new THREE.Color(BG)}},
+    vertexShader:`varying vec2 vP;void main(){vec4 w=modelMatrix*vec4(position,1.);vP=w.xz;gl_Position=projectionMatrix*viewMatrix*w;}`,
+    fragmentShader:`uniform float uT;uniform vec3 uFog;varying vec2 vP;
+      float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+      vec3 hsv(float h,float s,float v){vec3 k=clamp(abs(mod(h*6.+vec3(0,4,2),6.)-3.)-1.,0.,1.);return v*mix(vec3(1),k,s);}
+      void main(){vec2 c=floor(vP/2.),f=fract(vP/2.);float a=h(c),b=h(c+17.3);
+        float blink=pow(.5+.5*sin(uT*(1.2+b*3.)+a*60.),5.);
+        vec3 col=hsv(fract(a+uT*.02),.8,1.);
+        float d=min(min(f.x,1.-f.x),min(f.y,1.-f.y));float line=smoothstep(.035,.0,d);
+        vec3 o=col*(.05+.55*blink)+col*line*.55+vec3(.06)*line;
+        float r=length(vP);o=mix(o,uFog,smoothstep(42.,60.,r));gl_FragColor=vec4(o,1.);}`});
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(130,130),floorMat);floor.rotation.x=-Math.PI/2;scene.add(floor);
+
+  // ---------- 形データ（ステージ・群衆・劇場・地下鉄） ----------
+  const G=await (await fetch(BASE+'geo.json')).json();if(!alive)return;
+  const lam=c=>new THREE.MeshLambertMaterial({color:c});
+  const OB=[]; // ぶつかる場所（x0,x1,z0,z1）
+  // 野外ステージ：奥（北）に、正面を手前（南）に向けて
+  const SZ=-30;
+  const stage=new THREE.Group();stage.position.set(0,0,SZ);scene.add(stage);
+  stage.add(new THREE.Mesh(assetGeo(G.stage_frame,true),lam(0xb9bcc4)));
+  stage.add(new THREE.Mesh(assetGeo(G.stage_deck,false),lam(0x2a2c32)));
+  OB.push([-10.6,11.7,SZ-7.9,SZ-0.1]);
+  // オーロラビジョン（ステージ背面の大画面）
+  const AV=document.createElement('canvas');AV.width=1024;AV.height=465;const avx=AV.getContext('2d');
+  const avTex=new THREE.CanvasTexture(AV);avTex.colorSpace=THREE.SRGBColorSpace;
+  const aurora=new THREE.Mesh(new THREE.PlaneGeometry(8.4,3.81),new THREE.MeshBasicMaterial({map:avTex,toneMapped:false}));
+  aurora.position.set(.65,3.2,-7.6);stage.add(aurora);
+  // ステージの光の柱（左右に振れる）
+  const beams=[];{const bg=new THREE.ConeGeometry(1.1,16,20,1,true);bg.translate(0,-8,0);
+    [0xff3d7f,0x3dd6ff,0xffd23d,0x8a5bff,0x3dff9e,0xff7a3d].forEach((c,i)=>{const m=new THREE.Mesh(bg,new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.16,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+      m.position.set(-8+i*3.4,5.9,-1.2);stage.add(m);beams.push(m)})}
+  // 天井から落ちる光：会場のあちこちに光の筋と床の光の輪。照らす場所を絶えず動かす
+  const spots=[];{
+    const cone=new THREE.ConeGeometry(1,1,28,1,true);cone.translate(0,-.5,0); // 先端（光源）が原点、下に広がる
+    const beamMat=c=>new THREE.ShaderMaterial({uniforms:{uC:{value:new THREE.Color(c)}},transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,
+      vertexShader:`varying float vY;varying vec3 vN;varying vec3 vV;void main(){vY=uv.y;vec4 mv=modelViewMatrix*vec4(position,1.);vN=normalize(normalMatrix*normal);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}`,
+      fragmentShader:`uniform vec3 uC;varying float vY;varying vec3 vN;varying vec3 vV;void main(){float e=pow(abs(dot(vN,vV)),1.5);gl_FragColor=vec4(uC*(.07+.5*vY)*e,1.);}`});
+    const pc=document.createElement('canvas');pc.width=pc.height=128;{const x=pc.getContext('2d'),g=x.createRadialGradient(64,64,0,64,64,64);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.5,'rgba(255,255,255,.45)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,128,128)}
+    const poolTex=new THREE.CanvasTexture(pc),poolGeo=new THREE.PlaneGeometry(1,1);poolGeo.rotateX(-Math.PI/2);
+    const COLS=[0xff3d7f,0x3dd6ff,0xffd23d,0x8a5bff,0x3dff9e,0xff7a3d,0xffffff,0xff4dd2,0x4d7aff,0xb6ff3d,0xff3d3d,0x3dfff0];
+    for(let i=0;i<14;i++){const c=COLS[i%COLS.length];
+      const top=new THREE.Vector3((i%7-3)*11,15,i<7?-14:12);
+      const m=new THREE.Mesh(cone,beamMat(c));m.frustumCulled=false;scene.add(m);
+      const pool=new THREE.Mesh(poolGeo,new THREE.MeshBasicMaterial({map:poolTex,color:c,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false}));pool.position.y=.03;scene.add(pool);
+      spots.push({m,pool,top,ph:Math.random()*100,sp:.18+Math.random()*.22,ax:10+Math.random()*16,az:8+Math.random()*14,ang:.13+Math.random()*.08})}
+  }
+  const _d=new THREE.Vector3(),_up=new THREE.Vector3(0,-1,0);
+  function moveSpots(t){for(const s of spots){
+    const tx=s.top.x+Math.sin(t*s.sp+s.ph)*s.ax,tz=s.top.z+Math.sin(t*s.sp*1.37+s.ph*1.7)*s.az;
+    _d.set(tx-s.top.x,-s.top.y,tz-s.top.z);const L=_d.length();_d.normalize();
+    s.m.position.copy(s.top);s.m.quaternion.setFromUnitVectors(_up,_d);const R=L*Math.tan(s.ang);s.m.scale.set(R,L,R);
+    s.pool.position.x=tx;s.pool.position.z=tz;s.pool.scale.setScalar(R*3.2)}}
+  // 群衆：ステージの前に（world と同じ並び）
+  const crowd=new THREE.Mesh(assetGeo(G.crowd,true),lam(0xe9eaee));crowd.position.set(.6,0,SZ+17.5);crowd.rotation.y=Math.PI;scene.add(crowd);
+  // 地下鉄の入口：ここから入って、ここから出る
+  const SUB=new THREE.Vector3(0,0,28);
+  const sub=new THREE.Group();sub.position.copy(SUB);sub.rotation.y=Math.PI;scene.add(sub);
+  sub.add(new THREE.Mesh(assetGeo(G.sub_body,false),lam(0x2c2f36)));
+  sub.add(new THREE.Mesh(assetGeo(G.sub_lamps,true),new THREE.MeshLambertMaterial({color:0x6b5a3a,emissive:0xffd68a,emissiveIntensity:.55})));
+  {const b=new THREE.Box3().setFromObject(sub);OB.push([b.min.x,b.max.x,b.min.z,b.max.z])}
+
+  // ---------- 劇場5棟：幕の前の画面に、それぞれの表示 ----------
+  const thGeo=[assetGeo(G.th_stage,false),assetGeo(G.th_frame,false),assetGeo(G.th_curtain,true)],thMat=[lam(0x3a3c43),lam(0x6b6e76),lam(0x4a4d55)];
+  const TH=[];
+  const DEF=[['member','メンバー一覧',-27,-18,1],['profile','プロフィールカード',-27,0,1],['net','交流ネットワーク',-27,18,1],['board','途中経過',27,-10,-1],['rank','通算成績',27,10,-1]];
+  for(const [key,title,x,z,side] of DEF){
+    const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=side*Math.PI/2;scene.add(g);
+    thGeo.forEach((geo,i)=>g.add(new THREE.Mesh(geo,thMat[i])));
+    const c=document.createElement('canvas');c.width=1024;c.height=363;const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
+    const scr=new THREE.Mesh(new THREE.PlaneGeometry(8.6,3.05),new THREE.MeshBasicMaterial({map:t,toneMapped:false}));scr.position.set(0,2.05,-1.6);g.add(scr);
+    // 看板
+    const sc=document.createElement('canvas');sc.width=512;sc.height=96;const sx=sc.getContext('2d');
+    sx.fillStyle='#0b0c12';sx.fillRect(0,0,512,96);sx.strokeStyle='#ffd23d';sx.lineWidth=6;sx.strokeRect(3,3,506,90);
+    sx.fillStyle='#ffd23d';sx.font='700 46px "Noto Sans JP",sans-serif';sx.textAlign='center';sx.textBaseline='middle';sx.shadowColor='#ffb21a';sx.shadowBlur=14;sx.fillText(title,256,50);
+    const st=new THREE.CanvasTexture(sc);st.colorSpace=THREE.SRGBColorSpace;
+    const sign=new THREE.Mesh(new THREE.PlaneGeometry(4.8,.9),new THREE.MeshBasicMaterial({map:st,toneMapped:false}));sign.position.set(0,4.6,1.6);g.add(sign);
+    // ぶつかる範囲（向きを回したあとの幅と奥行き）
+    OB.push([x-2.5,x+2.5,z-5.4,z+5.4]);
+    // 画面の前の「立ち位置」（劇場の正面、6m手前）
+    const front=new THREE.Vector3(x+side*6,0,z);
+    TH.push({key,title,g,c,cx:c.getContext('2d'),t,scr,front});
+  }
+
+  // ---------- 自キャラ ----------
+  const gl=await new GLTFLoader().loadAsync(BASE+'chara.glb');if(!alive)return;
+  const me=gl.scene;me.traverse(o=>{if(o.isMesh){o.frustumCulled=false}});scene.add(me);
+  me.position.set(SUB.x,0,SUB.z-8);me.rotation.y=Math.PI;
+  const mixer=new THREE.AnimationMixer(me),A={};gl.animations.forEach(c=>A[c.name]=mixer.clipAction(c));
+  ['dance1','dance2','dance3'].forEach(k=>{A[k].setLoop(THREE.LoopOnce,1);A[k].clampWhenFinished=true});
+  let curA=null;
+  const play=(k,fade=.25)=>{const a=A[k];if(curA===a)return;a.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();if(curA)a.crossFadeFrom(curA,fade,false);curA=a};
+  // 止まっているときの立ち姿：見回し1の最初のコマで止める
+  const standStill=()=>{play('look1');A.look1.paused=true;A.look1.time=0};
+  standStill();
+  let mode='stand',idleAt=performance.now();
+  mixer.addEventListener('finished',e=>{if(mode==='dance'){mode='look';play(Math.random()<.5?'look1':'look2',.4);A.look1.paused=false}});
+  bDance.onclick=()=>{mode='dance';play(['dance1','dance2','dance3'][Math.floor(Math.random()*3)],.3)};
+
+  // ---------- 操作 ----------
+  const keys=new Set();
+  on(window,'keydown',e=>{if(e.target.closest&&e.target.closest('input,textarea'))return;keys.add(e.key.toLowerCase());if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase()))e.preventDefault()});
+  on(window,'keyup',e=>keys.delete(e.key.toLowerCase()));
+  let yaw=0,pitch=.32,stick={id:null,x0:0,y0:0,dx:0,dy:0},look=null,tapStart=null;
+  on(cv,'pointerdown',e=>{
+    cv.setPointerCapture(e.pointerId);
+    if(MOB&&e.clientX<innerWidth*.5&&e.clientY>innerHeight*.45&&stick.id===null){stick={id:e.pointerId,x0:e.clientX,y0:e.clientY,dx:0,dy:0};
+      stickEl.hidden=false;stickEl.style.left=e.clientX+'px';stickEl.style.top=e.clientY+'px';stickEl.firstChild.style.transform='';return}
+    look={id:e.pointerId,x:e.clientX,y:e.clientY};tapStart={x:e.clientX,y:e.clientY,t:performance.now()}});
+  on(cv,'pointermove',e=>{
+    if(e.pointerId===stick.id){let dx=e.clientX-stick.x0,dy=e.clientY-stick.y0;const L=Math.hypot(dx,dy),M=60;if(L>M){dx*=M/L;dy*=M/L}stick.dx=dx/M;stick.dy=dy/M;stickEl.firstChild.style.transform=`translate(${dx}px,${dy}px)`;return}
+    if(look&&e.pointerId===look.id){yaw-=(e.clientX-look.x)*.006;pitch=Math.min(1.1,Math.max(.05,pitch+(e.clientY-look.y)*.004));look.x=e.clientX;look.y=e.clientY}});
+  const up=e=>{
+    if(e.pointerId===stick.id){stick={id:null,dx:0,dy:0};stickEl.hidden=true;return}
+    if(look&&e.pointerId===look.id){look=null;
+      // 動かさずに軽く押したとき：プロフィールカードの画面を押したら、その人の個人ページへ
+      if(tapStart&&Math.hypot(e.clientX-tapStart.x,e.clientY-tapStart.y)<8&&performance.now()-tapStart.t<500)tap(e)}};
+  on(cv,'pointerup',up);on(cv,'pointercancel',up);
+  const ray=new THREE.Raycaster();
+  function tap(e){const r=cv.getBoundingClientRect();ray.setFromCamera(new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1),cam);
+    const P=TH.find(t=>t.key==='profile');const hit=ray.intersectObject(P.scr)[0];
+    if(hit&&hit.distance<30){const u=profList()[profI];if(u)X.openPlayer(u.id)}}
+
+  // ---------- 劇場の表示 ----------
+  const IMG={};const img=u=>{const k=u.handle.toLowerCase();if(!IMG[k]){const im=new Image();im.onload=()=>{dirty=true};im.src=X.avatar(u);IMG[k]=im}return IMG[k]};
+  let dirty=true;
+  const circ=(cx,im,u,x,y,r)=>{cx.save();cx.beginPath();cx.arc(x,y,r,0,Math.PI*2);cx.closePath();cx.clip();
+    if(im&&im.complete&&im.naturalWidth)cx.drawImage(im,x-r,y-r,r*2,r*2);else{cx.fillStyle=u.color||'#556';cx.fillRect(x-r,y-r,r*2,r*2)}cx.restore()};
+  const ring=(cx,x,y,r,c,w)=>{cx.lineWidth=w;cx.strokeStyle='#2a2f3d';cx.beginPath();cx.arc(x,y,r,0,Math.PI*2);cx.stroke();
+    if(c){cx.strokeStyle=c>=X.GOAL?'#ffc53d':'#6c90ff';cx.beginPath();cx.arc(x,y,r,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(c,X.GOAL)/X.GOAL);cx.stroke()}};
+  const short=(t,n)=>{t=[...(t.split(/[｜|]/)[0].trim()||t)];return t.length>n?t.slice(0,n).join('')+'…':t.join('')};
+  const JP='"Noto Sans JP",sans-serif',NUM='"Roboto Mono",monospace';
+  const bgPaint=(cx,W,H)=>{cx.fillStyle='#0d0f16';cx.fillRect(0,0,W,H)};
+  const profList=()=>X.users();let profI=0;
+  function drawTheaters(){
+    const us=X.users(),tk=X.todayKey();
+    for(const T of TH){const cx=T.cx,W=1024,H=363;bgPaint(cx,W,H);cx.textBaseline='middle';
+      if(T.key==='member'){const C=13,cw=W/C,rows=Math.ceil(us.length/C),ch=Math.min(H/rows,cw);
+        us.forEach((u,i)=>{const x=(i%C+.5)*cw,y=(Math.floor(i/C)+.5)*ch+(H-ch*rows)/2,r=ch*.36;circ(cx,img(u),u,x,y,r);ring(cx,x,y,r+5,X.dayCount(u.id,tk),5)})}
+      else if(T.key==='profile'){const u=us[profI%Math.max(1,us.length)];if(u){const c=X.dayCount(u.id,tk),tt=X.totals(u.id);
+        circ(cx,img(u),u,190,H/2,118);ring(cx,190,H/2,132,c,12);
+        cx.fillStyle='#eef1f7';cx.textAlign='left';cx.font=`700 46px ${JP}`;cx.fillText(short(u.name,14),360,92);
+        cx.fillStyle='#8a93a8';cx.font=`500 26px ${NUM}`;cx.fillText('@'+u.handle,362,142);
+        const tag=X.tag(u);if(tag){cx.fillStyle='#cfd5e2';cx.font=`500 26px ${JP}`;cx.fillText(short(tag,26),362,190)}
+        cx.fillStyle='#ffc53d';cx.font=`800 28px ${JP}`;cx.fillText(`今日 ${c}/${X.GOAL}　達成 ${tt.ach}日　通算 ${tt.all}本`,362,262);
+        cx.fillStyle='#8a93a8';cx.font=`500 20px ${JP}`;cx.fillText(`${profI%us.length+1} / ${us.length}　画面を押すと個人ページへ`,362,318)}}
+      else if(T.key==='board'){const rows=us.map(u=>({u,c:X.dayCount(u.id,tk)})).sort((a,b)=>b.c-a.c).slice(0,12);
+        cx.fillStyle='#ffc53d';cx.font=`800 26px ${JP}`;cx.textAlign='left';cx.fillText('今日の途中経過',24,26);
+        rows.forEach((r,i)=>{const col=i%2,row=Math.floor(i/2),x=24+col*500,y=72+row*48;
+          cx.fillStyle='#8a93a8';cx.font=`700 22px ${NUM}`;cx.textAlign='right';cx.fillText(i+1,x+26,y);
+          circ(cx,img(r.u),r.u,x+56,y,18);cx.textAlign='left';cx.fillStyle='#eef1f7';cx.font=`700 22px ${JP}`;cx.fillText(short(r.u.name,9),x+84,y);
+          for(let k=0;k<10;k++){cx.fillStyle=k<r.c?(r.c>=X.GOAL?'#ffc53d':'#6c90ff'):'#2a2f3d';cx.fillRect(x+284+k*15,y-9,12,18)}
+          cx.fillStyle=r.c>=X.GOAL?'#ffc53d':'#eef1f7';cx.font=`700 22px ${NUM}`;cx.textAlign='right';cx.fillText(r.c,x+470,y)})}
+      else if(T.key==='rank'){const rows=us.map(u=>({u,t:X.totals(u.id)})).sort((a,b)=>b.t.ach-a.t.ach||b.t.all-a.t.all).slice(0,12);
+        cx.fillStyle='#ffc53d';cx.font=`800 26px ${JP}`;cx.textAlign='left';cx.fillText('通算成績（達成日数・投稿数）',24,26);
+        rows.forEach((r,i)=>{const col=i%2,row=Math.floor(i/2),x=24+col*500,y=72+row*48;
+          cx.fillStyle='#8a93a8';cx.font=`700 22px ${NUM}`;cx.textAlign='right';cx.fillText(i+1,x+26,y);
+          circ(cx,img(r.u),r.u,x+56,y,18);cx.textAlign='left';cx.fillStyle='#eef1f7';cx.font=`700 22px ${JP}`;cx.fillText(short(r.u.name,9),x+84,y);
+          cx.textAlign='right';cx.fillStyle='#ffc53d';cx.font=`700 22px ${NUM}`;cx.fillText(r.t.ach+'日',x+380,y);cx.fillStyle='#eef1f7';cx.fillText(r.t.all+'本',x+470,y)})}
+      else if(T.key==='net'){netDraw(cx,W,H,us)}
+      T.t.needsUpdate=true}
+    dirty=false;
+  }
+  // 交流ネットワーク：平面に一度だけ並べて描く
+  let NL=null;
+  function netDraw(cx,W,H,us){
+    if(!NL||NL.n!==us.length){const idx=new Map(us.map((u,i)=>[u.handle.toLowerCase(),i])),E=new Map();
+      for(const x of X.ix()){const a=idx.get(String(x.from).toLowerCase()),b=idx.get(String(x.to).toLowerCase());if(a==null||b==null||a===b)continue;const k=a<b?a+'-'+b:b+'-'+a;E.set(k,(E.get(k)||0)+1)}
+      const edges=[...E].map(([k,w])=>{const [a,b]=k.split('-').map(Number);return{a,b,w}});
+      const P=us.map((u,i)=>{const t=i*2.39996,r=Math.sqrt(i+.5)/Math.sqrt(us.length)*.5;return{x:.5+Math.cos(t)*r,y:.5+Math.sin(t)*r}});
+      for(let it=0;it<260;it++){const a=.012*(1-it/260);
+        for(let i=0;i<P.length;i++)for(let j=i+1;j<P.length;j++){let dx=P[i].x-P[j].x,dy=P[i].y-P[j].y,d=Math.max(.01,Math.hypot(dx,dy)),f=a*.02/(d*d);P[i].x+=dx/d*f;P[i].y+=dy/d*f;P[j].x-=dx/d*f;P[j].y-=dy/d*f}
+        for(const e of edges){const p=P[e.a],q=P[e.b],dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy),f=a*(d-.08)*Math.min(3,Math.log2(1+e.w));p.x+=dx*f;p.y+=dy*f;q.x-=dx*f;q.y-=dy*f}
+        for(const p of P){p.x+=(.5-p.x)*a*.6;p.y+=(.5-p.y)*a*.6}}
+      const xs=P.map(p=>p.x),ys=P.map(p=>p.y),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+      P.forEach(p=>{p.x=(p.x-x0)/Math.max(1e-3,x1-x0);p.y=(p.y-y0)/Math.max(1e-3,y1-y0)});NL={n:us.length,P,edges}}
+    const px=p=>60+p.x*(W-120),py=p=>34+p.y*(H-68);
+    cx.lineCap='round';for(const e of NL.edges){const p=NL.P[e.a],q=NL.P[e.b];cx.strokeStyle=`rgba(108,144,255,${Math.min(.75,.15+.12*Math.log2(1+e.w))})`;cx.lineWidth=Math.min(5,.8+Math.log2(1+e.w)*.7);cx.beginPath();cx.moveTo(px(p),py(p));cx.lineTo(px(q),py(q));cx.stroke()}
+    us.forEach((u,i)=>{const p=NL.P[i];circ(cx,img(u),u,px(p),py(p),15)});
+  }
+
+  // ---------- オーロラビジョン ----------
+  const head=new Image();head.src=BASE+'header.jpg';
+  let avT=0,avAcc=0;const SC=['head','x30','ttl'];
+  const tick=()=>{const it=X.tickerData();return it.length?it.map(x=>`【${x.tag}】${x.txt.replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&')}`).join('　／　'):'1日10投稿30日チャレンジ実況中'};
+  let tickText=tick(),tickX=0;
+  function drawAurora(dt){const W=1024,H=465,cx=avx,TB=74,mh=H-TB;avT+=dt;
+    const i=Math.floor(avT/5)%SC.length,k=SC[i],p=(avT%5)/5;
+    cx.fillStyle='#05060a';cx.fillRect(0,0,W,H);
+    if(k==='head'){if(head.complete&&head.naturalWidth){const s=Math.max(W/head.naturalWidth,mh/head.naturalHeight),w=head.naturalWidth*s,h=head.naturalHeight*s;cx.drawImage(head,(W-w)/2,(mh-h)/2,w,h)}}
+    else if(k==='x30'){const parts=['1','×','10','×','30'];cx.font='160px "Archivo Black","Archivo",sans-serif';cx.textBaseline='middle';cx.textAlign='left';
+      const ws=parts.map(s=>cx.measureText(s).width+10),tw=ws.reduce((a,b)=>a+b,0);let x=(W-tw)/2;
+      parts.forEach((s,j)=>{const hue=(avT*90+j*55)%360,b=Math.sin(avT*6+j)*10;cx.fillStyle=`hsl(${hue},95%,62%)`;cx.shadowColor=`hsl(${hue},95%,55%)`;cx.shadowBlur=28;cx.fillText(s,x,mh/2+b);x+=ws[j]});cx.shadowBlur=0}
+    else{cx.textAlign='center';cx.textBaseline='middle';const hue=(avT*60)%360;
+      cx.font=`900 74px ${JP}`;cx.fillStyle=`hsl(${hue},95%,65%)`;cx.shadowColor=cx.fillStyle;cx.shadowBlur=24;cx.fillText('1日10投稿',W/2,mh/2-58);
+      cx.font=`900 64px ${JP}`;cx.fillStyle=`hsl(${(hue+150)%360},95%,65%)`;cx.shadowColor=cx.fillStyle;cx.fillText('30日チャレンジ実況中',W/2,mh/2+44);cx.shadowBlur=0}
+    // 枠の電球（流れるように点滅）
+    for(let j=0;j<40;j++){const on=(Math.floor(avT*8)+j)%4===0;cx.fillStyle=on?'#ffe08a':'#3a3220';const x=12+j*(W-24)/39;cx.beginPath();cx.arc(x,8,5,0,7);cx.fill();cx.beginPath();cx.arc(x,mh-8,5,0,7);cx.fill()}
+    // 下の速報（電光掲示板）
+    cx.fillStyle='#0b0a08';cx.fillRect(0,mh,W,TB);cx.font=`400 40px "DotGothic16",${JP}`;cx.textBaseline='middle';cx.textAlign='left';cx.fillStyle='#ffb21a';cx.shadowColor='#ff8c00';cx.shadowBlur=10;
+    const tw=cx.measureText(tickText).width+120;tickX-=dt*140;if(tickX<-tw){tickX=0;tickText=tick()}
+    cx.fillText(tickText,W+tickX,mh+TB/2);cx.fillText(tickText,W+tickX+tw,mh+TB/2);cx.shadowBlur=0;
+    avTex.needsUpdate=true}
+
+  // ---------- ぶつかり ----------
+  const LIM=48,RAD=.45;
+  function collide(p){p.x=Math.max(-LIM,Math.min(LIM,p.x));p.z=Math.max(-LIM,Math.min(LIM,p.z));
+    for(const [x0,x1,z0,z1] of OB){if(p.x>x0-RAD&&p.x<x1+RAD&&p.z>z0-RAD&&p.z<z1+RAD){
+      const dl=p.x-(x0-RAD),dr=(x1+RAD)-p.x,dn=p.z-(z0-RAD),ds=(z1+RAD)-p.z,m=Math.min(dl,dr,dn,ds);
+      if(m===dl)p.x=x0-RAD;else if(m===dr)p.x=x1+RAD;else if(m===dn)p.z=z0-RAD;else p.z=z1+RAD}}}
+
+  // ---------- 劇場の前に来たとき ----------
+  slide.addEventListener('click',e=>{const b=e.target.closest('[data-sl]');if(!b)return;const n=X.users().length||1;profI=(profI+ +b.dataset.sl+n)%n;dirty=true});
+
+  // ---------- 毎フレーム ----------
+  ld.remove();drawTheaters();
+  const clock=new THREE.Clock();let thAcc=0,avA=0;const tmpV=new THREE.Vector3();
+  const loop=()=>{if(!alive)return;requestAnimationFrame(loop);const dt=Math.min(.05,clock.getDelta());
+    floorMat.uniforms.uT.value+=dt;
+    // 入力
+    let ix=0,iz=0,run=false;
+    if(keys.has('w')||keys.has('arrowup'))iz-=1;if(keys.has('s')||keys.has('arrowdown'))iz+=1;if(keys.has('a')||keys.has('arrowleft'))ix-=1;if(keys.has('d')||keys.has('arrowright'))ix+=1;
+    run=keys.has('shift');
+    if(stick.id!==null){ix=stick.dx;iz=stick.dy;run=Math.hypot(ix,iz)>.8}
+    const mag=Math.min(1,Math.hypot(ix,iz));
+    if(mag>.15){
+      const fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);
+      let dx=rx*ix-fx*iz,dz=rz*ix-fz*iz;const l=Math.hypot(dx,dz)||1;dx/=l;dz/=l;
+      const sp=run?4:1.45;me.position.x+=dx*sp*dt;me.position.z+=dz*sp*dt;collide(me.position);
+      const want=Math.atan2(dx,dz);let d=want-me.rotation.y;d=Math.atan2(Math.sin(d),Math.cos(d));me.rotation.y+=d*Math.min(1,dt*10);
+      if(mode!==(run?'run':'walk')){mode=run?'run':'walk';A.look1.paused=false;play(mode,.2)}
+      idleAt=performance.now();bDance.hidden=true;
+    }else{
+      if(mode==='walk'||mode==='run'){mode='stand';standStill()}
+      const idleT=(performance.now()-idleAt)/1000;
+      if(idleT>5&&mode==='stand'){mode='look';A.look1.paused=false;play(Math.random()<.5?'look1':'look2',.4)}
+      bDance.hidden=!(idleT>5)||mode==='dance';
+    }
+    mixer.update(dt);
+    // カメラ：自キャラの後ろから
+    const dist=6,ty=me.position.y+1.5;
+    cam.position.set(me.position.x+Math.sin(yaw)*Math.cos(pitch)*dist,ty+Math.sin(pitch)*dist,me.position.z+Math.cos(yaw)*Math.cos(pitch)*dist);
+    cam.lookAt(me.position.x,ty,me.position.z);
+    // 劇場の前・地下鉄の入口の近く
+    const P=TH.find(t=>t.key==='profile');slide.hidden=me.position.distanceTo(P.front)>7;
+    if(!slide.hidden)slide.querySelector('.vsn').textContent=`${profI+1} / ${X.users().length}`;
+    bExit.hidden=me.position.distanceTo(tmpV.set(SUB.x,0,SUB.z))>5.5;
+    moveSpots(clock.elapsedTime);
+    // 光の柱
+    beams.forEach((b,i)=>{b.rotation.z=Math.sin(clock.elapsedTime*.9+i*1.3)*.5;b.rotation.x=Math.cos(clock.elapsedTime*.7+i)*.25});
+    // オーロラビジョン（1秒に20回まで描き直す）
+    avA+=dt;if(avA>.05){drawAurora(avA);avA=0}
+    thAcc+=dt;if(dirty&&thAcc>.3){drawTheaters();thAcc=0}
+    R.render(scene,cam)};
+  requestAnimationFrame(loop);
+  if(/[?&]vdebug/.test(location.search))root.__dbg={me,TH,yaw:v=>{yaw=v}};
+  // データが更新されたら劇場も描き直す
+  const iv=setInterval(()=>{dirty=true;NL=null},60000);cleanups.push(()=>clearInterval(iv));
+
+  return {close(){alive=false;cleanups.forEach(f=>f());R.dispose();R.forceContextLoss?.()},refresh(){dirty=true;NL=null}};
+}
