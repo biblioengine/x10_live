@@ -275,6 +275,11 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .vgo{margin-left:auto;border:0;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;color:#fff;
   background:linear-gradient(90deg,#ff3d7f,#8a5bff,#3dd6ff);box-shadow:0 0 12px rgba(138,91,255,.45)}
 #ppl .pl .lhead .topbar .vgo{padding:5px 10px;font-size:11px}
+#vret{position:fixed;right:12px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:70;border:0;border-radius:999px;padding:9px 18px;font-size:13px;font-weight:800;color:#fff;cursor:pointer;
+  background:linear-gradient(90deg,#ff3d7f,#8a5bff,#3dd6ff);box-shadow:0 4px 18px rgba(0,0,0,.35)}
+#venue .vgoin{position:absolute;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%)}
+#venue .vopen{border:0;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;color:#161a24;background:#ffd23d;box-shadow:0 0 18px rgba(255,210,61,.55);white-space:nowrap}
+#venue[hidden]{display:none}
 #venue{position:fixed;inset:0;z-index:40;background:#07080d;color:#eef1f7;touch-action:none;user-select:none;-webkit-user-select:none}
 #venue .vcv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #venue .vload{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-weight:700;color:#cfd5e2;gap:10px}
@@ -1804,22 +1809,48 @@ async function openVenue(){
   if(mOn)au.play().catch(()=>{});VAU=au;
   const music={on:()=>mOn,toggle(){mOn=!mOn;try{localStorage.setItem('x10vmusic',mOn?'1':'0')}catch{}if(mOn)au.play().catch(()=>{});else au.pause();return mOn}};
   const api={users:()=>state.users,avatar:u=>'avatars/'+encodeURIComponent(u.handle.toLowerCase())+'.jpg',tag:u=>state.tags[u.handle.toLowerCase()],
-    dayCount,todayKey,totals,GOAL,tickerData,ix:()=>state.ix||[],music,
+    dayCount,todayKey,totals,GOAL,tickerData,ix:()=>state.ix||[],music,peek:venuePeek,
+    days:()=>{const s0=new Date(state.start),o=[];for(let i=0;i<30;i++)o.push(dkey(new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()+i).getTime()));return o},
     openPlayer:id=>{closeVenue();openPlayer(id);pushNav()},close:()=>backOv(closeVenue)};
   try{const m=await import('./venue/venue.js?v=1');if(!document.getElementById('venue'))return;VEN=await m.start(el,api)}
   catch(e){el.innerHTML='<div class="vload">会場を読み込めませんでした<br><button type="button" class="back" data-vclose="1">戻る</button></div>'}
 }
-function closeVenue(){if(VAU){VAU.pause();VAU.removeAttribute('src');VAU.load();VAU=null}const el=document.getElementById('venue');if(!el)return;try{VEN&&VEN.close()}catch{}VEN=null;el.remove();
+// 劇場から実況サイトの各画面を「覗く」：会場はそのまま隠しておき、「会場に戻る」で元の場所に戻る
+const venuePeeking=()=>{const v=document.getElementById('venue');return !!(v&&v.hidden)};
+function venuePeek(kind,id){
+  const v=document.getElementById('venue');if(!v)return;
+  v.dataset.ppl=pplShown()?String(pplPage()):'';v._prev={view:state.view,uid:state.uid,day:state.day,ls:state.ls,y:state.y,m:state.m};try{VEN&&VEN.pause()}catch{}if(VAU)VAU.pause();v.hidden=true;document.documentElement.style.overflow='';
+  let r=document.getElementById('vret');if(!r){r=Object.assign(document.createElement('button'),{id:'vret',type:'button',textContent:'◀︎ 会場に戻る'});r.onclick=venueBack;document.body.appendChild(r)}r.hidden=false;
+  const live=i=>{if(isPhone()){openPeople(0);requestAnimationFrame(()=>{const c=document.querySelector('#ppl .lcar');if(c)c.scrollLeft=i*c.clientWidth})}
+    else{hidePeople();state.view='live';state.ls=i;render();scrollTo({top:0})}};
+  if(kind==='player')openPlayer(id);
+  else if(kind==='net')openNet();
+  else if(kind==='member')openPeople(1);
+  else if(kind==='board')live(0);
+  else if(kind==='cal')live(1);
+  else if(kind==='rank')live(2);
+}
+function venueBack(){
+  const v=document.getElementById('venue');document.getElementById('vret')?.setAttribute('hidden','');
+  if(!v)return;closePlayer();closeNet();
+  // 会場に入る前に開いていたスマホのトップ（LIVE など）はそのまま残す
+  if(v.dataset.ppl==='')hidePeople();else if(pplShown()||document.getElementById('ppl'))openPeople(+v.dataset.ppl||0);const cd=document.getElementById('cardDlg');if(cd&&cd.open)cd.close();
+  // パソコン：会場に入る前の画面（みんなの実況など）に戻しておく
+  if(v._prev&&!isPhone()){Object.assign(state,v._prev);render()}
+  v.hidden=false;document.documentElement.style.overflow='hidden';try{VEN&&VEN.resume()}catch{}
+  try{if(VAU&&localStorage.getItem('x10vmusic')!=='0')VAU.play().catch(()=>{})}catch{}
+}
+function closeVenue(){document.getElementById('vret')?.setAttribute('hidden','');if(VAU){VAU.pause();VAU.removeAttribute('src');VAU.load();VAU=null}const el=document.getElementById('venue');if(!el)return;try{VEN&&VEN.close()}catch{}VEN=null;el.remove();
   if(!document.getElementById('plr')&&!document.getElementById('net')&&!pplShown())document.documentElement.style.overflow=''}
 
 /* ---------- 戻る：ブラウザやスマホの「戻る」で前の画面に戻れるようにする ---------- */
 // 画面を切り替えるたびに履歴を1つ積み、「戻る」でその時の画面（と開いていた重ね画面）を復元する
 const curOv=()=>{const o=[];if(pplShown())o.push('ppl:'+pplPage());if(state.wall)o.push('wall');
-  if(document.getElementById('venue'))o.push('venue');
+  if(document.getElementById('venue')&&!venuePeeking())o.push('venue');
   if(document.getElementById('net'))o.push('net:'+(document.getElementById('net').dataset.id||''));{const pl=document.getElementById('plr');if(pl){const uc=pl.querySelector('.ucar');o.push('plr:'+pl.dataset.id+(uc?'~'+Math.round(uc.scrollLeft/Math.max(1,uc.clientWidth))+'~'+(state.day||''):''))}}return o.length?o.join('|'):null};
 const snap=()=>({x10:1,view:state.view,uid:state.uid,day:state.day,y:state.y,m:state.m,ov:curOv(),sy:0});
 function pushNav(){try{const cur=history.state;if(cur&&cur.x10)history.replaceState({...cur,sy:scrollY},'');history.pushState(snap(),'')}catch{}}
-function closeOverlays(){closeVenue();closePeople();closeWall();closeNet();closePlayer();const cd=document.getElementById('cardDlg');if(cd&&cd.open)cd.close()}
+function closeOverlays(){if(!venuePeeking())closeVenue();closePeople();closeWall();closeNet();closePlayer();const cd=document.getElementById('cardDlg');if(cd&&cd.open)cd.close()}
 function openOv(ov){if(!ov)return;for(const o of ov.split('|')){if(o.startsWith('ppl:'))openPeople(+o.slice(4)||0);else if(o==='wall'){state.wall=true;renderWall()}else if(o.startsWith('net'))openNet(o.slice(4)||undefined);else if(o==='venue')openVenue();else if(o.startsWith('plr:')){const [id,sc,dy]=o.slice(4).split('~');openPlayer(id,{sec:['status','cal','post'][+sc||0],day:+dy||undefined})}}}
 addEventListener('popstate',e=>{const s=e.state;if(!s||!s.x10)return;
   // MEMBER/PROFILE の上に重ねた画面から戻るときは、下の一覧（スクロール位置も）をそのまま残す
@@ -1873,7 +1904,7 @@ document.addEventListener('click',e=>{
   if(b.dataset.go==='member'||b.dataset.go==='players'){openPeople(b.dataset.go==='member'?1:2);pushNav();return}
   if(b.dataset.go==='live'&&isPhone()){openPeople(0);pushNav();return}
   if(b.dataset.go){closeOverlays();state.view=b.dataset.go;render();pushNav();scrollTo({top:0});return}
-  if(b.dataset.venue){openVenue();pushNav();return}
+  if(b.dataset.venue){if(venuePeeking()){venueBack();return}openVenue();pushNav();return}
   if(b.dataset.vclose){backOv(closeVenue);return}
   if(b.dataset.net){const id=b.dataset.net;closeOverlays();openNet(id);pushNav();return}
   if(b.id==='btnNetBack'){backOv(closeNet);return}
