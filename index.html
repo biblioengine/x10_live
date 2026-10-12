@@ -528,6 +528,7 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #plr.uni .uacts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 #plr.uni .uacts .xgo{margin:0;border:0;padding:5px 12px;font-size:11.5px;cursor:pointer;font-family:inherit}
 #plr.uni .uacts .cardgo{background:var(--gold);color:#161a24}
+#plr.uni .uacts .vbk2{background:linear-gradient(90deg,#ff3d7f,#8a5bff,#3dd6ff);color:#fff}
 #plr.uni .uacts .subgo{background:transparent;color:inherit;border:1px dashed currentColor}
 #plr.uni .ujump{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 #plr.uni .ujump button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 4px;font-size:12px;font-weight:700;white-space:nowrap;color:var(--muted)}
@@ -1853,7 +1854,11 @@ function venueSync(){
     if(!pk&&k){k.remove();a.querySelector('.musn')?.remove()}}
   const plr=document.getElementById('plr');
   const liveVis=!plr&&!net&&(isPhone()?(pplShown()&&pplPage()===0):(!pplShown()&&state.view==='live'));
-  const r=document.getElementById('vret');if(r)r.hidden=!pk||!!net||liveVis;
+  const ua=plr&&isPhone()?plr.querySelector('.uacts'):null;
+  if(ua){const k=ua.querySelector('.vbk2');
+    if(pk&&!k)ua.insertAdjacentHTML('beforeend','<button type="button" class="xgo vbk2" data-venue="1">◀︎ 会場へ戻る</button>');
+    if(!pk&&k)k.remove()}
+  const r=document.getElementById('vret');if(r)r.hidden=!pk||!!net||liveVis||!!ua;
   musicBtns();
 }
 // ライト／ダークの切り替えボタンの横に、音楽のオン・オフ（会場を開いている間だけ）
