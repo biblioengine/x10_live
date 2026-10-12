@@ -2,6 +2,7 @@
 // index.html から import() で読み込み、start(root, api) で開く。three.js は index.html の importmap から。
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 
 const BASE = new URL('./', import.meta.url).href;
 const MOB = matchMedia('(pointer:coarse)').matches;
@@ -101,7 +102,11 @@ export async function start(root, X){
     s.m.position.copy(s.top);s.m.quaternion.setFromUnitVectors(_up,_d);const R=L*Math.tan(s.ang);s.m.scale.set(R,L,R);
     s.pool.position.x=tx;s.pool.position.z=tz;s.pool.scale.setScalar(R*3.2)}}
   // 群衆：ステージの前に（world と同じ並び）
-  const crowd=new THREE.Mesh(assetGeo(G.crowd,true),lam(0xe9eaee));crowd.position.set(.6,0,SZ+17.5);crowd.rotation.y=Math.PI;scene.add(crowd);
+  const crowdGeo=assetGeo(G.crowd,true),crowdMat=lam(0xe9eaee);
+  const crowd=new THREE.Mesh(crowdGeo,crowdMat);crowd.position.set(.6,0,SZ+17.5);crowd.rotation.y=Math.PI;scene.add(crowd);
+  // ステージ前にもう2ブロック（左右に並べ、向きと左右を変えて同じ並びに見えないように）
+  {const a=new THREE.Mesh(crowdGeo,crowdMat);a.position.set(-9.4,0,SZ+37);a.rotation.y=-Math.PI*.5;a.scale.x=-1;scene.add(a);
+   const b=new THREE.Mesh(crowdGeo,crowdMat);b.position.set(10.6,0,SZ+37);b.rotation.y=Math.PI*.5;scene.add(b)}
   // 地下鉄の入口：ここから入って、ここから出る
   const SUB=new THREE.Vector3(0,0,28);
   const sub=new THREE.Group();sub.position.copy(SUB);sub.rotation.y=Math.PI;scene.add(sub);
@@ -131,20 +136,42 @@ export async function start(root, X){
     TH.push({key,title,g,c,cx:c.getContext('2d'),t,scr,front});
   }
 
+  // 各劇場の前に、群衆から10人ずつ分けて立たせる
+  {const idx=crowdGeo.index.array,pos=crowdGeo.attributes.position.array,n=pos.length/3,par=new Int32Array(n);for(let i=0;i<n;i++)par[i]=i;
+    const f=i=>{while(par[i]!==i){par[i]=par[par[i]];i=par[i]}return i};
+    for(let t=0;t<idx.length;t+=3){const a=f(idx[t]),b=f(idx[t+1]),c=f(idx[t+2]);par[b]=a;par[f(c)]=a}
+    // つながった部品ごとにまとめ、近い部品（同じ人の別パーツ）を1人にする
+    const comp=new Map();for(let t=0;t<idx.length;t+=3){const r=f(idx[t]);let c=comp.get(r);if(!c){c={tris:[],x0:1e9,x1:-1e9,z0:1e9,z1:-1e9};comp.set(r,c)}c.tris.push(t);
+      for(let k=0;k<3;k++){const v=idx[t+k];const x=pos[v*3],z=pos[v*3+2];if(x<c.x0)c.x0=x;if(x>c.x1)c.x1=x;if(z<c.z0)c.z0=z;if(z>c.z1)c.z1=z}}
+    const people=[];for(const c of comp.values()){const cx=(c.x0+c.x1)/2,cz=(c.z0+c.z1)/2;const p=people.find(q=>Math.hypot(q.cx-cx,q.cz-cz)<.35);if(p){p.tris.push(...c.tris)}else people.push({cx,cz,tris:c.tris})}
+    const big=people.filter(p=>p.tris.length>60);
+    let sd=11;const rnd=()=>(sd=(sd*16807)%2147483647)/2147483647;
+    const P=[],I=[];let vo=0;
+    for(const T of TH){const side=T.g.rotation.y>0?1:-1,bx=T.g.position.x,bz=T.g.position.z;
+      for(let k=0;k<10;k++){const pp=big[Math.floor(rnd()*big.length)];
+        // 劇場の正面、2.5〜6.5m手前に、真ん中を少し空けて散らす
+        let dz;do{dz=(rnd()-.5)*9}while(Math.abs(dz)<1.1);const dx=side*(4.6+rnd()*4.5);
+        const tx=bx+dx,tz=bz+dz,yaw=(side>0?-Math.PI/2:Math.PI/2)+(rnd()-.5)*1.2,cy=Math.cos(yaw),sy=Math.sin(yaw);
+        const map=new Map();
+        for(const t of pp.tris)for(let j=0;j<3;j++){const v=idx[t+j];let nv=map.get(v);
+          if(nv===undefined){const x=pos[v*3]-pp.cx,y=pos[v*3+1],z=pos[v*3+2]-pp.cz;P.push(tx+x*cy+z*sy,y,tz-x*sy+z*cy);nv=vo++;map.set(v,nv)}I.push(nv)}}}
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setIndex(I);g.computeVertexNormals();
+    scene.add(new THREE.Mesh(g,crowdMat))}
   // ---------- 自キャラ ----------
-  const gl=await new GLTFLoader().loadAsync(BASE+'chara.glb');if(!alive)return;
+  const gl=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(BASE+'chara.glb?v=2');if(!alive)return;
   const me=gl.scene;me.traverse(o=>{if(o.isMesh){o.frustumCulled=false}});scene.add(me);
   me.position.set(SUB.x,0,SUB.z-8);me.rotation.y=Math.PI;
   const mixer=new THREE.AnimationMixer(me),A={};gl.animations.forEach(c=>A[c.name]=mixer.clipAction(c));
-  ['dance1','dance2','dance3'].forEach(k=>{A[k].setLoop(THREE.LoopOnce,1);A[k].clampWhenFinished=true});
+  const DANCES=['dance1','dance2','dance3','dance4','dance5','dance6','dance7','dance8','dance9'].filter(k=>A[k]);DANCES.forEach(k=>{A[k].setLoop(THREE.LoopOnce,1);A[k].clampWhenFinished=true});
   let curA=null;
   const play=(k,fade=.25)=>{const a=A[k];if(curA===a)return;a.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();if(curA)a.crossFadeFrom(curA,fade,false);curA=a};
   // 止まっているときの立ち姿：見回し1の最初のコマで止める
   const standStill=()=>{play('look1');A.look1.paused=true;A.look1.time=0};
   standStill();
   let mode='stand',idleAt=performance.now();
-  mixer.addEventListener('finished',e=>{if(mode==='dance'){mode='look';play(Math.random()<.5?'look1':'look2',.4);A.look1.paused=false}});
-  bDance.onclick=()=>{mode='dance';play(['dance1','dance2','dance3'][Math.floor(Math.random()*3)],.3)};
+  // 踊り終わったら歓声。そのあとは見回し
+  mixer.addEventListener('finished',e=>{if(mode==='dance'){X.cheer&&X.cheer(true);mode='look';play(Math.random()<.5?'look1':'look2',.4);A.look1.paused=false}});
+  let lastD='';bDance.onclick=()=>{let k;do{k=DANCES[Math.floor(Math.random()*DANCES.length)]}while(k===lastD&&DANCES.length>1);lastD=k;mode='dance';A.look1.paused=false;if(curA===A[k])curA=null;play(k,.3)};
 
   // ---------- 操作 ----------
   const keys=new Set();
@@ -309,7 +336,7 @@ export async function start(root, X){
       if(mode==='walk'||mode==='run'){mode='stand';standStill()}
       const idleT=(performance.now()-idleAt)/1000;
       if(idleT>5&&mode==='stand'){mode='look';A.look1.paused=false;play(Math.random()<.5?'look1':'look2',.4)}
-      bDance.hidden=!(idleT>5)||mode==='dance';
+      bDance.hidden=false;
     }
     mixer.update(dt);
     // カメラ：自キャラの後ろから

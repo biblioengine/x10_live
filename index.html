@@ -1801,7 +1801,7 @@ function netPointer(cv){
 }
 
 /* ---------- 実況会場（3Dの会場。venue/venue.js を開いたときだけ読み込む） ---------- */
-let VEN=null,VAU=null,VSYNC=0,VMUS=null;
+let VEN=null,VAU=null,VSYNC=0,VMUS=null,VCH=null,VCT=0,VCP=[];
 async function openVenue(){
   if(document.getElementById('venue'))return;
   const el=Object.assign(document.createElement('div'),{id:'venue'});document.body.appendChild(el);document.documentElement.style.overflow='hidden';
@@ -1811,9 +1811,14 @@ async function openVenue(){
   let mi=0,mOn=true;try{mOn=localStorage.getItem('x10vmusic')!=='0'}catch{}
   const au=new Audio();au.preload='auto';au.volume=.55;au.src=PL[0];au.onended=()=>{mi=(mi+1)%PL.length;au.src=PL[mi];if(mOn)au.play().catch(()=>{})};
   if(mOn)au.play().catch(()=>{});VAU=au;
-  const music={on:()=>mOn,toggle(){setTimeout(musicBtns);mOn=!mOn;try{localStorage.setItem('x10vmusic',mOn?'1':'0')}catch{}if(mOn)au.play().catch(()=>{});else au.pause();return mOn}};VMUS=music;
+  // 歓声：同時に重ねられるよう3つ用意し、押した瞬間に一度鳴らして（無音で）使えるようにしておく
+  const CH=[1,2,3,4,5].map(i=>'venue/cheer/c'+i+'.mp3'),cpool=[0,1,2].map(()=>{const a=new Audio();a.preload='auto';a.src=CH[0];a.muted=true;a.play().then(()=>{a.pause();a.muted=false}).catch(()=>{a.muted=false});return a});
+  let cpi=0;const cheer=(loud)=>{if(!mOn||!VAU)return;const a=cpool[cpi++%cpool.length];a.src=CH[Math.floor(Math.random()*CH.length)];a.volume=loud?.75:.4;a.play().catch(()=>{})};
+  VCH=cheer;clearTimeout(VCT);const nextCheer=()=>{VCT=setTimeout(()=>{if(VAU)cheer(false);if(VAU)nextCheer()},15000+Math.random()*30000)};nextCheer();
+  VCP=cpool;
+  const music={on:()=>mOn,toggle(){setTimeout(musicBtns);mOn=!mOn;try{localStorage.setItem('x10vmusic',mOn?'1':'0')}catch{}if(mOn)au.play().catch(()=>{});else{au.pause();VCP.forEach(a=>a.pause())}return mOn}};VMUS=music;
   const api={users:()=>state.users,avatar:u=>'avatars/'+encodeURIComponent(u.handle.toLowerCase())+'.jpg',tag:u=>state.tags[u.handle.toLowerCase()],
-    dayCount,todayKey,totals,GOAL,tickerData,ix:()=>state.ix||[],music,peek:venuePeek,
+    dayCount,todayKey,totals,GOAL,tickerData,ix:()=>state.ix||[],music,peek:venuePeek,cheer:l=>VCH&&VCH(l),
     days:()=>{const s0=new Date(state.start),o=[];for(let i=0;i<30;i++)o.push(dkey(new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()+i).getTime()));return o},
     openPlayer:id=>{closeVenue();openPlayer(id);pushNav()},close:()=>backOv(closeVenue)};
   try{const m=await import('./venue/venue.js?v=1');if(!document.getElementById('venue'))return;VEN=await m.start(el,api)}
@@ -1871,7 +1876,7 @@ function venueBack(){
   v.hidden=false;document.documentElement.style.overflow='hidden';try{VEN&&VEN.resume()}catch{}
   try{if(VAU&&localStorage.getItem('x10vmusic')!=='0')VAU.play().catch(()=>{})}catch{}
 }
-function closeVenue(){clearInterval(VSYNC);document.getElementById('vret')?.setAttribute('hidden','');if(VAU){VAU.pause();VAU.removeAttribute('src');VAU.load();VAU=null}VMUS=null;const el=document.getElementById('venue');if(!el){musicBtns();return}try{VEN&&VEN.close()}catch{}VEN=null;el.remove();musicBtns();venueSync();
+function closeVenue(){clearInterval(VSYNC);clearTimeout(VCT);VCP.forEach(a=>{a.pause();a.removeAttribute('src')});VCP=[];VCH=null;document.getElementById('vret')?.setAttribute('hidden','');if(VAU){VAU.pause();VAU.removeAttribute('src');VAU.load();VAU=null}VMUS=null;const el=document.getElementById('venue');if(!el){musicBtns();return}try{VEN&&VEN.close()}catch{}VEN=null;el.remove();musicBtns();venueSync();
   if(!document.getElementById('plr')&&!document.getElementById('net')&&!pplShown())document.documentElement.style.overflow=''}
 
 /* ---------- 戻る：ブラウザやスマホの「戻る」で前の画面に戻れるようにする ---------- */
