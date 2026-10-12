@@ -1812,6 +1812,8 @@ async function openVenue(){
   let mi=0,mOn=true;try{mOn=localStorage.getItem('x10vmusic')!=='0'}catch{}
   const au=new Audio();au.preload='auto';au.volume=.55;au.src=PL[0];au.onended=()=>{mi=(mi+1)%PL.length;au.src=PL[mi];if(mOn)au.play().catch(()=>{})};
   if(mOn)au.play().catch(()=>{});VAU=au;
+  // 劇場からサイトを覗いている間に、ブラウザ側の都合で止められたらすぐ鳴らし直す（♪で止めたときは除く）
+  au.addEventListener('pause',()=>{if(mOn&&!au.ended&&VAU===au&&venuePeeking())setTimeout(()=>{if(mOn&&VAU===au&&au.paused&&venuePeeking())au.play().catch(()=>{})},0)});
   // 歓声：同時に重ねられるよう3つ用意し、押した瞬間に一度鳴らして（無音で）使えるようにしておく
   const CH=[1,2,3,4,5].map(i=>'venue/cheer/c'+i+'.mp3'),cpool=[0,1,2].map(()=>{const a=new Audio();a.preload='auto';a.src=CH[0];a.muted=true;a.play().then(()=>{a.pause();a.muted=false}).catch(()=>{a.muted=false});return a});
   let cpi=0;const cheer=(loud)=>{if(!mOn||!VAU)return;const a=cpool[cpi++%cpool.length];a.src=CH[Math.floor(Math.random()*CH.length)];a.volume=loud?.75:.4;a.play().catch(()=>{})};
@@ -1840,6 +1842,7 @@ function venuePeek(kind,id){
   else if(kind==='cal')live(1);
   else if(kind==='rank')live(2);
   requestAnimationFrame(venueSync);
+  try{if(VAU&&VMUS&&VMUS.on()&&VAU.paused)VAU.play().catch(()=>{})}catch{}
 }
 // 覗いている画面に合わせて「会場に戻る」の出し方を変える
 //  ・LIVE（途中経過・カレンダー・通算成績）：「実況会場へ」ボタンを「会場へ戻る」に変える
@@ -1859,6 +1862,7 @@ function venueSync(){
     if(pk&&!k)ua.insertAdjacentHTML('beforeend','<button type="button" class="xgo vbk2" data-venue="1">◀︎ 会場へ戻る</button>');
     if(!pk&&k)k.remove()}
   const r=document.getElementById('vret');if(r)r.hidden=!pk||!!net||liveVis||!!ua;
+  if(pk&&VAU&&VMUS&&VMUS.on()&&VAU.paused&&!VAU.ended)VAU.play().catch(()=>{});
   musicBtns();
 }
 // ライト／ダークの切り替えボタンの横に、音楽のオン・オフ（会場を開いている間だけ）
