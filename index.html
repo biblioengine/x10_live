@@ -286,6 +286,70 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #net .back.vbk{border:0;color:#fff;background:linear-gradient(90deg,#ff3d7f,#8a5bff,#3dd6ff)}
 #venue{position:fixed;inset:0;z-index:40;background:#07080d;color:#eef1f7;touch-action:none;user-select:none;-webkit-user-select:none}
 #venue .vcv{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* キャラクター選択（会場に入る前） */
+#vsel{position:absolute;inset:0;overflow:hidden;color:#fff;font-family:inherit;background:radial-gradient(120% 70% at 50% 108%,#2a1050 0%,#0d0a22 45%,#05060c 75%);
+  --vt:calc(10px + env(safe-area-inset-top,0px));--vw:calc(100% - 20px);--vh:47%;--pl:0;--pr:0;--ph:auto;--pw2:100%;--pt:4%;--nl:14px;--ntop:12px;--nb:auto;--nf:76px;--sk:9px;--pb:15%;--pw:min(70vw,300px);--fh:44vh;--lw:min(84vw,380px);--ab:48px;--ag:8px;--at:62%;--bb:calc(4% + env(safe-area-inset-bottom,0px));--sf:14px}
+@media (min-width:900px){#vsel{--vt:5%;--vw:min(1000px,80vw);--vh:62%;--pl:auto;--pr:3%;--ph:100%;--pw2:auto;--pt:0;--nl:34px;--ntop:auto;--nb:26px;--nf:120px;--sk:12px;--pb:14%;--pw:320px;--fh:58vh;--lw:470px;--ab:68px;--ag:5vw;--at:50%;--bb:3%;--sf:19px}}
+#vsel .sfloor{position:absolute;left:-50%;right:-50%;bottom:0;height:30%;transform:perspective(420px) rotateX(62deg);transform-origin:50% 100%;
+  background:linear-gradient(transparent 0 96%,rgba(138,91,255,.55) 96%) 0 0/100% 40px,linear-gradient(90deg,transparent 0 97%,rgba(61,214,255,.45) 97%) 0 0/60px 100%;
+  -webkit-mask:linear-gradient(transparent,#000 60%);mask:linear-gradient(transparent,#000 60%);animation:vsfl 1.2s linear infinite}
+@keyframes vsfl{to{background-position:0 40px,0 0}}
+#vsel .svis{position:absolute;left:50%;top:var(--vt);width:var(--vw);height:var(--vh);transform:translateX(-50%);border-radius:10px;overflow:hidden;
+  background:var(--bg);box-shadow:0 0 0 5px #111,0 0 0 7px #2b2b36,0 0 60px 10px color-mix(in srgb,var(--bg) 45%,transparent);transition:background .2s}
+#vsel .svis.flash{animation:vsflash .35s steps(4)}
+@keyframes vsflash{0%{filter:brightness(2.4) saturate(.2)}50%{filter:brightness(.4)}100%{filter:none}}
+#vsel .spic{position:absolute;left:var(--pl);right:var(--pr);top:var(--pt);margin:auto;height:var(--ph);width:var(--pw2);max-width:none}
+#vsel .spic.fade{-webkit-mask:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)}
+#vsel .svis::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(circle,transparent 55%,rgba(0,0,0,.28) 60%) 0 0/4px 4px,linear-gradient(transparent 50%,rgba(0,0,0,.08) 50%) 0 0/100% 3px}
+#vsel .svis::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(115deg,rgba(255,255,255,.22),transparent 30%)}
+#vsel .sname{position:absolute;z-index:2;left:var(--nl);bottom:var(--nb);top:var(--ntop);line-height:.9;font-weight:900;font-style:italic;
+  color:#fff;-webkit-text-stroke:var(--sk) #111;paint-order:stroke fill;text-shadow:6px 6px 0 #111}
+#vsel .sname b{display:block;font-size:var(--nf);letter-spacing:.02em}
+#vsel .sname small{display:block;font-size:calc(var(--nf)*.3);letter-spacing:.3em;margin-top:6px;-webkit-text-stroke:calc(var(--sk)*.6) #111;text-shadow:3px 3px 0 #111}
+#vsel .sped,#vsel .sring{position:absolute;left:50%;bottom:var(--pb);width:var(--pw);height:calc(var(--pw)*.22);transform:translateX(-50%);border-radius:50%}
+#vsel .sped{background:radial-gradient(closest-side,rgba(255,255,255,.55),rgba(61,214,255,.35) 55%,transparent);box-shadow:0 0 40px 6px rgba(138,91,255,.55)}
+#vsel .sring{border:2px solid transparent;background:linear-gradient(90deg,#ff3d7f,#8a5bff,#3dd6ff) border-box;
+  -webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+#vsel .sch{position:absolute;left:0;right:0;bottom:calc(var(--pb) + var(--pw)*.07);display:flex;justify-content:center;pointer-events:none}
+#vsel .sch img{height:var(--fh);filter:drop-shadow(0 0 16px rgba(0,0,0,.8))}
+#vsel .sch.lay{bottom:calc(var(--pb) + var(--pw)*.02)}
+#vsel .sch.lay img{height:auto;width:var(--lw)}
+#vsel .sch.in-r img{animation:vsinr .35s cubic-bezier(.2,.8,.3,1.2)}#vsel .sch.in-l img{animation:vsinl .35s cubic-bezier(.2,.8,.3,1.2)}
+@keyframes vsinr{from{transform:translateX(45%) scale(.85);opacity:0}to{transform:none;opacity:1}}
+@keyframes vsinl{from{transform:translateX(-45%) scale(.85);opacity:0}to{transform:none;opacity:1}}
+#vsel .sarr{position:absolute;top:var(--at);transform:translateY(-50%);width:var(--ab);height:var(--ab);border-radius:50%;border:0;color:#fff;font-size:calc(var(--ab)*.42);cursor:pointer;
+  background:rgba(10,10,20,.55);box-shadow:inset 0 0 0 2px rgba(255,255,255,.4),0 0 24px rgba(61,214,255,.35);display:grid;place-items:center;z-index:3}
+#vsel .sarr.l{left:var(--ag)}#vsel .sarr.r{right:var(--ag)}
+#vsel .sbot{position:absolute;left:0;right:0;bottom:var(--bb);text-align:center;z-index:3}
+#vsel .sgo{border:0;cursor:pointer;display:inline-block;padding:10px 34px;border-radius:999px;font-weight:800;font-size:15px;letter-spacing:.12em;color:#fff;background:linear-gradient(90deg,#ff3d7f,#8a5bff,#3dd6ff);box-shadow:0 0 22px rgba(138,91,255,.6)}
+#vsel .stxt{margin-top:14px;font-size:var(--sf);font-weight:900;letter-spacing:.32em;padding-left:.32em;text-shadow:0 0 12px #3dd6ff,0 0 26px #8a5bff;animation:vsblink 1.6s ease-in-out infinite}
+@keyframes vsblink{50%{opacity:.45}}
+#vsel .sx{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:12px;width:38px;height:38px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#ddd;font-size:18px;cursor:pointer;z-index:4}
+#vsel .simg{position:relative;display:inline-block;line-height:0}
+#vsel .sbelly,#vsel .sring2{position:absolute;inset:0;pointer-events:none;-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+#vsel .sbelly{background-repeat:no-repeat;background-size:32.4% 13.8%;background-position:56.66% 41.65%;-webkit-mask-image:url(venue/sel/mm_belly.png);mask-image:url(venue/sel/mm_belly.png);filter:brightness(.9)}
+#vsel .sring2{background:#ffd23d;-webkit-mask-image:url(venue/sel/mm_ring.png);mask-image:url(venue/sel/mm_ring.png);filter:brightness(.9)}
+#vsel .spick{margin:0 auto 10px;max-width:min(94vw,760px)}
+#vsel .spick p{font-size:11px;font-weight:800;letter-spacing:.12em;color:#cfd3ff;margin:0 0 4px}
+#vsel .srow{display:flex;gap:8px;overflow-x:auto;padding:4px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x}
+#vsel .srow::-webkit-scrollbar{display:none}
+#vsel .srow button{flex:0 0 auto;width:42px;height:42px;border-radius:50%;border:0;padding:0;cursor:pointer;background:#222 center/cover no-repeat;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
+#vsel .srow button.none{width:auto;padding:0 12px;border-radius:999px;font-size:11px;font-weight:800;color:#fff;background:rgba(255,255,255,.12)}
+#vsel .srow button[aria-pressed="true"]{box-shadow:0 0 0 3px #ffd23d,0 0 14px rgba(255,210,61,.7)}
+#vsel.pick{--pb:calc(15% + 70px)}
+@media (min-width:900px){#vsel.pick{--pb:calc(14% + 72px)}}
+#vsel .ssil{position:absolute;left:0;right:0;bottom:calc(var(--pb) + var(--pw)*.12);display:flex;justify-content:center;pointer-events:none}
+#vsel .ssil img{height:calc(var(--fh)*.78);transform:translateX(var(--sx,58%));opacity:.92;filter:drop-shadow(0 0 10px rgba(61,214,255,.55)) drop-shadow(0 0 22px rgba(138,91,255,.45))}
+#vsel .ssil.pop img{animation:vssil .9s ease-out}
+@keyframes vssil{0%{opacity:0;filter:brightness(4) drop-shadow(0 0 30px #fff)}30%{opacity:1}100%{opacity:.92}}
+#vsel .ssec{position:absolute;left:14px;top:calc(var(--vt) + var(--vh) + 12px);z-index:5;padding:3px 14px;border-radius:999px;
+  font-size:12px;font-weight:900;letter-spacing:.4em;padding-left:calc(14px + .4em);color:#111;background:#3dd6ff;box-shadow:0 0 16px rgba(61,214,255,.8);animation:vsblink 1.2s ease-in-out infinite}
+#vsel .ssec.on{background:#00ff99;box-shadow:0 0 16px rgba(0,255,153,.8)}
+#vsel .ssec.pop{animation:vssec .6s cubic-bezier(.2,.8,.3,1.4),vsblink 1.2s .6s ease-in-out infinite}
+@keyframes vssec{from{transform:scale(2.2);opacity:0}to{transform:scale(1);opacity:1}}
+@media (min-width:900px){#vsel .ssec{top:auto;bottom:calc(var(--pb) + var(--pw)*.22 + 8px);left:calc(50% + 210px)}#vsel .ssil img{--sx:72%}}
+#vsel .sarr[hidden]{display:none}
 #venue .vload{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-weight:700;color:#cfd5e2;gap:10px}
 #venue .vtop{position:absolute;left:12px;top:calc(10px + env(safe-area-inset-top,0px));display:flex;align-items:center;gap:10px;pointer-events:none}
 #venue .vback{pointer-events:auto;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(10,12,18,.6);color:#fff;font-size:15px;cursor:pointer}
@@ -1824,9 +1888,61 @@ async function openVenue(){
     dayCount,todayKey,totals,GOAL,tickerData,ix:()=>state.ix||[],music,peek:venuePeek,cheer:l=>VCH&&VCH(l),
     days:()=>{const s0=new Date(state.start),o=[];for(let i=0;i<30;i++)o.push(dkey(new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()+i).getTime()));return o},
     openPlayer:id=>{closeVenue();openPlayer(id);pushNav()},close:()=>backOv(closeVenue)};
-  try{const m=await import('./venue/venue.js?v=1');if(!document.getElementById('venue'))return;VEN=await m.start(el,api)}
+  // 会場のプログラムは、キャラクターを選んでいる間に読み込んでおく
+  const mod=import('./venue/venue.js?v=2');mod.catch(()=>{});
+  api.chara=await chooseChara(el);api.mmIcon=chooseChara.icon||null;if(!api.chara||!document.getElementById('venue'))return;
+  el.innerHTML='<div class="vload">会場を準備中…</div>';
+  try{const m=await mod;if(!document.getElementById('venue'))return;VEN=await m.start(el,api)}
   catch(e){el.innerHTML='<div class="vload">会場を読み込めませんでした<br><button type="button" class="back" data-vclose="1">戻る</button></div>'}
 }
+// キャラクター選択：◀︎▶︎で入れ替え、「決定」で会場へ。前に選んだキャラから始める
+// マスクマンが基本。おなかのアイコンを @boco_u2 にしたときだけ、隠しキャラの凹が選べる
+const SECRET_H='boco_u2';
+const CHARAS=[
+  {id:'maskman',nm:'MASKMAN',nm2:'MASK<br>MAN',en:'',bg:'#ffe600',pic:'venue/sel/maskman_bust.webp',img:'venue/sel/maskman.webp',fade:1},
+  {id:'boko',nm:'凹',en:'BOKO',bg:'#00ff99',pic:'venue/sel/boko_ill.jpg',img:'venue/sel/boko.webp',lay:1,secret:1}];
+function chooseChara(el){return new Promise(res=>{
+  CHARAS.forEach(c=>{new Image().src=c.pic;new Image().src=c.img});new Image().src='venue/sel/boko_sil.png';
+  let i=0;
+  el.innerHTML=`<div id="vsel"><div class="sfloor"></div>
+    <div class="svis"><img class="spic" alt=""><div class="sname"><b></b><small></small></div></div>
+    <div class="sped"></div><div class="sring"></div><div class="ssil" hidden><img src="venue/sel/boko_sil.png" alt=""></div><div class="ssec" hidden>SECRET</div><div class="sch"><span class="simg"><img alt=""><i class="sring2" hidden></i><i class="sbelly" hidden></i></span></div>
+    <button type="button" class="sarr l" aria-label="前のキャラクター">◀︎</button><button type="button" class="sarr r" aria-label="次のキャラクター">▶︎</button>
+    <button type="button" class="sx" aria-label="閉じる">×</button>
+    <div class="sbot"><div class="spick" hidden><p>おなかのアイコン</p><div class="srow"></div></div><button type="button" class="sgo">決定</button><div class="stxt">SELECT A CHARACTER</div></div></div>`;
+  const R=el.querySelector('#vsel'),vis=R.querySelector('.svis'),pic=R.querySelector('.spic'),nb=R.querySelector('.sname b'),ns=R.querySelector('.sname small'),ch=R.querySelector('.sch'),im=ch.querySelector('img');
+  // マスクマンのお腹のアイコン（参加者から選ぶ。「アイコンなし」も選べる）
+  const pick=R.querySelector('.spick'),row=R.querySelector('.srow'),belly=R.querySelector('.sbelly'),ring=R.querySelector('.sring2');
+  const avOf=h=>'avatars/'+encodeURIComponent(h.toLowerCase())+'.jpg';
+  let mh='';try{mh=localStorage.getItem('x10mmicon')||''}catch{}
+  if(mh&&!state.users.some(u=>u.handle.toLowerCase()===mh.toLowerCase()))mh='';
+  const sil=R.querySelector('.ssil'),sec=R.querySelector('.ssec'),arrs=R.querySelectorAll('.sarr');
+  const unlocked=()=>mh.toLowerCase()===SECRET_H;
+  // 前に凹で入っていて、アイコンも @boco_u2 のままなら、凹から始める
+  try{if(unlocked()&&localStorage.getItem('x10chara')==='boko')i=1}catch{}
+  const lockUI=()=>{const u=unlocked(),onM=CHARAS[i].id==='maskman';arrs.forEach(a=>a.hidden=!u);sec.hidden=!u;sil.hidden=!(u&&onM);
+    sec.classList.toggle('on',u&&!onM)};
+  row.innerHTML='<button type="button" class="none" data-h="">アイコンなし</button>'+state.users.map(u=>`<button type="button" data-h="${esc(u.handle)}" title="${esc(u.name)}" aria-label="${esc(u.name)}" style="background-image:url('${avOf(u.handle)}')"></button>`).join('');
+  const setIcon=()=>{row.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.h||'').toLowerCase()===mh.toLowerCase()));
+    belly.style.backgroundImage=mh?`url('${avOf(mh)}')`:'';const on=!!mh&&CHARAS[i].id==='maskman';belly.hidden=ring.hidden=!on};
+  row.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const was=unlocked();mh=b.dataset.h||'';try{localStorage.setItem('x10mmicon',mh)}catch{}setIcon();lockUI();
+    if(!was&&unlocked()){sil.classList.remove('pop');void sil.offsetWidth;sil.classList.add('pop');sec.classList.remove('pop');void sec.offsetWidth;sec.classList.add('pop')}});
+  const show=(dir)=>{const c=CHARAS[i],pc=matchMedia('(min-width:900px)').matches;
+    R.style.setProperty('--bg',c.bg);pic.src=c.pic;pic.classList.toggle('fade',!!c.fade);im.src=c.img;im.alt=c.nm;ch.classList.toggle('lay',!!c.lay);
+    if(pc&&c.nm2){nb.innerHTML=c.nm2;nb.style.fontSize='calc(var(--nf)*.85)'}else{nb.textContent=c.nm;nb.style.fontSize=c.nm.length>2?'calc(var(--nf)*.62)':''}
+    ns.textContent=c.en;
+    pick.hidden=c.id!=='maskman';R.classList.toggle('pick',c.id==='maskman');setIcon();lockUI();
+    if(c.id==='maskman'){const b=row.querySelector('[aria-pressed="true"]');if(b)requestAnimationFrame(()=>{row.scrollLeft=Math.max(0,b.offsetLeft-row.clientWidth/2+b.offsetWidth/2)})}
+    if(dir){ch.classList.remove('in-l','in-r');vis.classList.remove('flash');void ch.offsetWidth;ch.classList.add(dir>0?'in-r':'in-l');vis.classList.add('flash')}};
+  const move=d=>{if(!unlocked())return;i=(i+d+CHARAS.length)%CHARAS.length;show(d)};
+  const done=v=>{removeEventListener('keydown',key);res(v)};
+  const go=()=>{if(CHARAS[i].secret&&!unlocked())i=0;try{localStorage.setItem('x10chara',CHARAS[i].id)}catch{}chooseChara.icon=CHARAS[i].id==='maskman'&&mh?avOf(mh):null;done(CHARAS[i].id)};
+  const key=e=>{if(!document.getElementById('vsel')){removeEventListener('keydown',key);return}
+    if(e.key==='ArrowLeft')move(-1);else if(e.key==='ArrowRight')move(1);else if(e.key==='Enter')go()};
+  addEventListener('keydown',key);
+  R.querySelector('.sarr.l').onclick=()=>move(-1);R.querySelector('.sarr.r').onclick=()=>move(1);
+  R.querySelector('.sgo').onclick=go;R.querySelector('.sx').onclick=()=>{done(null);backOv(closeVenue)};
+  show(0)})}
 // 劇場から実況サイトの各画面を「覗く」：会場はそのまま隠しておき、「会場に戻る」で元の場所に戻る
 const venuePeeking=()=>{const v=document.getElementById('venue');return !!(v&&v.hidden)};
 function venuePeek(kind,id){

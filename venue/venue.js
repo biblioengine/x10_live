@@ -158,20 +158,62 @@ export async function start(root, X){
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setIndex(I);g.computeVertexNormals();
     scene.add(new THREE.Mesh(g,crowdMat))}
   // ---------- 自キャラ ----------
-  const gl=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(BASE+'chara.glb?v=2');if(!alive)return;
+  // 凹（ボコ）かマスクマンか（会場に入る前のキャラクター選択で決まる）
+  const BOKO=X.chara==='boko';
+  const gl=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(BASE+(BOKO?'boko.glb?v=1':'chara.glb?v=2'));if(!alive)return;
   const me=gl.scene;me.traverse(o=>{if(o.isMesh){o.frustumCulled=false}});scene.add(me);
+  // マスクマン：選んだ参加者のアイコンを、コスチュームのお腹（「EL CHUPACABRA」の位置）に入れる。
+  // 服の画像に丸く描くので、体に貼ると少し横に伸びる（そのままの味として残す）
+  if(!BOKO&&X.mmIcon){try{
+    const av=await new Promise((ok,ng)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=ng;i.src=X.mmIcon});if(!alive)return;
+    me.traverse(o=>{if(!o.isMesh||!o.material.map||!o.material.map.image)return;const src=o.material.map.image,W=src.width,H=src.height;
+      const cv=document.createElement('canvas');cv.width=W;cv.height=H;const c=cv.getContext('2d');c.drawImage(src,0,0,W,H);
+      // この服の画像は上下が逆に入っているので、位置も絵も上下を返して描く
+      const k=W/1024,cx=560*k,cy=H-882*k,R=75*k;
+      c.beginPath();c.arc(cx,cy,R*1.09,0,Math.PI*2);c.fillStyle='#ffd23d';c.fill();
+      c.save();c.beginPath();c.arc(cx,cy,R,0,Math.PI*2);c.clip();c.translate(cx,cy);c.scale(1,-1);
+      const s=Math.max(2*R/av.width,2*R/av.height);c.drawImage(av,-av.width*s/2,-av.height*s/2,av.width*s,av.height*s);c.restore();
+      const old=o.material.map,t=new THREE.CanvasTexture(cv);t.flipY=false;t.colorSpace=old.colorSpace;t.wrapS=old.wrapS;t.wrapT=old.wrapT;
+      o.material.map=t;o.material.needsUpdate=true})}catch(e){}}
   me.position.set(SUB.x,0,SUB.z-8);me.rotation.y=Math.PI;
   const mixer=new THREE.AnimationMixer(me),A={};gl.animations.forEach(c=>A[c.name]=mixer.clipAction(c));
-  const DANCES=['dance1','dance2','dance3','dance4','dance5','dance6','dance7','dance8','dance9'].filter(k=>A[k]);DANCES.forEach(k=>{A[k].setLoop(THREE.LoopOnce,1);A[k].clampWhenFinished=true});
+  const DANCES=Object.keys(A).filter(k=>/^dance\d+$/.test(k));DANCES.forEach(k=>{A[k].setLoop(THREE.LoopOnce,1);A[k].clampWhenFinished=true});
   let curA=null;
   const play=(k,fade=.25)=>{const a=A[k];if(curA===a)return;a.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();if(curA)a.crossFadeFrom(curA,fade,false);curA=a};
-  // 止まっているときの立ち姿：見回し1の最初のコマで止める
-  const standStill=()=>{play('look1');A.look1.paused=true;A.look1.time=0};
-  standStill();
   let mode='stand',idleAt=performance.now();
-  // 踊り終わったら歓声。そのあとは見回し
-  mixer.addEventListener('finished',e=>{if(mode==='dance'){X.cheer&&X.cheer(true);mode='look';play(Math.random()<.5?'look1':'look2',.4);A.look1.paused=false}});
-  let lastD='';bDance.onclick=()=>{let k;do{k=DANCES[Math.floor(Math.random()*DANCES.length)]}while(k===lastD&&DANCES.length>1);lastD=k;mode='dance';A.look1.paused=false;if(curA===A[k])curA=null;play(k,.3)};
+  let lastD='';const pickDance=()=>{let k;do{k=DANCES[Math.floor(Math.random()*DANCES.length)]}while(k===lastD&&DANCES.length>1);lastD=k;return k};
+  // ---- マスクマン ----
+  // 止まっているときの立ち姿：見回し1の最初のコマで止める
+  const standStill=BOKO?()=>{play('idle',.3)}:()=>{play('look1');A.look1.paused=true;A.look1.time=0};
+  // ---- 凹：転ぶ・起き上がる・寝転がるときは、その場から体ごと動く（root=腰の前後左右の動き） ----
+  let RM=null;gl.scene.traverse(o=>{if(o.userData&&o.userData.root)RM=o.userData.root});
+  let rmK=null,rmP0=null;
+  const rmAt=(k,t)=>{const r=RM&&RM[k];if(!r)return [0,0];const T=r.t;let i=0;while(i<T.length-2&&T[i+1]<t)i++;const f=Math.min(1,Math.max(0,(t-T[i])/((T[i+1]-T[i])||1)));
+    return [r.xz[i*2]+(r.xz[i*2+2]-r.xz[i*2])*f,r.xz[i*2+1]+(r.xz[i*2+3]-r.xz[i*2+1])*f]};
+  const rmLocal=(x,z)=>{const c=Math.cos(me.rotation.y),s=Math.sin(me.rotation.y);return [x*c+z*s,-x*s+z*c]};
+  const rmStart=(k,t)=>{rmK=k;const [x,z]=rmLocal(...rmAt(k,t));rmP0={x:me.position.x-x,z:me.position.z-z}};
+  const rmUpdate=()=>{if(!rmK)return;const [x,z]=rmLocal(...rmAt(rmK,A[rmK].time));me.position.x=rmP0.x+x;me.position.z=rmP0.z+z;collide(me.position)};
+  const once=(k,fade,back=false)=>{const a=A[k];a.setLoop(THREE.LoopOnce,1);a.clampWhenFinished=true;if(curA===a)curA=null;play(k,fade);
+    if(back){a.timeScale=-1;a.time=a.getClip().duration}rmStart(k,a.time)};
+  let runLoops=0,after=null;
+  const bokoStand=()=>{rmK=null;mode='stand';idleAt=performance.now();standStill()};
+  const bokoDance=()=>{rmK=null;mode='dance';play(pickDance(),.3)};
+  // 起き上がる（終わったら after に入れたことをする）
+  const bokoGetUp=(then)=>{const fade=mode==='lay'?.45:.3;after=then||null;mode='standup';once('standup',fade)};
+  if(BOKO){A.run&&A.run.setLoop(THREE.LoopRepeat,Infinity);
+    mixer.addEventListener('loop',e=>{if(e.action===A.run&&mode==='run'){runLoops++;if(runLoops>=5){runLoops=0;mode='trip';once('trip',.15)}}})}
+  standStill();
+  mixer.addEventListener('finished',e=>{
+    if(mode==='dance'){X.cheer&&X.cheer(true);if(BOKO)bokoStand();else{mode='look';play(Math.random()<.5?'look1':'look2',.4);A.look1.paused=false}return}
+    if(!BOKO)return;
+    // 転んだら、そのまま起き上がる
+    if(mode==='trip'&&e.action===A.trip){mode='standup';after=null;once('standup',.25);return}
+    if(mode==='standup'&&e.action===A.standup){A.standup.timeScale=1;const f=after;after=null;if(f==='dance')bokoDance();else bokoStand();return}
+    // 寝転がる：起き上がりを逆に再生したあと、寝転んだ姿勢へ
+    if(mode==='laydown'&&e.action===A.standup){A.standup.timeScale=1;rmK=null;mode='lay';A.lay.setLoop(THREE.LoopRepeat,Infinity);play('lay',.7)}});
+  bDance.onclick=()=>{
+    if(BOKO){if(mode==='lay'){bokoGetUp('dance');return}if(['trip','standup','laydown'].includes(mode))return;bokoDance();return}
+    const k=pickDance();mode='dance';A.look1.paused=false;if(curA===A[k])curA=null;play(k,.3)};
 
   // ---------- 操作 ----------
   const keys=new Set();
@@ -325,17 +367,24 @@ export async function start(root, X){
     run=keys.has('shift');
     if(stick.id!==null){ix=stick.dx;iz=stick.dy;run=Math.hypot(ix,iz)>.8}
     const mag=Math.min(1,Math.hypot(ix,iz));
-    if(mag>.15){
+    // 凹：転んでいる・起き上がっている・寝転がっている途中は動けない。寝転んでいるときに動かすと起き上がる
+    const busy=BOKO&&['trip','standup','laydown'].includes(mode);
+    if(BOKO&&mode==='lay'&&mag>.15){bokoGetUp(null)}
+    if(busy||(BOKO&&mode==='standup')){rmUpdate();bDance.hidden=true;if(mag>.15)idleAt=performance.now()}
+    else if(mag>.15){
       const fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);
       let dx=rx*ix-fx*iz,dz=rz*ix-fz*iz;const l=Math.hypot(dx,dz)||1;dx/=l;dz/=l;
       const sp=run?4:1.45;me.position.x+=dx*sp*dt;me.position.z+=dz*sp*dt;collide(me.position);
       const want=Math.atan2(dx,dz);let d=want-me.rotation.y;d=Math.atan2(Math.sin(d),Math.cos(d));me.rotation.y+=d*Math.min(1,dt*10);
-      if(mode!==(run?'run':'walk')){mode=run?'run':'walk';A.look1.paused=false;play(mode,.2)}
+      if(mode!==(run?'run':'walk')){mode=run?'run':'walk';if(A.look1)A.look1.paused=false;runLoops=0;play(mode,.2)}
       idleAt=performance.now();bDance.hidden=true;
     }else{
-      if(mode==='walk'||mode==='run'){mode='stand';standStill()}
+      if(mode==='walk'||mode==='run'){runLoops=0;if(BOKO)bokoStand();else{mode='stand';standStill()}}
       const idleT=(performance.now()-idleAt)/1000;
-      if(idleT>5&&mode==='stand'){mode='look';A.look1.paused=false;play(Math.random()<.5?'look1':'look2',.4)}
+      if(idleT>5&&mode==='stand'){
+        // 5秒なにもしなければ：マスクマンは見回す、凹は寝転がる
+        if(BOKO){mode='laydown';once('standup',.4,true)}
+        else{mode='look';A.look1.paused=false;play(Math.random()<.5?'look1':'look2',.4)}}
       bDance.hidden=false;
     }
     mixer.update(dt);
@@ -358,7 +407,7 @@ export async function start(root, X){
     thAcc+=dt;if(dirty&&thAcc>.3){drawTheaters();thAcc=0}
     R.render(scene,cam)};
   requestAnimationFrame(loop);
-  if(/[?&]vdebug/.test(location.search))root.__dbg={me,TH,yaw:v=>{yaw=v}};
+  if(/[?&]vdebug/.test(location.search))root.__dbg={me,TH,yaw:v=>{yaw=v},mode:()=>mode};
   // データが更新されたら劇場も描き直す
   const iv=setInterval(()=>{dirty=true;NL=null},60000);cleanups.push(()=>clearInterval(iv));
 
