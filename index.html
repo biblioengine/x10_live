@@ -1920,13 +1920,13 @@ function chooseChara(el){return new Promise(res=>{
   const unlocked=()=>mh.toLowerCase()===SECRET_H;
   // 前に凹で入っていて、アイコンも @boco_u2 のままなら、凹から始める
   try{if(unlocked()&&localStorage.getItem('x10chara')==='boko')i=1}catch{}
-  const lockUI=()=>{const u=unlocked(),onM=CHARAS[i].id==='maskman';arrs.forEach(a=>a.hidden=!u);sec.hidden=!u;sil.hidden=!(u&&onM);
+  const lockUI=()=>{const u=unlocked(),onM=CHARAS[i].id==='maskman';arrs.forEach(a=>a.hidden=!u);sec.hidden=!(u&&!onM);sil.hidden=!(u&&onM);
     sec.classList.toggle('on',u&&!onM)};
   row.innerHTML='<button type="button" class="none" data-h="">アイコンなし</button>'+state.users.map(u=>`<button type="button" data-h="${esc(u.handle)}" title="${esc(u.name)}" aria-label="${esc(u.name)}" style="background-image:url('${avOf(u.handle)}')"></button>`).join('');
   const setIcon=()=>{row.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.h||'').toLowerCase()===mh.toLowerCase()));
     belly.style.backgroundImage=mh?`url('${avOf(mh)}')`:'';const on=!!mh&&CHARAS[i].id==='maskman';belly.hidden=ring.hidden=!on};
   row.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const was=unlocked();mh=b.dataset.h||'';try{localStorage.setItem('x10mmicon',mh)}catch{}setIcon();lockUI();
-    if(!was&&unlocked()){sil.classList.remove('pop');void sil.offsetWidth;sil.classList.add('pop');sec.classList.remove('pop');void sec.offsetWidth;sec.classList.add('pop')}});
+    if(!was&&unlocked()){sil.classList.remove('pop');void sil.offsetWidth;sil.classList.add('pop')}});
   const show=(dir)=>{const c=CHARAS[i],pc=matchMedia('(min-width:900px)').matches;
     R.style.setProperty('--bg',c.bg);pic.src=c.pic;pic.classList.toggle('fade',!!c.fade);im.src=c.img;im.alt=c.nm;ch.classList.toggle('lay',!!c.lay);
     if(pc&&c.nm2){nb.innerHTML=c.nm2;nb.style.fontSize='calc(var(--nf)*.85)'}else{nb.textContent=c.nm;nb.style.fontSize=c.nm.length>2?'calc(var(--nf)*.62)':''}
