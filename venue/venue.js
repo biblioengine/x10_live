@@ -37,24 +37,56 @@ export async function start(root, X){
   // ---------- 描画の準備 ----------
   const R=new THREE.WebGLRenderer({canvas:cv,antialias:!MOB,powerPreference:'high-performance'});
   R.setPixelRatio(Math.min(devicePixelRatio||1,MOB?1.5:2));R.outputColorSpace=THREE.SRGBColorSpace;
-  const scene=new THREE.Scene();const BG=0x07080d;scene.background=new THREE.Color(BG);scene.fog=new THREE.Fog(BG,34,100);
-  const cam=new THREE.PerspectiveCamera(55,1,.1,300);
-  scene.add(new THREE.HemisphereLight(0x9aa6ff,0x1a1420,1.1));
-  const sun=new THREE.DirectionalLight(0xffffff,.9);sun.position.set(-10,20,15);scene.add(sun);
+  // 昼と夜：日本時間の6時〜18時は昼（?day=1 / ?day=0 で確認用に固定できる）
+  const qd=/[?&]day=([01])/.exec(location.search);
+  const DAY=qd?qd[1]==='1':(()=>{const h=(new Date().getUTCHours()+9)%24;return h>=6&&h<18})();
+  const BG=DAY?0xcfdbe6:0x07080d;
+  const scene=new THREE.Scene();scene.background=new THREE.Color(BG);scene.fog=new THREE.Fog(BG,DAY?60:34,DAY?160:100);
+  const cam=new THREE.PerspectiveCamera(55,1,.1,600);
+  scene.add(DAY?new THREE.HemisphereLight(0xe4eeff,0x8c8478,1.6):new THREE.HemisphereLight(0x9aa6ff,0x1a1420,1.1));
+  const sun=new THREE.DirectionalLight(DAY?0xfff1dc:0xffffff,DAY?2.1:.9);sun.position.set(-10,20,15);scene.add(sun);
+  // 周りの空（360度の画像を大きな球の内側に貼る。カメラと一緒に動かして、遠くの景色に見せる）
+  const sky=new THREE.Mesh(new THREE.SphereGeometry(400,48,24),new THREE.MeshBasicMaterial({side:THREE.BackSide,fog:false,depthWrite:false,toneMapped:false,color:DAY?0xffffff:0x000000}));
+  sky.renderOrder=-1;scene.add(sky);
+  {const fb=document.createElement('canvas');fb.width=8;fb.height=256;const x=fb.getContext('2d'),g=x.createLinearGradient(0,0,0,256);
+    if(DAY){g.addColorStop(0,'#4f8fd6');g.addColorStop(.42,'#a9cdef');g.addColorStop(.5,'#e3eef7');g.addColorStop(.52,'#c9d3db');g.addColorStop(1,'#9aa3aa')}
+    else{g.addColorStop(0,'#000000');g.addColorStop(1,'#000000')}
+    x.fillStyle=g;x.fillRect(0,0,8,256);const t=new THREE.CanvasTexture(fb);t.colorSpace=THREE.SRGBColorSpace;sky.material.map=t;sky.material.color.set(0xffffff);sky.material.needsUpdate=true}
+  // 遠くの山並み：会場をぐるっと囲む稜線を3重に（遠いほど空の色に溶ける）。空と同じくカメラと一緒に動かす
+  const hills=new THREE.Group();scene.add(hills);
+  {const LAY=DAY?[[330,58,0x9fb6cc,3.1],[270,44,0x7f9bb0,7.7],[215,30,0x5f7d6a,12.9]]:[[330,58,0x0d1220,3.1],[270,44,0x0a0e18,7.7],[215,30,0x070a10,12.9]];
+    const nz=(x,s)=>{let v=0,a=1,f=1,t=0;for(let k=0;k<5;k++){v+=a*Math.sin(x*f+s*1.7+k*2.3)*Math.sin(x*f*.53+s+k*1.1);t+=a;a*=.5;f*=2.07}return v/t};
+    for(const [r,hgt,col,seed] of LAY){const N=360,P=[],I=[];
+      for(let i=0;i<=N;i++){const a=i/N*Math.PI*2,x=Math.sin(a)*r,z=Math.cos(a)*r;
+        // ステージの後ろ（北）を少し高く
+        const north=Math.max(0,-Math.cos(a));const y=hgt*(.35+.65*(.5+.5*nz(a*3,seed)))*(.8+.35*north);
+        P.push(x,-20,z,x,y,z);if(i<N){const k=i*2;I.push(k,k+1,k+2,k+1,k+3,k+2)}}
+      const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setIndex(I);
+      {const hm=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:col,fog:false,side:THREE.DoubleSide,depthWrite:false}));hm.renderOrder=-.5;hills.add(hm)}}}
+  new THREE.TextureLoader().load(BASE+(DAY?'sky_day.jpg':'sky_night.jpg'),t=>{if(!alive)return;t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;sky.material.map=t;sky.material.needsUpdate=true},undefined,()=>{});
   const resize=()=>{const w=root.clientWidth,h=root.clientHeight;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()};
   on(window,'resize',resize);resize();
 
   // ---------- 光る床：2mの升目が、それぞれの色で点滅する ----------
-  const floorMat=new THREE.ShaderMaterial({uniforms:{uT:{value:0},uFog:{value:new THREE.Color(BG)}},
+  const floorMat=new THREE.ShaderMaterial({uniforms:{uT:{value:0},uFog:{value:new THREE.Color(BG)},uDay:{value:DAY?1:0}},
     vertexShader:`varying vec2 vP;void main(){vec4 w=modelMatrix*vec4(position,1.);vP=w.xz;gl_Position=projectionMatrix*viewMatrix*w;}`,
-    fragmentShader:`uniform float uT;uniform vec3 uFog;varying vec2 vP;
+    fragmentShader:`uniform float uT;uniform vec3 uFog;uniform float uDay;varying vec2 vP;
       float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+      float n2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
+      float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*n2(p);p*=2.03;a*=.5;}return v;}
       vec3 hsv(float h,float s,float v){vec3 k=clamp(abs(mod(h*6.+vec3(0,4,2),6.)-3.)-1.,0.,1.);return v*mix(vec3(1),k,s);}
       void main(){vec2 c=floor(vP/2.),f=fract(vP/2.);float a=h(c),b=h(c+17.3);
-        float blink=pow(.5+.5*sin(uT*(1.2+b*3.)+a*60.),5.);
-        vec3 col=hsv(fract(a+uT*.02),.8,1.);
         float d=min(min(f.x,1.-f.x),min(f.y,1.-f.y));float line=smoothstep(.035,.0,d);
-        vec3 o=col*(.05+.55*blink)+col*line*.55+vec3(.06)*line;
+        vec3 o;
+        if(uDay>.5){
+          // 昼：色つきのタイルは淡く、光らせない。雲の影がゆっくり流れる
+          vec3 col=hsv(a,.35,.82);o=mix(vec3(.74,.75,.77),col,.45)*(.92+.08*b);o=mix(o,vec3(.55,.56,.6),line*.6);
+          float cl=fbm(vP*.022+vec2(uT*.010,uT*.006));float sh=smoothstep(.46,.62,cl);o*=1.-.5*sh;
+        }else{
+          float blink=pow(.5+.5*sin(uT*(1.2+b*3.)+a*60.),5.);
+          vec3 col=hsv(fract(a+uT*.02),.8,1.);
+          o=col*(.05+.55*blink)+col*line*.55+vec3(.06)*line;
+        }
         float r=length(vP);o=mix(o,uFog,smoothstep(42.,60.,r));gl_FragColor=vec4(o,1.);}`});
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(130,130),floorMat);floor.rotation.x=-Math.PI/2;scene.add(floor);
 
@@ -79,7 +111,7 @@ export async function start(root, X){
   // ステージの光の柱（左右に振れる）
   const beams=[];{const bg=new THREE.ConeGeometry(1.1,16,20,1,true);bg.translate(0,-8,0);
     [0xff3d7f,0x3dd6ff,0xffd23d,0x8a5bff,0x3dff9e,0xff7a3d].forEach((c,i)=>{const m=new THREE.Mesh(bg,new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.16,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
-      m.position.set(-8+i*3.4,5.9,-1.2);stage.add(m);beams.push(m)})}
+      m.position.set(-8+i*3.4,5.9,-1.2);m.visible=!DAY;stage.add(m);beams.push(m)})}
   // 天井から落ちる光：会場のあちこちに光の筋と床の光の輪。照らす場所を絶えず動かす
   const spots=[];{
     const cone=new THREE.ConeGeometry(1,1,28,1,true);cone.translate(0,-.5,0); // 先端（光源）が原点、下に広がる
@@ -93,6 +125,7 @@ export async function start(root, X){
       const top=new THREE.Vector3((i%7-3)*11,15,i<7?-14:12);
       const m=new THREE.Mesh(cone,beamMat(c));m.frustumCulled=false;scene.add(m);
       const pool=new THREE.Mesh(poolGeo,new THREE.MeshBasicMaterial({map:poolTex,color:c,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false}));pool.position.y=.03;scene.add(pool);
+      m.visible=pool.visible=!DAY;
       spots.push({m,pool,top,ph:Math.random()*100,sp:.18+Math.random()*.22,ax:10+Math.random()*16,az:8+Math.random()*14,ang:.13+Math.random()*.08})}
   }
   const _d=new THREE.Vector3(),_up=new THREE.Vector3(0,-1,0);
@@ -399,7 +432,8 @@ export async function start(root, X){
       bOpen.parentNode.hidden=!near;if(near&&bOpen.dataset.k!==near.key){bOpen.dataset.k=near.key;bOpen.textContent=(near.key==='profile'?'このカードの人のページを開く':near.title+'を開く')+' ▶︎'}}
     if(!slide.hidden)slide.querySelector('.vsn').textContent=`${profI+1} / ${X.users().length}`;
     bExit.hidden=me.position.distanceTo(tmpV.set(SUB.x,0,SUB.z))>5.5;
-    moveSpots(clock.elapsedTime);
+    if(!DAY)moveSpots(clock.elapsedTime);
+    sky.position.copy(cam.position);hills.position.set(cam.position.x,0,cam.position.z);
     // 光の柱
     beams.forEach((b,i)=>{b.rotation.z=Math.sin(clock.elapsedTime*.9+i*1.3)*.5;b.rotation.x=Math.cos(clock.elapsedTime*.7+i)*.25});
     // オーロラビジョン（1秒に20回まで描き直す）
@@ -407,7 +441,7 @@ export async function start(root, X){
     thAcc+=dt;if(dirty&&thAcc>.3){drawTheaters();thAcc=0}
     R.render(scene,cam)};
   requestAnimationFrame(loop);
-  if(/[?&]vdebug/.test(location.search))root.__dbg={me,TH,yaw:v=>{yaw=v},mode:()=>mode};
+  if(/[?&]vdebug/.test(location.search))root.__dbg={me,TH,yaw:v=>{yaw=v},mode:()=>mode,hills,cam,sky};
   // データが更新されたら劇場も描き直す
   const iv=setInterval(()=>{dirty=true;NL=null},60000);cleanups.push(()=>clearInterval(iv));
 
