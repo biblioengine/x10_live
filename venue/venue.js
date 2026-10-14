@@ -195,6 +195,17 @@ export async function start(root, X){
   const BOKO=X.chara==='boko';
   const gl=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(BASE+(BOKO?'boko.glb?v=1':'chara.glb?v=2'));if(!alive)return;
   const me=gl.scene;me.traverse(o=>{if(o.isMesh){o.frustumCulled=false}});scene.add(me);
+  // 凹：選んだトレーナーの柄を胸に描く（服の画像の胸の場所に重ねて、体に貼り直す）
+  if(BOKO&&X.bokoShirt&&X.bokoShirt.img){try{
+    const S=X.bokoShirt,art=await new Promise((ok,ng)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=ng;i.src=S.img});if(!alive)return;
+    me.traverse(o=>{if(!o.isMesh||!o.material.map||!o.material.map.image)return;const src=o.material.map.image,W=src.width,H=src.height;
+      const cv=document.createElement('canvas');cv.width=W;cv.height=H;const c=cv.getContext('2d');c.drawImage(src,0,0,W,H);
+      // 胸の場所：体の左右 -0.21〜0.21m が画像の横 0.1〜0.9、高さ 0.22〜0.52m が画像の縦 0.06〜0.28（この服の画像は上下逆に入っている）
+      const U=x=>(0.1+0.8*(x+0.21)/0.42)*W,Vy=z=>(0.06+0.22*(z-0.22)/0.30)*H;
+      const w=S.w,h=w*art.height/art.width,x0=U(S.x-w/2),x1=U(S.x+w/2),yT=Vy(S.z+h/2),yB=Vy(S.z-h/2);
+      c.save();c.translate(x0,yT);c.scale(1,-1);c.drawImage(art,0,0,x1-x0,yT-yB);c.restore();
+      const old=o.material.map,t=new THREE.CanvasTexture(cv);t.flipY=old.flipY;t.colorSpace=old.colorSpace;t.wrapS=old.wrapS;t.wrapT=old.wrapT;
+      o.material.map=t;o.material.needsUpdate=true})}catch(e){}}
   // マスクマン：選んだ参加者のアイコンを、コスチュームのお腹（「EL CHUPACABRA」の位置）に入れる。
   // 服の画像に丸く描くので、体に貼ると少し横に伸びる（そのままの味として残す）
   if(!BOKO&&X.mmIcon){try{

@@ -365,6 +365,12 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #vsel .srw .srow{flex:1;min-width:0}
 #vsel .srb{display:none;flex:0 0 auto;width:30px;height:30px;border-radius:50%;border:0;cursor:pointer;color:#fff;font-size:12px;background:rgba(255,255,255,.14)}
 @media (hover:hover) and (pointer:fine){#vsel .srb{display:grid;place-items:center}#vsel .srow{cursor:grab}}
+#vsel .srow2{display:flex;gap:8px;justify-content:center;padding:4px 8px}
+#vsel .srow2 button{border:0;cursor:pointer;padding:4px 4px 6px;border-radius:12px;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:3px;font-weight:800;color:#fff;background:rgba(255,255,255,.12);box-shadow:0 0 0 2px rgba(255,255,255,.25)}
+#vsel .srow2 button[aria-pressed="true"]{background:#0b6aa0;box-shadow:0 0 0 3px #3dd6ff,0 0 14px rgba(61,214,255,.6)}
+#vsel .srow2 img{width:68px;height:53px;border-radius:8px;object-fit:cover;display:block}
+#vsel.pick2{--pb:calc(15% + 112px)}
+@media (min-width:900px){#vsel.pick2{--pb:calc(14% + 104px)}}
 #venue .vload{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-weight:700;color:#cfd5e2;gap:10px}
 #venue .vtop{position:absolute;left:12px;top:calc(10px + env(safe-area-inset-top,0px));display:flex;align-items:center;gap:10px;pointer-events:none}
 #venue .vback{pointer-events:auto;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(10,12,18,.6);color:#fff;font-size:15px;cursor:pointer}
@@ -1905,7 +1911,7 @@ async function openVenue(){
     openPlayer:id=>{closeVenue();openPlayer(id);pushNav()},close:()=>backOv(closeVenue)};
   // 会場のプログラムは、キャラクターを選んでいる間に読み込んでおく
   const mod=import('./venue/venue.js?v=2');mod.catch(()=>{});
-  api.chara=await chooseChara(el,cheer);api.mmIcon=chooseChara.icon||null;if(!api.chara||!document.getElementById('venue'))return;nextCheer();
+  api.chara=await chooseChara(el,cheer);api.mmIcon=chooseChara.icon||null;api.bokoShirt=chooseChara.shirt||null;if(!api.chara||!document.getElementById('venue'))return;nextCheer();
   el.innerHTML='<div class="vload">会場を準備中…</div>';
   try{const m=await mod;if(!document.getElementById('venue'))return;VEN=await m.start(el,api)}
   catch(e){el.innerHTML='<div class="vload">会場を読み込めませんでした<br><button type="button" class="back" data-vclose="1">戻る</button></div>'}
@@ -1915,19 +1921,24 @@ async function openVenue(){
 const SECRET_H='boco_u2';
 const CHARAS=[
   {id:'maskman',nm:'MASKMAN',nm2:'MASK<br>MAN',en:'',bg:'#ffe600',pic:'venue/sel/maskman_bust.webp',img:'venue/sel/maskman.webp',fade:1},
-  {id:'boko',nm:'凹',en:'BOKO',bg:'#00ff99',pic:'venue/sel/boko_ill.jpg',img:'venue/sel/boko.webp',lay:1,secret:1}];
+  {id:'boko',nm:'凹',en:'BOKO',bg:'#00ff99',pic:'venue/sel/boko_ill.jpg',img:'venue/sel/boko_tasukete.webp',lay:1,secret:1}];
+// 凹のトレーナーの柄（x・z は胸の中心の位置、w は柄の横幅。単位はm）
+const SHIRTS=[
+  {id:'tasukete',nm:'タスケテ',img:'venue/shirt/tasukete.png',x:0,z:.40,w:.25},
+  {id:'suyaa',nm:'スヤァ…',img:'venue/shirt/suyaa.png',x:0,z:.375,w:.26},
+  {id:'none',nm:'無地',img:''}];
 function chooseChara(el,cheer){return new Promise(res=>{
-  CHARAS.forEach(c=>{new Image().src=c.pic;new Image().src=c.img});new Image().src='venue/sel/boko_sil.png';
+  CHARAS.forEach(c=>{new Image().src=c.pic;new Image().src=c.img});SHIRTS.forEach(t=>{new Image().src='venue/sel/boko_'+t.id+'.webp'});new Image().src='venue/sel/boko_sil.png';
   let i=0;
   el.innerHTML=`<div id="vsel"><div class="sfloor"></div><div class="sspots">${[0,1,2,3,4,5].map(k=>`<i style="--k:${k}"></i>`).join('')}</div>
     <div class="svis"><img class="spic" alt=""><div class="sname"><b></b><small></small></div></div>
     <div class="sped"></div><div class="sring"></div><div class="ssil" hidden><img src="venue/sel/boko_sil.png" alt=""></div><div class="ssec" hidden>SECRET</div><div class="sch"><span class="simg"><img alt=""><i class="sring2" hidden></i><i class="sbelly" hidden></i></span></div>
     <button type="button" class="sarr l" aria-label="前のキャラクター">◀︎</button><button type="button" class="sarr r" aria-label="次のキャラクター">▶︎</button>
     <button type="button" class="sx" aria-label="閉じる">×</button>
-    <div class="sbot"><div class="spick" hidden><p>おなかのアイコン</p><div class="srw"><button type="button" class="srb l" aria-label="前のアイコン">◀︎</button><div class="srow"></div><button type="button" class="srb r" aria-label="次のアイコン">▶︎</button></div></div><button type="button" class="sgo">決定</button><div class="stxt">SELECT A CHARACTER</div></div></div>`;
+    <div class="sbot"><div class="spick sshirt" hidden><p>トレーナーの柄</p><div class="srow2"></div></div><div class="spick smm" hidden><p>おなかのアイコン</p><div class="srw"><button type="button" class="srb l" aria-label="前のアイコン">◀︎</button><div class="srow"></div><button type="button" class="srb r" aria-label="次のアイコン">▶︎</button></div></div><button type="button" class="sgo">決定</button><div class="stxt">SELECT A CHARACTER</div></div></div>`;
   const R=el.querySelector('#vsel'),vis=R.querySelector('.svis'),pic=R.querySelector('.spic'),nb=R.querySelector('.sname b'),ns=R.querySelector('.sname small'),ch=R.querySelector('.sch'),im=ch.querySelector('img');
   // マスクマンのお腹のアイコン（参加者から選ぶ。「アイコンなし」も選べる）
-  const pick=R.querySelector('.spick'),row=R.querySelector('.srow'),belly=R.querySelector('.sbelly'),ring=R.querySelector('.sring2');
+  const pick=R.querySelector('.spick.smm'),pick2=R.querySelector('.sshirt'),row2=R.querySelector('.srow2'),row=R.querySelector('.srow'),belly=R.querySelector('.sbelly'),ring=R.querySelector('.sring2');
   const avOf=h=>'avatars/'+encodeURIComponent(h.toLowerCase())+'.jpg';
   let mh='';try{mh=localStorage.getItem('x10mmicon')||''}catch{}
   if(mh&&!state.users.some(u=>u.handle.toLowerCase()===mh.toLowerCase()))mh='';
@@ -1948,6 +1959,11 @@ function chooseChara(el,cheer){return new Promise(res=>{
   row.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse')return;drag={x:e.clientX,l:row.scrollLeft};dragMoved=false});
   const pmv=e=>{if(!drag)return;const dx=e.clientX-drag.x;if(Math.abs(dx)>4)dragMoved=true;row.scrollLeft=drag.l-dx},pup=()=>{drag=null};
   addEventListener('pointermove',pmv);addEventListener('pointerup',pup);
+  // 凹のトレーナーの柄
+  let sh='tasukete';try{const v=localStorage.getItem('x10shirt');if(SHIRTS.some(t=>t.id===v))sh=v}catch{}
+  row2.innerHTML=SHIRTS.map(t=>`<button type="button" data-s="${t.id}"><img src="venue/sel/shirt_${t.id}.webp" alt=""><span>${esc(t.nm)}</span></button>`).join('');
+  const setShirt=()=>{row2.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===sh));if(CHARAS[i].id==='boko')im.src='venue/sel/boko_'+sh+'.webp'};
+  row2.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;sh=b.dataset.s;try{localStorage.setItem('x10shirt',sh)}catch{}setShirt()});
   row.addEventListener('click',e=>{if(dragMoved){dragMoved=false;e.stopPropagation();return}},true);
   row.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const was=unlocked();mh=b.dataset.h||'';try{localStorage.setItem('x10mmicon',mh)}catch{}setIcon();lockUI();
     if(!was&&unlocked()){sil.classList.remove('pop');void sil.offsetWidth;sil.classList.add('pop')}});
@@ -1955,14 +1971,14 @@ function chooseChara(el,cheer){return new Promise(res=>{
     R.style.setProperty('--bg',c.bg);pic.src=c.pic;pic.classList.toggle('fade',!!c.fade);im.src=c.img;im.alt=c.nm;ch.classList.toggle('lay',!!c.lay);
     if(pc&&c.nm2){nb.innerHTML=c.nm2;nb.style.fontSize='calc(var(--nf)*.85)'}else{nb.textContent=c.nm;nb.style.fontSize=c.nm.length>2?'calc(var(--nf)*.62)':''}
     ns.textContent=c.en;
-    pick.hidden=c.id!=='maskman';R.classList.toggle('pick',c.id==='maskman');setIcon();lockUI();
+    pick.hidden=c.id!=='maskman';pick2.hidden=c.id!=='boko';R.classList.toggle('pick',c.id==='maskman');R.classList.toggle('pick2',c.id==='boko');setIcon();setShirt();lockUI();
     if(c.id==='maskman'){const b=row.querySelector('[aria-pressed="true"]');if(b)requestAnimationFrame(()=>{row.scrollLeft=Math.max(0,b.offsetLeft-row.clientWidth/2+b.offsetWidth/2)})}
     if(dir){ch.classList.remove('in-l','in-r');vis.classList.remove('flash');void ch.offsetWidth;ch.classList.add(dir>0?'in-r':'in-l');vis.classList.add('flash')}};
   const move=d=>{if(going||!unlocked())return;i=(i+d+CHARAS.length)%CHARAS.length;show(d)};
   const done=v=>{removeEventListener('keydown',key);removeEventListener('pointermove',pmv);removeEventListener('pointerup',pup);res(v)};
   let going=false;
   // 決定：歓声が上がってから会場へ
-  const go=()=>{if(going)return;going=true;if(CHARAS[i].secret&&!unlocked())i=0;try{localStorage.setItem('x10chara',CHARAS[i].id)}catch{}chooseChara.icon=CHARAS[i].id==='maskman'&&mh?avOf(mh):null;
+  const go=()=>{if(going)return;going=true;if(CHARAS[i].secret&&!unlocked())i=0;try{localStorage.setItem('x10chara',CHARAS[i].id)}catch{}chooseChara.icon=CHARAS[i].id==='maskman'&&mh?avOf(mh):null;chooseChara.shirt=CHARAS[i].id==='boko'?SHIRTS.find(t=>t.id===sh):null;
     try{cheer&&cheer(true)}catch{}R.classList.add('going');setTimeout(()=>done(CHARAS[i].id),1400)};
   const key=e=>{if(!document.getElementById('vsel')){removeEventListener('keydown',key);return}
     if(e.key==='ArrowLeft')move(-1);else if(e.key==='ArrowRight')move(1);else if(e.key==='Enter')go()};
