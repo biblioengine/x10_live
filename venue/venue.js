@@ -193,7 +193,7 @@ export async function start(root, X){
   // ---------- 自キャラ ----------
   // 凹（ボコ）かマスクマンか（会場に入る前のキャラクター選択で決まる）
   const BOKO=X.chara==='boko';
-  const gl=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(BASE+(BOKO?'boko.glb?v=1':'chara.glb?v=2'));if(!alive)return;
+  const gl=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(BASE+(BOKO?'boko.glb?v=3':'chara.glb?v=2'));if(!alive)return;
   const me=gl.scene;me.traverse(o=>{if(o.isMesh){o.frustumCulled=false}});scene.add(me);
   // 凹：選んだトレーナーの柄を胸に描く（服の画像の胸の場所に重ねて、体に貼り直す）
   if(BOKO&&X.bokoShirt&&X.bokoShirt.img){try{

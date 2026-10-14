@@ -1910,7 +1910,7 @@ async function openVenue(){
     days:()=>{const s0=new Date(state.start),o=[];for(let i=0;i<30;i++)o.push(dkey(new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()+i).getTime()));return o},
     openPlayer:id=>{closeVenue();openPlayer(id);pushNav()},close:()=>backOv(closeVenue)};
   // 会場のプログラムは、キャラクターを選んでいる間に読み込んでおく
-  const mod=import('./venue/venue.js?v=2');mod.catch(()=>{});
+  const mod=import('./venue/venue.js?v=4');mod.catch(()=>{});
   api.chara=await chooseChara(el,cheer);api.mmIcon=chooseChara.icon||null;api.bokoShirt=chooseChara.shirt||null;if(!api.chara||!document.getElementById('venue'))return;nextCheer();
   el.innerHTML='<div class="vload">会場を準備中…</div>';
   try{const m=await mod;if(!document.getElementById('venue'))return;VEN=await m.start(el,api)}
@@ -1962,7 +1962,7 @@ function chooseChara(el,cheer){return new Promise(res=>{
   // 凹のトレーナーの柄
   let sh='tasukete';try{const v=localStorage.getItem('x10shirt');if(SHIRTS.some(t=>t.id===v))sh=v}catch{}
   row2.innerHTML=SHIRTS.map(t=>`<button type="button" data-s="${t.id}"><img src="venue/sel/shirt_${t.id}.webp" alt=""><span>${esc(t.nm)}</span></button>`).join('');
-  const setShirt=()=>{row2.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===sh));if(CHARAS[i].id==='boko')im.src='venue/sel/boko_'+sh+'.webp'};
+  const setShirt=()=>{row2.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===sh));if(CHARAS[i].id==='boko')im.src='venue/sel/boko_'+sh+'.webp?v=2'};
   row2.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;sh=b.dataset.s;try{localStorage.setItem('x10shirt',sh)}catch{}setShirt()});
   row.addEventListener('click',e=>{if(dragMoved){dragMoved=false;e.stopPropagation();return}},true);
   row.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const was=unlocked();mh=b.dataset.h||'';try{localStorage.setItem('x10mmicon',mh)}catch{}setIcon();lockUI();
