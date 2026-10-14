@@ -1928,7 +1928,7 @@ const SHIRTS=[
   {id:'suyaa',nm:'スヤァ…',img:'venue/shirt/suyaa.png',x:0,z:.375,w:.26},
   {id:'none',nm:'無地',img:''}];
 function chooseChara(el,cheer){return new Promise(res=>{
-  CHARAS.forEach(c=>{new Image().src=c.pic;new Image().src=c.img});SHIRTS.forEach(t=>{new Image().src='venue/sel/boko_'+t.id+'.webp'});new Image().src='venue/sel/boko_sil.png';
+  CHARAS.forEach(c=>{new Image().src=c.pic;new Image().src=c.img});SHIRTS.forEach(t=>{new Image().src='venue/sel/boko_'+t.id+'.webp?v=2'});new Image().src='venue/sel/boko_sil.png';
   let i=0;
   el.innerHTML=`<div id="vsel"><div class="sfloor"></div><div class="sspots">${[0,1,2,3,4,5].map(k=>`<i style="--k:${k}"></i>`).join('')}</div>
     <div class="svis"><img class="spic" alt=""><div class="sname"><b></b><small></small></div></div>
@@ -1962,13 +1962,17 @@ function chooseChara(el,cheer){return new Promise(res=>{
   // 凹のトレーナーの柄
   let sh='tasukete';try{const v=localStorage.getItem('x10shirt');if(SHIRTS.some(t=>t.id===v))sh=v}catch{}
   row2.innerHTML=SHIRTS.map(t=>`<button type="button" data-s="${t.id}"><img src="venue/sel/shirt_${t.id}.webp" alt=""><span>${esc(t.nm)}</span></button>`).join('');
-  const setShirt=()=>{row2.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===sh));if(CHARAS[i].id==='boko')im.src='venue/sel/boko_'+sh+'.webp?v=2'};
+  // キャラの画像の入れ替え：新しい画像が読み込めてから、大きさの指定と一緒に切り替える（読み込み中に前の画像が引き伸ばされないように）
+  const bokoImg=()=>'venue/sel/boko_'+sh+'.webp?v=2';let imgTok=0;
+  const setImg=(src,lay)=>{const tok=++imgTok;if(im.getAttribute('src')===src){ch.classList.toggle('lay',lay);im.style.opacity='';return}
+    im.style.opacity='0';const n=new Image();n.onload=n.onerror=()=>{if(tok!==imgTok)return;im.src=src;ch.classList.toggle('lay',lay);im.style.opacity=''};n.src=src};
+  const setShirt=()=>{row2.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===sh));if(CHARAS[i].id==='boko')setImg(bokoImg(),true)};
   row2.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;sh=b.dataset.s;try{localStorage.setItem('x10shirt',sh)}catch{}setShirt()});
   row.addEventListener('click',e=>{if(dragMoved){dragMoved=false;e.stopPropagation();return}},true);
   row.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const was=unlocked();mh=b.dataset.h||'';try{localStorage.setItem('x10mmicon',mh)}catch{}setIcon();lockUI();
     if(!was&&unlocked()){sil.classList.remove('pop');void sil.offsetWidth;sil.classList.add('pop')}});
   const show=(dir)=>{const c=CHARAS[i],pc=matchMedia('(min-width:900px)').matches;
-    R.style.setProperty('--bg',c.bg);pic.src=c.pic;pic.classList.toggle('fade',!!c.fade);im.src=c.img;im.alt=c.nm;ch.classList.toggle('lay',!!c.lay);
+    R.style.setProperty('--bg',c.bg);pic.src=c.pic;pic.classList.toggle('fade',!!c.fade);im.alt=c.nm;setImg(c.id==='boko'?bokoImg():c.img,!!c.lay);
     if(pc&&c.nm2){nb.innerHTML=c.nm2;nb.style.fontSize='calc(var(--nf)*.85)'}else{nb.textContent=c.nm;nb.style.fontSize=c.nm.length>2?'calc(var(--nf)*.62)':''}
     ns.textContent=c.en;
     pick.hidden=c.id!=='maskman';pick2.hidden=c.id!=='boko';R.classList.toggle('pick',c.id==='maskman');R.classList.toggle('pick2',c.id==='boko');setIcon();setShirt();lockUI();
