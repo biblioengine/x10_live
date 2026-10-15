@@ -3,12 +3,13 @@
 
 GitHub Actions から定期実行される想定。必要なのは環境変数 X_BEARER_TOKEN だけ。
 - 参加者は participants.txt（1行1ハンドル）
-- 投稿は参加者ごとに「前回取得した最新の投稿より後」だけを取りに行く（同じ投稿を二度読まないので課金が増えない）
+- 投稿は参加者全員分をまとめた検索（from:a OR from:b …）で「前回取得した最新の投稿より後」だけを取りに行く
+  （参加者ごとに問い合わせないので、1回の更新の問い合わせは検索のまとまりの数＝3回ほどで済む）
 - リポスト（RT）と返信（ツリーを含む）は数えない。引用は数える（下の設定で変更可）
 - X の一覧から漏れた投稿は manual_posts.txt に URL を書くと個別に取り込む
 - 名前・アイコン・フォロワー数は日本時間で1日1回だけ取り直し、フォロワー数は日付ごとに記録する
 - 参加者どうしの交流（リプ・引用・リポスト）を interactions に記録する（投稿数には数えない）
-  リプとリポストは「参加者から参加者へ」に絞った検索で取り、引用は取得済みの投稿から相手を割り出す
+  リプとリポストは同じ検索の結果から振り分け、引用は取得済みの投稿から相手を割り出す
 """
 import json, os, re, sys, time, urllib.parse, urllib.request, urllib.error
 from datetime import datetime, timezone, timedelta
@@ -398,6 +399,94 @@ def fetch_photos(data):
     return len(todo)
 
 
+def fetch_by_search(data):
+    """参加者全員の新しいポストを、まとめた検索（from:a OR from:b …）で取る。
+    1回の更新でXに問い合わせるのは参加者の人数ではなく、検索のまとまりの数（今の人数で3回ほど）だけ。
+    取れたものを、ここで「数える投稿（ポスト・引用）」「参加者どうしの返信」「参加者どうしのリポスト」に振り分ける。
+    検索で遡れるのは直近7日まで（1時間ごとの更新なら十分）。"""
+    st = data.setdefault("state", {})
+    gsince = st.setdefault("grp_since", {})
+    old_since = st.get("since_id", {})
+    everyone = data["users"] + data.get("sub_users", [])
+    if not everyone:
+        return 0, 0
+    by_id_all = {u["id"]: u["handle"] for u in everyone}
+    main_by_id = {u["id"]: u["handle"] for u in data["users"]}
+    main_by_handle = {u["handle"].lower(): u["handle"] for u in data["users"]}
+    handle_to_id = {u["handle"].lower(): u["id"] for u in everyone}
+    have = {p["id"] for p in data["posts"]}
+    ix = data.setdefault("interactions", [])
+    have_ix = {x["id"] for x in ix}
+    floor = max(datetime.fromisoformat(CHALLENGE_START).astimezone(timezone.utc),
+                datetime.now(timezone.utc) - timedelta(days=7) + timedelta(minutes=5))
+    posts_added = ix_added = 0
+    queries = query_groups("from", [u["handle"] for u in everyone], 512)
+    for q in queries:
+        params = {"query": q, "max_results": 100,
+                  "tweet.fields": "created_at,author_id,in_reply_to_user_id,referenced_tweets"}
+        if gsince.get(q):
+            params["since_id"] = gsince[q]
+        else:
+            # 初めての検索のまとまり：中の人たちのうち、いちばん古い「前回の最新」から続きを取る（取りこぼさないように）
+            ids = [old_since.get(handle_to_id.get(h.lower(), ""), "") for h in re.findall(r"from:(\w+)", q)]
+            if ids and all(ids):
+                params["since_id"] = str(min(int(i) for i in ids))
+            else:
+                params["start_time"] = floor.strftime("%Y-%m-%dT%H:%M:%SZ")
+        newest = gsince.get(q)
+        token = None
+        while True:
+            if token:
+                params["pagination_token"] = token
+            res = api("/tweets/search/recent", params)
+            for t in res.get("data", []):
+                if newest is None or int(t["id"]) > int(newest):
+                    newest = t["id"]
+                author = by_id_all.get(t.get("author_id"))
+                if not author:
+                    continue
+                refs = {r["type"] for r in t.get("referenced_tweets", [])}
+                if "retweeted" in refs:
+                    # 参加者どうしのリポスト（交流ネットワーク用）
+                    m = re.match(r"RT @(\w+):", t.get("text", ""))
+                    dst = main_by_handle.get(m.group(1).lower()) if m else None
+                    src = main_by_id.get(t.get("author_id"))
+                    if src and dst and src != dst and t["id"] not in have_ix:
+                        ix.append({"id": t["id"], "from": src, "to": dst, "type": "retweet", "created_at": t["created_at"]})
+                        have_ix.add(t["id"]); ix_added += 1
+                    continue
+                if "replied_to" in refs:
+                    # 参加者どうしの返信（交流ネットワーク用）
+                    src = main_by_id.get(t.get("author_id"))
+                    dst = main_by_id.get(t.get("in_reply_to_user_id"))
+                    if src and dst and src != dst and t["id"] not in have_ix:
+                        ix.append({"id": t["id"], "from": src, "to": dst, "type": "reply", "created_at": t["created_at"]})
+                        have_ix.add(t["id"]); ix_added += 1
+                    if not COUNT_REPLIES:
+                        continue
+                if t["id"] in have or not counts(t):
+                    continue
+                kind = "reply" if "replied_to" in refs else "quote" if "quoted" in refs else "post"
+                post = {"id": t["id"], "handle": author, "created_at": t["created_at"], "text": t.get("text", ""), "kind": kind}
+                if kind == "quote":
+                    post["ref"] = quoted_id(t)
+                data["posts"].append(post)
+                have.add(t["id"]); posts_added += 1
+            token = res.get("meta", {}).get("next_token")
+            if not token:
+                break
+            time.sleep(0.3)
+        if newest:
+            gsince[q] = newest
+        time.sleep(0.3)
+    # 参加者が変わって使わなくなった検索のまとまりは忘れる
+    for k in [k for k in gsince if k not in queries]:
+        gsince.pop(k)
+    # 以前の仕組みの記録はもう使わない
+    st.pop("ix_since", None)
+    return posts_added, ix_added
+
+
 def quote_interactions(data):
     """引用ポストの引用元が参加者の投稿なら、その人への「引用」として交流に入れる（毎回作り直す）。"""
     owner = {p["id"]: p["handle"] for p in data["posts"]}
@@ -496,8 +585,9 @@ def main():
         data["sub_users"] = [dict(u, main=sub_map[u["handle"].lower()]) for u in data["users"] if u["handle"].lower() in sub_map]
         data["users"] = [u for u in data["users"] if u["handle"].lower() not in sub_map]
         follow_renames(data)
-        added = fetch_posts(data)
-        print(f"参加者 {len(data['users'])}人 / 新しい投稿 {added}件")
+        # 投稿・返信・リポストを、まとめた検索で一度に取る（参加者ごとの問い合わせはしない）
+        added, ixn = fetch_by_search(data)
+        print(f"参加者 {len(data['users'])}人 / 新しい投稿 {added}件 / 交流（リプ・リポスト）の新規 {ixn}件")
         try:
             print(f"手動追加 {fetch_manual(data)}件")
         except RuntimeError as e:
@@ -506,12 +596,11 @@ def main():
             n = backfill_quote_refs(data)
             if n:
                 print(f"引用元の取り直し {n}件")
-            print(f"交流（リプ・リポスト）の新規 {fetch_interactions(data)}件")
             n = fetch_photos(data)
             if n:
                 print(f"選手紹介の画像を新しく {n}件 読み込み")
         except RuntimeError as e:
-            print("交流の取得に失敗しました:", e)
+            print("引用元・画像の取得に失敗しました:", e)
     except RateLimited as e:
         print("X API の回数制限に達したため、今回はここまでで保存します:", e)
     try:
