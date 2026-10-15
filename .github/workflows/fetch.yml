@@ -2,9 +2,7 @@ name: 投稿を取得
 
 on:
   schedule:
-    # 時刻は世界標準時（日本時間 −9時間）。GitHub の混み具合で数分遅れることがあります
-    - cron: "0 * * * *"            # 1時間ごと（日本時間の毎時0分）
-    - cron: "15,30,45 14 * * *"    # 日本時間 23:15・23:30・23:45（23時台だけ15分ごと）
+    - cron: "*/15 * * * *"   # 15分ごと（GitHub の混み具合で数分遅れることがあります）
   workflow_dispatch:          # Actions 画面の「Run workflow」で手動実行もできる
     inputs:
       refresh_profiles:
