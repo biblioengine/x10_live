@@ -2,8 +2,8 @@ name: 投稿を取得
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
-  workflow_dispatch:
+    - cron: "*/15 * * * *"   # 15分ごと（GitHub の混み具合で数分遅れることがあります）
+  workflow_dispatch:          # Actions 画面の「Run workflow」で手動実行もできる
 
 permissions:
   contents: write

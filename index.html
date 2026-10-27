@@ -63,6 +63,9 @@ main{padding-block:20px 48px;padding-inline:24px;min-width:0;display:flex;flex-d
 .topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .topbar h1{font-family:var(--f-disp);font-weight:400;font-size:22px;margin:0;display:flex;align-items:center;gap:10px;text-wrap:balance}
 .topbar h1 small{font-family:var(--f-body);font-size:13px;color:var(--muted)}
+.hname{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hrow{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tagline{font-family:var(--f-body);font-size:13px;font-weight:400;color:var(--muted);line-height:1.4}
 .onair{display:inline-flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px 4px 8px;font-size:12px;flex-wrap:wrap}
 .onair .dot{background:var(--live);color:#fff;font-weight:900;font-size:10px;border-radius:4px;padding:1px 6px;letter-spacing:.06em}
 .onair .dot::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#fff;margin-right:5px;vertical-align:1px;animation:blink 1.4s infinite}
@@ -105,8 +108,10 @@ main{padding-block:20px 48px;padding-inline:24px;min-width:0;display:flex;flex-d
 table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .cmp th{font-size:11px;color:var(--muted);font-weight:400;padding:2px 0;text-align:center;min-width:28px;line-height:1.3}
 .cmp th.td{color:var(--live);font-weight:700}
-.cmp td.u{position:sticky;left:0;background:var(--panel);padding:2px 10px 2px 4px;white-space:nowrap;z-index:1}
-.cmp td.u div{display:flex;align-items:center;gap:8px;font-size:13px}
+.cmp td.u{position:sticky;left:0;background:var(--panel);padding:2px 10px 2px 4px;z-index:1}
+.uico{display:flex;align-items:center;gap:8px;border:0;background:none;padding:0;font-size:13px;white-space:nowrap;cursor:default;text-align:left}
+.uico[aria-expanded="true"] .av{box-shadow:0 0 0 2px var(--fg)}
+#tip{position:fixed;z-index:20;background:var(--fg);color:var(--panel);font-size:12px;font-weight:700;padding:4px 10px;border-radius:6px;pointer-events:none;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.18)}
 .cmp td.tot{padding:0 6px 0 10px;text-align:right;font-size:13px;white-space:nowrap}
 .cell{width:100%;min-width:28px;height:28px;border:0;border-radius:6px;font-family:var(--f-num);font-size:11px;padding:0;background:var(--track);color:var(--muted)}
 .cell.done{background:var(--gold);color:#161a24;font-weight:700}
@@ -115,14 +120,18 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .cell:not(.future):hover{outline:2px solid var(--fg);outline-offset:-1px}
 
 .rankwrap{overflow-x:auto}
-.rank{min-width:560px}
-.rank-row{display:grid;grid-template-columns:36px minmax(160px,1.6fr) repeat(4,minmax(70px,1fr));align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--line);font-size:13px}
+.rank{min-width:640px}
+.xname{color:inherit;text-decoration:none}
+.xname:hover{text-decoration:underline}
+.xlink{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;color:var(--panel);background:var(--fg);border-radius:999px;padding:5px 14px;text-decoration:none;white-space:nowrap}
+.xlink:hover{opacity:.85}
+.rank-row{display:grid;grid-template-columns:minmax(190px,1.6fr) repeat(5,minmax(70px,1fr));align-items:center;gap:10px;padding:9px 16px 9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.rank-row .stick{display:flex;align-items:center;gap:8px;min-width:0;align-self:stretch;padding-left:8px;background:var(--panel)}
 .rank-row:last-child{border-bottom:0}
 .rank-row.h{font-size:11px;color:var(--muted);padding-block:8px}
 .rank-row .r{text-align:right}
-.rank-row .no{font-family:var(--f-disp);color:var(--muted);text-align:center}
-.rank-row .nmc{display:flex;gap:8px;align-items:center;min-width:0}
-.rank-row .nmc span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank-row .no{font-family:var(--f-disp);color:var(--muted);text-align:center;width:24px;flex:none}
+.rank-row .stick .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* 参加者一覧（アイコンの壁） */
 .wall-sum{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line)}
@@ -145,7 +154,7 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 .wall-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
 
 /* 個人ページ */
-.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
 .stat{padding:12px 16px;border-right:1px solid var(--line);min-width:0}
 .stat:last-child{border-right:0}
 .stat .k{font-size:11px;color:var(--muted);letter-spacing:.04em}
@@ -198,6 +207,7 @@ dialog::backdrop{background:rgba(10,15,25,.45)}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stat{border-bottom:1px solid var(--line)}
   .stat:nth-child(2n){border-right:0}
+  .stat:last-child{grid-column:1/-1}
 }
 @media (max-width:720px){
   .app{grid-template-columns:minmax(0,1fr)}
@@ -219,6 +229,12 @@ dialog::backdrop{background:rgba(10,15,25,.45)}
   .day .c{font-size:13px}.day .c small{display:none}
   .roster{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 4px;padding:10px}
   .ring{width:60px;height:60px}.ring .av{font-size:20px}
+  .rank{min-width:560px}
+  .rank-row{grid-template-columns:150px repeat(5,minmax(64px,1fr))}
+  .rank-row .stick{position:sticky;left:0;z-index:1;box-shadow:6px 0 6px -6px rgba(0,0,0,.18)}
+  .cmp td.u{padding:2px 6px 2px 2px}
+  .uico{cursor:pointer;border-radius:50%}
+  .uico .uname{display:none}
 }
 @media (max-width:380px){.roster{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -262,7 +278,7 @@ nagi_writes,ナギ,2026-10-02T07:12:00+09:00,"おはよう"</pre>
 const GOAL=10;
 const COLORS=['#2b8a5e','#c2410c','#7c3aed','#0e7490','#b45309','#be185d','#4d7c0f','#475569'];
 const DOW=['日','月','火','水','木','金','土'];
-const state={users:[],posts:[],byUser:{},view:'live',uid:null,y:0,m:0,day:null,isSample:true,start:null,updated:null,img:{},rf:'all'};
+const state={users:[],posts:[],byUser:{},view:'live',uid:null,y:0,m:0,day:null,isSample:true,start:null,updated:null,img:{},rf:'all',followers:{}};
 
 /* ---------- サンプルデータ（架空の参加者） ---------- */
 function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -289,7 +305,10 @@ function sample(){
       }
     }
   }
-  return{users,posts,start:start.getTime()};
+  const followers={};
+  for(const [h] of defs){let f=Math.floor(200+r()*4000);followers[h]={};
+    for(let t=new Date(start);t<=now;t.setDate(t.getDate()+1)){f=Math.max(0,f+Math.round((r()-.35)*f*.02));followers[h][jstDate(t.getTime())]=f}}
+  return{users,posts,start:start.getTime(),followers};
 }
 
 /* ---------- 読み込み ---------- */
@@ -307,7 +326,7 @@ function parseCSV(s){
 function normalize(raw){
   let items=raw,meta={},roster=[];
   if(raw&&!Array.isArray(raw)&&Array.isArray(raw.posts)){ // 自動取得の data.json
-    meta={start:Date.parse(raw.start),updated:Date.parse(raw.updated_at)};roster=raw.users||[];items=raw.posts;
+    meta={start:Date.parse(raw.start),updated:Date.parse(raw.updated_at),followers:raw.followers||{}};roster=raw.users||[];items=raw.posts;
   }else if(raw&&!Array.isArray(raw)&&Array.isArray(raw.data)){ // X API v2
     const um={};(raw.includes?.users||[]).forEach(u=>um[u.id]=u);
     items=raw.data.map(t=>({id:t.id,handle:um[t.author_id]?.username||t.author_id,name:um[t.author_id]?.name,created_at:t.created_at,text:t.text}));
@@ -321,6 +340,7 @@ function normalize(raw){
     const h=String(it.handle||it.username||it.screen_name||it.user||'').replace(/^@/,'').trim();
     const ts=Date.parse(it.created_at||it.date||it.datetime);
     if(!h||isNaN(ts)) return;
+    if(roster.length&&!seen[h]) return; // 参加者リストから外した人の投稿は表示しない
     addUser(h,it.name);
     posts.push({id:String(it.id||'r'+i),uid:h,ts,text:String(it.text||'')});
   });
@@ -330,7 +350,7 @@ function normalize(raw){
 function load(d,isSample){
   const keepView=state.users.length&&!isSample;
   state.users=d.users;state.posts=d.posts.sort((a,b)=>a.ts-b.ts);state.isSample=isSample;
-  state.start=d.start||(state.posts[0]?.ts??Date.now());state.updated=d.updated||null;
+  state.start=d.start||(state.posts[0]?.ts??Date.now());state.followers=d.followers||{};state.updated=d.updated||null;
   state.byUser={};state.users.forEach(u=>{state.byUser[u.id]=[];if(u.avatar)state.img[u.id]=u.avatar.replace('_normal.','_bigger.')});
   state.posts.forEach(p=>state.byUser[p.uid]&&state.byUser[p.uid].push(p));
   if(!keepView){const now=new Date();state.y=now.getFullYear();state.m=now.getMonth();state.view='live';state.uid=state.users[0].id;state.day=null}
@@ -345,6 +365,15 @@ const ymd=(y,m,d)=>y*10000+(m+1)*100+d;
 const dim=(y,m)=>new Date(y,m+1,0).getDate();
 const todayKey=()=>dkey(Date.now());
 const startKey=()=>dkey(state.start);
+const jstDate=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+function fol(handle){
+  const m=state.followers[handle];if(!m)return null;
+  const ds=Object.keys(m).sort();if(!ds.length)return null;
+  const now=m[ds[ds.length-1]],first=m[ds[0]],prev=ds.length>1?m[ds[ds.length-2]]:null;
+  return{now,day:prev===null?null:now-prev,total:now-first,since:ds[0]};
+}
+const sgn=v=>v===null||v===undefined?'—':(v>0?'+':v<0?'−':'±')+Math.abs(v).toLocaleString();
+const sgnc=v=>!v?'var(--muted)':v>0?'#2b8a5e':'var(--live)';
 const dayCount=(uid,k)=>state.byUser[uid].reduce((s,p)=>s+(dkey(p.ts)===k),0);
 function totals(uid){
   const map={};state.byUser[uid].forEach(p=>{const k=dkey(p.ts);map[k]=(map[k]||0)+1});
@@ -401,7 +430,7 @@ function renderLive(){
     </button>`}).join('');
 
   const head=Array.from({length:n},(_,i)=>{const k=ymd(y,m,i+1),w=new Date(y,m,i+1).getDay();return `<th class="num${k===tk?' td':''}">${i+1}<br>${DOW[w]}</th>`}).join('');
-  const body=rows.map(({u,tot})=>`<tr><td class="u"><div>${av(u,'sm')}${esc(u.name)}</div></td>${
+  const body=rows.map(({u,tot})=>`<tr><td class="u"><button type="button" class="uico" data-tip="${esc(u.name)}" title="${esc(u.name)}" aria-label="${esc(u.name)}" aria-expanded="false">${av(u,'sm')}<span class="uname">${esc(u.name)}</span></button></td>${
     Array.from({length:n},(_,i)=>{const k=ymd(y,m,i+1);
       if(k>tk||k<sk) return `<td><button type="button" class="cell future" disabled aria-label="対象外"></button></td>`;
       const c=tot.map[k]||0;
@@ -410,9 +439,10 @@ function renderLive(){
     }<td class="tot num">${tot.ach}<span style="color:var(--muted)">/${tot.days}日</span></td></tr>`).join('');
 
   const rank=[...rows].sort((a,b)=>b.tot.ach-a.tot.ach||b.tot.all-a.tot.all).map(({u,tot},i)=>
-    `<div class="rank-row"><div class="no">${i+1}</div><div class="nmc">${av(u,'sm')}<span>${esc(u.name)}</span></div>
+    `<div class="rank-row"><div class="stick"><span class="no">${i+1}</span>${av(u,'sm')}<span class="nm">${esc(u.name)}</span></div>
      <div class="r num">${tot.ach}日</div><div class="r num">${tot.days?Math.round(tot.ach/tot.days*100):0}%</div>
-     <div class="r num">${tot.all}</div><div class="r num">${tot.days?(tot.all/tot.days).toFixed(1):'0'}</div></div>`).join('');
+     <div class="r num">${tot.all}</div><div class="r num">${tot.days?(tot.all/tot.days).toFixed(1):'0'}</div>
+     ${(f=>`<div class="r num" style="color:${sgnc(f?.total)}">${f?sgn(f.total):'—'}</div>`)(fol(u.handle))}</div>`).join('');
 
   const st=new Date(state.start);
   document.getElementById('main').innerHTML=`
@@ -428,7 +458,7 @@ function renderLive(){
   <section class="card">
     <div class="card-h"><h2>通算成績</h2><span class="sub">${st.getMonth()+1}/${st.getDate()} から今日まで</span></div>
     <div class="rankwrap"><div class="rank">
-      <div class="rank-row h"><div></div><div>参加者</div><div class="r">達成日数</div><div class="r">達成率</div><div class="r">投稿数</div><div class="r">1日平均</div></div>
+      <div class="rank-row h"><div class="stick"><span class="no"></span>参加者</div><div class="r">達成日数</div><div class="r">達成率</div><div class="r">投稿数</div><div class="r">1日平均</div><div class="r">フォロワー増減</div></div>
       ${rank}</div></div>
   </section>`;
 }
@@ -473,12 +503,16 @@ function renderUser(){
       <span class="dbar"><b style="width:${Math.min(100,c/GOAL*100)}%"></b></span></button>`;
   }
   document.getElementById('main').innerHTML=`
-  <div class="topbar"><h1>${av(u,'lg')}${esc(u.name)} <small>@${esc(u.handle)}</small></h1>${onair()}</div>
+  <div class="topbar"><h1>${av(u,'lg')}<span class="hname"><span class="hrow"><a class="xname" href="https://x.com/${encodeURIComponent(u.handle)}" target="_blank" rel="noopener">${esc(u.name)}</a> <small>@${esc(u.handle)}</small></span>${state.tags[u.handle.toLowerCase()]?`<span class="tagline">${esc(state.tags[u.handle.toLowerCase()])}</span>`:''}</span></h1>
+    <a class="xlink" href="https://x.com/${encodeURIComponent(u.handle)}" target="_blank" rel="noopener">Xアカウントへ ↗</a>${onair()}</div>
   <section class="card stats">
     <div class="stat"><div class="k">今日</div><div class="v num" style="color:${tc>=GOAL?'var(--gold)':'var(--x)'}">${tc}<small>/ ${GOAL}本</small></div></div>
     <div class="stat"><div class="k">達成日数</div><div class="v num">${tot.ach}<small>/ ${tot.days}日</small></div></div>
     <div class="stat"><div class="k">達成率</div><div class="v num">${tot.days?Math.round(tot.ach/tot.days*100):0}<small>%</small></div></div>
     <div class="stat"><div class="k">通算投稿</div><div class="v num">${tot.all}<small>本</small></div></div>
+    ${(f=>f?`<div class="stat"><div class="k">フォロワー</div><div class="v num">${f.now.toLocaleString()}<small style="color:${sgnc(f.day)}">前日比 ${sgn(f.day)}</small></div>
+      <div class="k num" style="color:${sgnc(f.total)}">${f.since.slice(5).replace('-','/')}から ${sgn(f.total)}</div></div>`
+      :`<div class="stat"><div class="k">フォロワー</div><div class="v num">—<small>記録待ち</small></div></div>`)(fol(u.handle))}
   </section>
   <div class="split">
     <section class="card">
@@ -508,7 +542,23 @@ function timeline(u){
 }
 
 /* ---------- 操作 ---------- */
+/* 達成カレンダーのアイコンを押すと名前を浮かせる */
+const tip=Object.assign(document.createElement('div'),{id:'tip',hidden:true});document.body.appendChild(tip);
+let tipFor=null;
+function hideTip(){tip.hidden=true;if(tipFor)tipFor.setAttribute('aria-expanded','false');tipFor=null}
+function showTip(b){
+  if(tipFor===b){hideTip();return}
+  hideTip();tipFor=b;b.setAttribute('aria-expanded','true');
+  tip.textContent=b.dataset.tip;tip.hidden=false;
+  const r=b.getBoundingClientRect(),w=tip.offsetWidth;
+  tip.style.left=Math.max(8,Math.min(innerWidth-w-8,r.left))+'px';
+  tip.style.top=(r.top-tip.offsetHeight-6<8?r.bottom+6:r.top-tip.offsetHeight-6)+'px';
+}
+document.addEventListener('scroll',hideTip,true);
+addEventListener('resize',hideTip);
 document.addEventListener('click',e=>{
+  const ui=e.target.closest('.uico');if(ui&&matchMedia('(max-width:720px)').matches){showTip(ui);return}
+  hideTip();
   const b=e.target.closest('button');if(!b||b.disabled)return;
   if(b.id==='btnFaces'){faceIn.click();return}
   if(b.dataset.v){state.view=b.dataset.v;render();return}
@@ -554,7 +604,16 @@ faceIn.onchange=async()=>{
 function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3200)}
 
 /* 同じ場所に data.json があれば読み込み、5分ごとに更新。なければサンプル表示 */
+/* キャッチコピー：taglines.txt（1行に「ハンドル キャッチコピー」） */
+state.tags={};
+async function pullTags(){
+  try{const res=await fetch('taglines.txt',{cache:'no-store'});if(!res.ok)return;
+    const t={};(await res.text()).split(/\r?\n/).forEach(l=>{l=l.trim();if(!l||l[0]==='#')return;
+      const m=l.match(/^@?(\S+)\s+(.+)$/);if(m)t[m[1].toLowerCase()]=m[2].trim()});
+    state.tags=t}catch{}
+}
 async function pull(first){
+  await pullTags();
   try{const res=await fetch('data.json',{cache:'no-store'});if(!res.ok)throw 0;
     const d=normalize(await res.json());load(d,false);return true}
   catch{if(first)load(sample(),true);return false}
