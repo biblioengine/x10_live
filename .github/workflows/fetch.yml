@@ -9,6 +9,10 @@ on:
         description: "名前・アイコン・フォロワー数を今すぐ取り直す（全員分で約0.5ドル）"
         type: boolean
         default: false
+      after_end:
+        description: "閉幕後の取り込みを1回だけ行う（締め切り後に manual_posts.txt を足したときだけ）"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -28,6 +32,7 @@ jobs:
         env:
           X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
           FORCE_PROFILE_REFRESH: ${{ inputs.refresh_profiles }}
+          FORCE_AFTER_END: ${{ inputs.after_end }}
         run: python3 scripts/fetch.py
 
       - name: 変更があれば保存

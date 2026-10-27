@@ -15,6 +15,10 @@ from datetime import datetime, timezone, timedelta
 
 # ---- 設定 ----
 CHALLENGE_START = "2026-10-01T00:00:00+09:00"  # 企画の開始日時（日本時間）
+CHALLENGE_END = "2026-10-31T23:59:59+09:00"    # 集計の締め切り（日本時間）。これより後の投稿・交流は数えない
+# 締め切りのあと、取りこぼしを拾うために取得を続ける時間。これを過ぎると X API を呼ばずに終わる（費用がかからない）
+# 過ぎたあとに manual_posts.txt を足したときは、Actions の「Run workflow」で「閉幕後の取り込みを1回だけ行う」に印を付けて実行する
+GRACE_HOURS = 24
 COUNT_REPLIES = False       # 返信も1本として数えるか（False なら取得自体しないので課金も減る）
 COUNT_QUOTES = True         # 引用ポストも1本として数えるか
 # この仕組みを入れる前に @ID を変えた人（X の内部ID: 前のハンドル）。引き継ぎが済めば残しておいても害はない
@@ -37,6 +41,18 @@ JST = timezone(timedelta(hours=9))
 
 def today_jst():
     return datetime.now(JST).strftime("%Y-%m-%d")
+
+
+def end_utc():
+    return datetime.fromisoformat(CHALLENGE_END).astimezone(timezone.utc)
+
+
+def end_param():
+    return end_utc().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def after_end(created_at):
+    return datetime.fromisoformat(created_at.replace("Z", "+00:00")) > end_utc()
 
 
 def now_iso():
@@ -102,6 +118,9 @@ def refresh_users(data, handles):
     known = {u["handle"].lower(): u for u in data["users"] + data.get("sub_users", [])}
     today = today_jst()
     daily = st.get("users_refreshed_on") != today or os.environ.get("FORCE_PROFILE_REFRESH") == "true"
+    # 締め切り日を過ぎたら、フォロワー数などは取り直さない（最終日の記録で止める）
+    if today > CHALLENGE_END[:10]:
+        daily = False
     targets = handles if daily else [h for h in handles if h.lower() not in known]
     if targets:
         for i in range(0, len(targets), 100):
@@ -171,6 +190,8 @@ def fetch_posts(data):
     for u in data["users"] + data.get("sub_users", []):
         params = {"max_results": 100, "tweet.fields": "created_at,referenced_tweets",
                   "exclude": "retweets" if COUNT_REPLIES else "retweets,replies"}
+        if datetime.now(timezone.utc) > end_utc():
+            params["end_time"] = end_param()
         if since.get(u["id"]):
             params["since_id"] = since[u["id"]]
         else:
@@ -310,6 +331,8 @@ def fetch_interactions(data):
     for kind, q in queries:
         params = {"query": q, "max_results": 100,
                   "tweet.fields": "created_at,author_id,in_reply_to_user_id,referenced_tweets"}
+        if datetime.now(timezone.utc) > end_utc():
+            params["end_time"] = end_param()
         if since.get(q):
             params["since_id"] = since[q]
         else:
@@ -480,9 +503,13 @@ def save_banners(data):
 def main():
     if not TOKEN:
         sys.exit("X_BEARER_TOKEN が設定されていません（GitHub の Settings → Secrets に登録してください）")
+    if datetime.now(timezone.utc) > end_utc() + timedelta(hours=GRACE_HOURS) and os.environ.get("FORCE_AFTER_END") != "true":
+        print("企画は終了しました。集計は締め切り済みのため、今回は何もしません（X API も呼びません）")
+        return
     handles = load_handles()
     data = load_data()
     data["start"] = CHALLENGE_START
+    data["end"] = CHALLENGE_END
     # ツリーを数えていた時期に取り込んだ分を片付ける（ツリーは数えないルールに戻したため）
     data["posts"] = [p for p in data["posts"] if p.get("kind") != "thread"]
     for k in ("self_reply_since", "self_reply_users"):
@@ -526,8 +553,14 @@ def main():
             print(f"ヘッダー画像保存 {n}件")
     except Exception as e:
         print("ヘッダー画像の保存に失敗しました:", e)
+    # 締め切りより後の投稿・交流は数えない（手動追加の分も含めて）
+    n = len(data["posts"])
+    data["posts"] = [p for p in data["posts"] if not after_end(p["created_at"])]
+    if len(data["posts"]) < n:
+        print(f"締め切り後の投稿 {n - len(data['posts'])}件を除外")
     data["posts"].sort(key=lambda p: p["created_at"])
     print(f"交流（引用）{quote_interactions(data)}件")
+    data["interactions"] = [x for x in data.get("interactions", []) if not after_end(x["created_at"])]
     data["interactions"].sort(key=lambda x: x["created_at"])
     data["updated_at"] = now_iso()
     with open(DATA, "w", encoding="utf-8") as f:

@@ -108,6 +108,8 @@ main{padding-block:20px 48px;padding-inline:24px;min-width:0;display:flex;flex-d
 .onair .dot{background:var(--live);color:#fff;font-weight:900;font-size:10px;border-radius:4px;padding:1px 6px;letter-spacing:.06em}
 .onair .dot::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#fff;margin-right:5px;vertical-align:1px;animation:blink 1.4s infinite}
 .onair .mut{color:var(--muted)}
+.onair .dot.fin{background:var(--gold,#c9a227)}
+.onair .dot.fin::before{animation:none}
 @keyframes blink{50%{opacity:.2}}
 .monthnav{display:flex;align-items:center;gap:6px}
 .monthnav .m{min-width:96px;text-align:center;font-weight:700}
@@ -862,6 +864,10 @@ nagi_writes,ナギ,2026-10-02T07:12:00+09:00,"おはよう"</pre>
 <script>
 (()=>{
 const GOAL=10;
+// 集計の締め切り（日本時間 10/31 23:59）。これを過ぎたら、画面の「今日」はこの時刻で止まり、表示は「全日程終了」になる
+const CHALLENGE_END=Date.parse('2026-10-31T23:59:59+09:00');
+const ended=()=>Date.now()>CHALLENGE_END;
+const clock=()=>Math.min(Date.now(),CHALLENGE_END);
 const COLORS=['#2b8a5e','#c2410c','#7c3aed','#0e7490','#b45309','#be185d','#4d7c0f','#475569'];
 const DOW=['日','月','火','水','木','金','土'];
 const state={subs:[],users:[],posts:[],byUser:{},view:'live',uid:null,y:0,m:0,day:null,isSample:true,start:null,updated:null,img:{},rf:'all',followers:{}};
@@ -944,7 +950,7 @@ function load(d,isSample){
   state.subs=d.subs||[];state.ix=d.ix||[];state.photos=d.photos||{};
   state.byUser={};[...state.users,...state.subs].forEach(u=>{state.byUser[u.id]=[];if(u.avatar)state.img[u.id]=u.avatar.replace('_normal.','_bigger.')});
   state.posts.forEach(p=>state.byUser[p.uid]&&state.byUser[p.uid].push(p));
-  if(!keepView){const now=new Date();state.y=now.getFullYear();state.m=now.getMonth();state.view='live';state.uid=state.users[0].id;state.day=null}
+  if(!keepView){const now=new Date(clock());state.y=now.getFullYear();state.m=now.getMonth();state.view='live';state.uid=state.users[0].id;state.day=null}
   if(!state.byUser[state.uid]) state.uid=state.users[0].id;
   document.getElementById('sampleNote').hidden=!isSample;
   render();
@@ -957,7 +963,7 @@ const mainOf=u=>u.sub?state.users.find(x=>x.handle.toLowerCase()===u.main.toLowe
 const dkey=t=>{const d=new Date(t);return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate()};
 const ymd=(y,m,d)=>y*10000+(m+1)*100+d;
 const dim=(y,m)=>new Date(y,m+1,0).getDate();
-const todayKey=()=>dkey(Date.now());
+const todayKey=()=>dkey(clock());
 const startKey=()=>dkey(state.start);
 // 参加者ごとの参加開始日（starts.txt）。書いていない人は企画の開始日から
 const userStartKey=u=>Math.max(startKey(),(u&&state.starts[u.handle.toLowerCase()])||0);
@@ -1008,6 +1014,11 @@ function renderNav(){
   document.getElementById('navUsers').innerHTML=newsSide();
 }
 function onair(compact){
+  // 締め切り後：時計と残り時間をやめ、「全日程終了」を出す
+  if(ended()){const e=new Date(CHALLENGE_END),dl=`${e.getMonth()+1}/${e.getDate()} ${hm(e)}`;
+    if(compact)return `<span class="onair cmp"><span class="dno">FINISH</span><span class="mut">全日程終了</span></span>`;
+    const upd=state.updated?`<span class="mut">最終更新 ${new Date(state.updated).getMonth()+1}/${new Date(state.updated).getDate()} ${hm(state.updated)}</span>`:'';
+    return `<span class="onair"><span class="dot fin">FINISH</span><span class="num">全日程終了</span><span class="mut">${dl} 締め切り</span>${upd}</span>`}
   const n=new Date(),left=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1)-n;
   // スマホのトップ用の短い表示：DAY（企画の何日目か）・現在時刻・今日の残り
   if(compact){const s0=new Date(state.start),day=Math.round((new Date(n.getFullYear(),n.getMonth(),n.getDate())-new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()))/864e5)+1;
@@ -1033,7 +1044,7 @@ function tickerData(){
   rows.forEach(r=>{let best=0,has=false;for(const k in r.tot.map){if(+k<tk&&+k>=r.tot.usk){has=true;best=Math.max(best,r.tot.map[k])}}
     if(has&&r.c>best&&r.c>=GOAL)T('自己ベスト',`${esc(r.u.name)} 今日${r.c}本 自己最多を更新`,r.u,`今日${r.c}本 自己最多を更新`)});
   // 連続達成（今日も達成していれば今日まで、まだなら昨日まで）
-  const streak=r=>{let n=0;const d=new Date();if((r.tot.map[tk]||0)<GOAL)d.setDate(d.getDate()-1);
+  const streak=r=>{let n=0;const d=new Date(clock());if((r.tot.map[tk]||0)<GOAL)d.setDate(d.getDate()-1);
     for(;dkey(d)>=r.tot.usk&&(r.tot.map[dkey(d)]||0)>=GOAL;d.setDate(d.getDate()-1))n++;return n};
   const st=rows.map(r=>streak(r)).filter(n=>n>=2);
   if(st.length){const mx=Math.max(...st);T('連続',`${mx}日連続達成中 ${st.filter(n=>n===mx).length}人`)}
@@ -1072,15 +1083,17 @@ function renderLive(target){
     return{u,c,last:today[c-1],reach:c?today[c-1].ts:Infinity,goal:c>=GOAL?today[GOAL-1].ts:Infinity,tot:totals(u.id)}});
   // その日いちばん早く10本に到達した人に「S」
   const fastest=rows.filter(r=>r.c>=GOAL).sort((a,b)=>a.goal-b.goal)[0];
+  // 締め切り後：全員に S のバッジを付け、本数とバーを消して「お疲れ様でした」を出す
+  const fin=ended();
   const board=[...rows].sort((a,b)=>b.c-a.c||a.reach-b.reach).map((r,i)=>{
-    const done=r.c>=GOAL,isS=fastest&&fastest.u.id===r.u.id;
+    const done=r.c>=GOAL,isS=fin||(fastest&&fastest.u.id===r.u.id);
     return `<button type="button" class="player${done?' done':''}${isS?' has-s':''}" data-u="${esc(r.u.id)}" data-today="1">
-      ${isS?`<span class="sbadge" title="今日いちばん早く10本に到達（${hm(r.goal)}）" aria-label="今日の最速達成"><span class="t t1"></span><span class="t t2"></span><span class="sh">S</span></span>`:''}
+      ${isS?`<span class="sbadge" title="${fin?'1ヶ月間チャレンジお疲れ様でした':`今日いちばん早く10本に到達（${hm(r.goal)}）`}" aria-label="${fin?'チャレンジ完走':'今日の最速達成'}"><span class="t t1"></span><span class="t t2"></span><span class="sh">S</span></span>`:''}
       <div class="top"><span class="rk">${i+1}</span>${av(r.u)}<div class="nm"><b>${esc(r.u.name)}</b><span>@${esc(r.u.handle)}</span></div>
-      <span class="ct num"><b>${r.c}</b>/${GOAL}</span></div>
-      ${ticks(r.c)}
-      <div class="foot"><span class="last">${r.last?`最新 ${hm(r.last.ts)}　${esc(r.last.text)}`:'今日はまだ投稿なし'}</span>
-      <span class="pill${done?' done':''}">${done?'本日達成':'あと'+(GOAL-r.c)+'本'}</span></div>
+      ${fin?'':`<span class="ct num"><b>${r.c}</b>/${GOAL}</span>`}</div>
+      ${fin?'':ticks(r.c)}
+      <div class="foot"><span class="last">${fin?'1ヶ月間チャレンジお疲れ様でした':r.last?`最新 ${hm(r.last.ts)}　${esc(r.last.text)}`:'今日はまだ投稿なし'}</span>
+      ${fin?'':`<span class="pill${done?' done':''}">${done?'本日達成':'あと'+(GOAL-r.c)+'本'}</span>`}</div>
     </button>`}).join('');
 
   const head=Array.from({length:n},(_,i)=>{const k=ymd(y,m,i+1),w=new Date(y,m,i+1).getDay();return `<th class="num${k===tk?' td':''}">${i+1}<br>${DOW[w]}</th>`}).join('');
@@ -1115,7 +1128,7 @@ function renderLive(target){
   ${target?`<div class="lhead"><div class="topbar">${onair(true)}<button type="button" class="vgo" data-venue="1">実況会場へ ▶︎</button></div>${jump}${tickerHTML()}</div>`:`<div class="phead"><div class="topbar"><h1>みんなの実況</h1>${onair()}<button type="button" class="vgo" data-venue="1">実況会場へ ▶︎</button></div>
     <div class="pjump">${['途中経過','カレンダー','通算成績'].map((t,i)=>`<button type="button" data-pj="${i}" aria-current="${(state.ls||0)===i}">${t}</button>`).join('')}</div></div>`}
   ${L1}<section class="card" data-sec="board">
-    ${target?'':`<div class="card-h"><h2>今日の途中経過</h2>`}${target?'':'<span class="sub">本数の多い順（同数ならその本数に早く到達した順）・S＝今日いちばん早く10本に到達した人・カードを押すと今日の投稿へ</span></div>'}
+    ${target||fin?'':`<div class="card-h"><h2>今日の途中経過</h2>`}${target||fin?'':'<span class="sub">本数の多い順（同数ならその本数に早く到達した順）・S＝今日いちばん早く10本に到達した人・カードを押すと今日の投稿へ</span></div>'}
     <div class="board">${board}</div>
   </section>
   ${LM}<section class="card" data-sec="cal">
@@ -1388,7 +1401,7 @@ async function openCard(id){
   if(saved.d===tk){pIn.forEach((e,i)=>e.value=saved.p?.[i]||'');cIn.forEach((e,i)=>e.value=saved.c?.[i]||'');nIn.forEach((e,i)=>e.value=saved.n?.[i]||'');cMsg.value=saved.t||''}
   else{pIn.forEach((e,i)=>e.value=(saved.d&&saved.d<tk?(saved.c?.[i]||saved.p?.[i]):'')||'');cIn.forEach(e=>e.value='');nIn.forEach(e=>e.value='');cMsg.value=''}
   cMsgN.textContent=`${cMsg.value.length} / 140`;
-  {const t=new Date();cDate.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`}
+  {const t=new Date(clock());cDate.value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`}
   let bg='#0e1116';try{bg=localStorage.getItem('cardbg:'+cardU.handle.toLowerCase())||bg}catch{}
   setBg(bg,false);
   cardDlg.showModal();cardDlg.scrollTop=0;cardDlg.classList.remove('scrolled');
@@ -1444,7 +1457,7 @@ function renderWall(){
   if(!el){el=document.createElement('div');el.id='wall';document.body.appendChild(el);document.documentElement.style.overflow='hidden'}
   const tk=todayKey();
   const all=state.users.map(u=>({u,c:dayCount(u.id,tk)})).sort((a,b)=>Math.min(b.c,GOAL)-Math.min(a.c,GOAL));
-  const done=all.filter(r=>r.c>=GOAL).length,n=new Date();
+  const done=all.filter(r=>r.c>=GOAL).length,n=new Date(clock());
   el.innerHTML=`<div class="wh"><span class="wt"><em>10</em>投稿チャレンジ</span>
     <span class="ws num">${n.getMonth()+1}/${n.getDate()} ${hm(n)}時点　本日達成 <b>${done}</b> / ${all.length}人</span>
     <div class="wacts"><button type="button" class="back" id="btnWallBack">戻る</button><button type="button" class="back pf" id="btnToProfile">PROFILE ▶︎</button></div></div><div class="wg"></div>
@@ -1509,7 +1522,7 @@ function fillPeople(){const el=document.getElementById('ppl');if(!el)return;
   if(nc){nc.scrollLeft=li*nc.clientWidth;[...nc.children].forEach((x,i)=>x.scrollTop=tops[i]||0);liveTabs(nc);
     const nw=pv.querySelector('[data-sec="cal"] .cmpwrap');if(nw&&wpos){nw.scrollLeft=wpos[0];nw.scrollTop=wpos[1]}
     nc.addEventListener('scroll',()=>requestAnimationFrame(()=>liveTabs(nc)),{passive:true})}
-  const tk=todayKey(),n=new Date();
+  const tk=todayKey(),n=new Date(clock());
   const all=state.users.map(u=>({u,c:dayCount(u.id,tk)})).sort((a,b)=>Math.min(b.c,GOAL)-Math.min(a.c,GOAL));
   const done=all.filter(r=>r.c>=GOAL).length;
   el.querySelector('.ws').innerHTML=`${n.getMonth()+1}/${n.getDate()} ${hm(n)}時点　本日達成 <b>${done}</b> / ${all.length}人`;
@@ -1693,7 +1706,7 @@ function openNet(focus){
   closeNet();
   const el=document.createElement('div');el.id='net';if(focus)el.dataset.id=focus;document.body.appendChild(el);document.documentElement.style.overflow='hidden';
   // スライダーは1時間きざみ。各目盛りは「その時刻まで」の交流（最後の目盛りは今）
-  const s0=new Date(state.start),t0=new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()).getTime(),now=Date.now(),hours=[];
+  const s0=new Date(state.start),t0=new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()).getTime(),now=clock(),hours=[];
   for(let t=t0+36e5;t<now;t+=36e5)hours.push(t);
   hours.push(now);
   el.innerHTML=`<div class="wh"><button type="button" class="nback" id="btnNetBack" aria-label="元の画面に戻る">◀︎</button><span class="wt">参加者の交流</span><span class="ws" id="netInfo"></span>
@@ -1907,7 +1920,7 @@ async function openVenue(){
   const music={on:()=>mOn,toggle(){setTimeout(musicBtns);mOn=!mOn;try{localStorage.setItem('x10vmusic',mOn?'1':'0')}catch{}if(mOn)au.play().catch(()=>{});else{au.pause();VCP.forEach(a=>a.pause())}return mOn}};VMUS=music;
   const api={users:()=>state.users,avatar:u=>'avatars/'+encodeURIComponent(u.handle.toLowerCase())+'.jpg',tag:u=>state.tags[u.handle.toLowerCase()],
     dayCount,todayKey,totals,GOAL,tickerData,ix:()=>state.ix||[],music,peek:venuePeek,cheer:l=>VCH&&VCH(l),
-    days:()=>{const s0=new Date(state.start),o=[];for(let i=0;i<30;i++)o.push(dkey(new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()+i).getTime()));return o},
+    days:()=>{const s0=new Date(state.start),ek=dkey(CHALLENGE_END),o=[];for(let i=0;i<62;i++){const k=dkey(new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()+i).getTime());if(k>ek)break;o.push(k)}return o},
     openPlayer:id=>{closeVenue();openPlayer(id);pushNav()},close:()=>backOv(closeVenue)};
   // 会場のプログラムは、キャラクターを選んでいる間に読み込んでおく
   const mod=import('./venue/venue.js?v=5');mod.catch(()=>{});
