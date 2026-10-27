@@ -37,10 +37,10 @@ export async function start(root, X){
   // ---------- 描画の準備 ----------
   const R=new THREE.WebGLRenderer({canvas:cv,antialias:!MOB,powerPreference:'high-performance'});
   R.setPixelRatio(Math.min(devicePixelRatio||1,MOB?1.5:2));R.outputColorSpace=THREE.SRGBColorSpace;
-  // 昼と夜：日本時間の6時〜18時は昼（?day=1 / ?day=0 で確認用に固定できる）。実況の終了後はずっと夜
+  // 会場はずっと夜（パーティの演出のため）。?day=1 で確認用に昼にできる
   const FIN=!!(X.ended&&X.ended());
   const qd=/[?&]day=([01])/.exec(location.search);
-  const DAY=FIN?false:qd?qd[1]==='1':(()=>{const h=(new Date().getUTCHours()+9)%24;return h>=6&&h<18})();
+  const DAY=qd?qd[1]==='1':false;
   const BG=DAY?0xcfdbe6:0x07080d;
   const scene=new THREE.Scene();scene.background=new THREE.Color(BG);scene.fog=new THREE.Fog(BG,DAY?60:34,DAY?160:100);
   const cam=new THREE.PerspectiveCamera(55,1,.1,600);
@@ -113,6 +113,34 @@ export async function start(root, X){
   const beams=[];{const bg=new THREE.ConeGeometry(1.1,16,20,1,true);bg.translate(0,-8,0);
     [0xff3d7f,0x3dd6ff,0xffd23d,0x8a5bff,0x3dff9e,0xff7a3d].forEach((c,i)=>{const m=new THREE.Mesh(bg,new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.16,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
       m.position.set(-8+i*3.4,5.9,-1.2);m.visible=!DAY;stage.add(m);beams.push(m)})}
+  // 花火：ステージの奥の空に、数秒おきに打ち上げる（音なし。スマホは粒を少なめに）
+  const FW=[];{const NP=MOB?70:140,PAL=[0xff3d7f,0x3dd6ff,0xffd23d,0x8a5bff,0x3dff9e,0xff7a3d,0xffffff];
+    // 粒を丸くぼかす（四角に見えないように）
+    const dotTex=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),gr=x.createRadialGradient(32,32,0,32,32,32);
+      gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.35,'rgba(255,255,255,.8)');gr.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=gr;x.fillRect(0,0,64,64);
+      const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t})();
+    const mk=()=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(NP*3),3));
+      const m=new THREE.PointsMaterial({map:dotTex,size:MOB?2.2:1.8,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,fog:false,toneMapped:false});
+      const pts=new THREE.Points(g,m);pts.frustumCulled=false;pts.visible=false;scene.add(pts);
+      return{pts,g,m,vel:new Float32Array(NP*3),t:0,life:0,stage:0,o:new THREE.Vector3(),top:0}};
+    for(let i=0;i<(MOB?4:6);i++)FW.push(mk());
+    let next=1;
+    const launch=()=>{const f=FW.find(f=>!f.pts.visible);if(!f)return;f.stage=1;f.t=0;f.pts.visible=true;
+      f.o.set((Math.random()-.5)*70,0,SZ-22-Math.random()*20);f.top=10+Math.random()*7;
+      f.m.color.setHex(PAL[Math.floor(Math.random()*PAL.length)]);f.m.opacity=1;
+      const a=f.g.attributes.position.array;for(let i=0;i<NP;i++){a[i*3]=f.o.x;a[i*3+1]=4;a[i*3+2]=f.o.z}f.g.attributes.position.needsUpdate=true};
+    var fireworks=dt=>{next-=dt;if(next<=0){launch();if(Math.random()<.3)launch();next=1.2+Math.random()*2.8}
+      for(const f of FW){if(!f.pts.visible)continue;f.t+=dt;const a=f.g.attributes.position.array;
+        if(f.stage===1){// 打ち上げ：1本の光がのぼる
+          const y=4+(f.top-4)*Math.min(1,f.t/1.1);for(let i=0;i<NP;i++){a[i*3]=f.o.x;a[i*3+1]=y-(i%8)*.12;a[i*3+2]=f.o.z}
+          if(f.t>=1.1){f.stage=2;f.t=0;f.life=1.8+Math.random()*.8;const sp=7+Math.random()*5;
+            for(let i=0;i<NP;i++){const u=Math.random()*2-1,th=Math.random()*Math.PI*2,r=Math.sqrt(1-u*u),k=sp*(.85+Math.random()*.15);
+              f.vel[i*3]=r*Math.cos(th)*k;f.vel[i*3+1]=u*k;f.vel[i*3+2]=r*Math.sin(th)*k;a[i*3]=f.o.x;a[i*3+1]=f.top;a[i*3+2]=f.o.z}}}
+        else{// 開いて、重力で垂れながら消える
+          const drag=Math.exp(-1.6*dt);for(let i=0;i<NP;i++){f.vel[i*3]*=drag;f.vel[i*3+1]=f.vel[i*3+1]*drag-4.5*dt;f.vel[i*3+2]*=drag;
+            a[i*3]+=f.vel[i*3]*dt;a[i*3+1]+=f.vel[i*3+1]*dt;a[i*3+2]+=f.vel[i*3+2]*dt}
+          const q=f.t/f.life;f.m.opacity=Math.max(0,1-q*q)*(.75+.25*Math.sin(f.t*40));if(q>=1)f.pts.visible=false}
+        f.g.attributes.position.needsUpdate=true}}}
   // 天井から落ちる光：会場のあちこちに光の筋と床の光の輪。照らす場所を絶えず動かす
   const spots=[];{
     const cone=new THREE.ConeGeometry(1,1,28,1,true);cone.translate(0,-.5,0); // 先端（光源）が原点、下に広がる
@@ -353,7 +381,17 @@ export async function start(root, X){
   let tickText=tick(),tickX=0;
   // 両脇のビジョン：速報を4件ずつ、数秒ごとに入れ替え
   let sideT=0;
-  function drawSides(dt){sideT+=dt;const it=X.tickerData();
+  // 締め切りまでの数日は、20秒ごとに5秒間「FINAL WEEK」（最終日は「LAST DAY」）を大きく出す
+  const finalLabel=()=>{if(FIN||(X.ended&&X.ended()))return null;const ds=X.days(),tk=X.todayKey(),last=ds[ds.length-1];
+    return tk===last?['LAST','DAY']:tk>=ds[Math.max(0,ds.length-7)]?['FINAL','WEEK']:null};
+  function drawSides(dt){sideT+=dt;const it=X.tickerData(),fl=sideT%20>=15?finalLabel():null;
+    if(fl){for(const S of SIDE){const cx=S.cx,W=512,H=445;cx.fillStyle='#0b0a08';cx.fillRect(0,0,W,H);
+        const on=Math.floor(sideT*3)%2===0,col=fl[0]==='LAST'?'#ff4d3a':'#ffb21a';
+        cx.textAlign='center';cx.textBaseline='middle';cx.font='130px "Archivo Black","Archivo",sans-serif';
+        cx.fillStyle=on?col:'#5a3a10';cx.shadowColor=col;cx.shadowBlur=on?26:0;
+        cx.fillText(fl[0],W/2,H/2-72);cx.fillText(fl[1],W/2,H/2+72);cx.shadowBlur=0;
+        cx.fillStyle='rgba(0,0,0,.35)';for(let y=0;y<H;y+=4)cx.fillRect(0,y,W,1);S.t.needsUpdate=true}
+      return}
     for(const S of SIDE){const cx=S.cx,W=512,H=445;cx.fillStyle='#0b0a08';cx.fillRect(0,0,W,H);
       cx.fillStyle='#ff4d3a';cx.font=`400 40px "DotGothic16",${JP}`;cx.textAlign='center';cx.textBaseline='middle';cx.shadowColor='#ff2a10';cx.shadowBlur=12;
       cx.fillText(Math.floor(sideT*2)%2?'● 速報':'○ 速報',W/2,40);cx.shadowBlur=0;
@@ -452,6 +490,7 @@ export async function start(root, X){
     // 光の柱
     beams.forEach((b,i)=>{b.rotation.z=Math.sin(clock.elapsedTime*.9+i*1.3)*.5;b.rotation.x=Math.cos(clock.elapsedTime*.7+i)*.25});
     // オーロラビジョン（1秒に20回まで描き直す）
+    fireworks(dt);
     avA+=dt;if(avA>.05){drawAurora(avA);drawSides(avA);avA=0}
     thAcc+=dt;if(dirty&&thAcc>.3){drawTheaters();thAcc=0}
     R.render(scene,cam)};
