@@ -193,7 +193,7 @@ export async function start(root, X){
   // ---------- 自キャラ ----------
   // 凹（ボコ）かマスクマンか（会場に入る前のキャラクター選択で決まる）
   const BOKO=X.chara==='boko';
-  const gl=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(BASE+(BOKO?'boko.glb?v=3':'chara.glb?v=2'));if(!alive)return;
+  const gl=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(BASE+(BOKO?'boko.glb?v=4':'chara.glb?v=2'));if(!alive)return;
   const me=gl.scene;me.traverse(o=>{if(o.isMesh){o.frustumCulled=false}});scene.add(me);
   // 凹：選んだトレーナーの柄を胸に描く（服の画像の胸の場所に重ねて、体に貼り直す）
   if(BOKO&&X.bokoShirt&&X.bokoShirt.img){try{
@@ -229,7 +229,7 @@ export async function start(root, X){
   // ---- マスクマン ----
   // 止まっているときの立ち姿：見回し1の最初のコマで止める
   const standStill=BOKO?()=>{play('idle',.3)}:()=>{play('look1');A.look1.paused=true;A.look1.time=0};
-  // ---- 凹：転ぶ・起き上がる・寝転がるときは、その場から体ごと動く（root=腰の前後左右の動き） ----
+  // ---- 凹：コークスクリュー・キップアップや前へ進むダンスでは、体ごと動く（root=腰の前後左右の動き） ----
   let RM=null;gl.scene.traverse(o=>{if(o.userData&&o.userData.root)RM=o.userData.root});
   let rmK=null,rmP0=null;
   const rmAt=(k,t)=>{const r=RM&&RM[k];if(!r)return [0,0];const T=r.t;let i=0;while(i<T.length-2&&T[i+1]<t)i++;const f=Math.min(1,Math.max(0,(t-T[i])/((T[i+1]-T[i])||1)));
@@ -239,24 +239,22 @@ export async function start(root, X){
   const rmUpdate=()=>{if(!rmK)return;const [x,z]=rmLocal(...rmAt(rmK,A[rmK].time));me.position.x=rmP0.x+x;me.position.z=rmP0.z+z;collide(me.position)};
   const once=(k,fade,back=false)=>{const a=A[k];a.setLoop(THREE.LoopOnce,1);a.clampWhenFinished=true;if(curA===a)curA=null;play(k,fade);
     if(back){a.timeScale=-1;a.time=a.getClip().duration}rmStart(k,a.time)};
-  let runLoops=0,after=null;
+  let runLoops=0;
   const bokoStand=()=>{rmK=null;mode='stand';idleAt=performance.now();standStill()};
-  const bokoDance=()=>{rmK=null;mode='dance';play(pickDance(),.3)};
-  // 起き上がる（終わったら after に入れたことをする）
-  const bokoGetUp=(then)=>{const fade=mode==='lay'?.45:.3;after=then||null;mode='standup';once('standup',fade)};
-  if(BOKO){A.run&&A.run.setLoop(THREE.LoopRepeat,Infinity);
-    mixer.addEventListener('loop',e=>{if(e.action===A.run&&mode==='run'){runLoops++;if(runLoops>=5){runLoops=0;mode='trip';once('trip',.15)}}})}
+  const bokoDance=()=>{rmK=null;mode='dance';const k=pickDance();if(curA===A[k])curA=null;play(k,.3);if(RM&&RM[k])rmStart(k,0)};
+  // 頭で回る（Head Spinning）は1回が短いので、4回まわってから終わる
+  if(BOKO&&A.dance2)A.dance2.setLoop(THREE.LoopRepeat,4);
+  if(BOKO){A.run&&A.run.setLoop(THREE.LoopRepeat,Infinity);A.jacks&&A.jacks.setLoop(THREE.LoopRepeat,Infinity);
+    // 走りを5回くり返すと、コークスクリュー・キップアップ
+    mixer.addEventListener('loop',e=>{if(e.action===A.run&&mode==='run'){runLoops++;if(runLoops>=5){runLoops=0;mode='kipup';once('kipup',.15)}}})}
   standStill();
   mixer.addEventListener('finished',e=>{
     if(mode==='dance'){X.cheer&&X.cheer(true);if(BOKO)bokoStand();else{mode='look';play(Math.random()<.5?'look1':'look2',.4);A.look1.paused=false}return}
     if(!BOKO)return;
-    // 転んだら、そのまま起き上がる
-    if(mode==='trip'&&e.action===A.trip){mode='standup';after=null;once('standup',.25);return}
-    if(mode==='standup'&&e.action===A.standup){A.standup.timeScale=1;const f=after;after=null;if(f==='dance')bokoDance();else bokoStand();return}
-    // 寝転がる：起き上がりを逆に再生したあと、寝転んだ姿勢へ
-    if(mode==='laydown'&&e.action===A.standup){A.standup.timeScale=1;rmK=null;mode='lay';A.lay.setLoop(THREE.LoopRepeat,Infinity);play('lay',.7)}});
+    // キップアップで立ち上がったら、そのまま立ち姿へ
+    if(mode==='kipup'&&e.action===A.kipup){bokoStand()}});
   bDance.onclick=()=>{
-    if(BOKO){if(mode==='lay'){bokoGetUp('dance');return}if(['trip','standup','laydown'].includes(mode))return;bokoDance();return}
+    if(BOKO){if(mode==='kipup')return;bokoDance();return}
     const k=pickDance();mode='dance';A.look1.paused=false;if(curA===A[k])curA=null;play(k,.3)};
 
   // ---------- 操作 ----------
@@ -411,10 +409,10 @@ export async function start(root, X){
     run=keys.has('shift');
     if(stick.id!==null){ix=stick.dx;iz=stick.dy;run=Math.hypot(ix,iz)>.8}
     const mag=Math.min(1,Math.hypot(ix,iz));
-    // 凹：転んでいる・起き上がっている・寝転がっている途中は動けない。寝転んでいるときに動かすと起き上がる
-    const busy=BOKO&&['trip','standup','laydown'].includes(mode);
-    if(BOKO&&mode==='lay'&&mag>.15){bokoGetUp(null)}
-    if(busy||(BOKO&&mode==='standup')){rmUpdate();bDance.hidden=true;if(mag>.15)idleAt=performance.now()}
+    // 凹：キップアップの途中は動けない。ジャンピングジャック中に動かすと、そのまま歩き出す
+    const busy=BOKO&&mode==='kipup';
+    if(BOKO&&mode==='dance')rmUpdate();
+    if(busy){rmUpdate();bDance.hidden=true;if(mag>.15)idleAt=performance.now()}
     else if(mag>.15){
       const fx=-Math.sin(yaw),fz=-Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);
       let dx=rx*ix-fx*iz,dz=rz*ix-fz*iz;const l=Math.hypot(dx,dz)||1;dx/=l;dz/=l;
@@ -426,8 +424,8 @@ export async function start(root, X){
       if(mode==='walk'||mode==='run'){runLoops=0;if(BOKO)bokoStand();else{mode='stand';standStill()}}
       const idleT=(performance.now()-idleAt)/1000;
       if(idleT>5&&mode==='stand'){
-        // 5秒なにもしなければ：マスクマンは見回す、凹は寝転がる
-        if(BOKO){mode='laydown';once('standup',.4,true)}
+        // 5秒なにもしなければ：マスクマンは見回す、凹はジャンピングジャック
+        if(BOKO){mode='jacks';play('jacks',.4)}
         else{mode='look';A.look1.paused=false;play(Math.random()<.5?'look1':'look2',.4)}}
       bDance.hidden=false;
     }
