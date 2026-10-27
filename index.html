@@ -1923,7 +1923,7 @@ async function openVenue(){
     days:()=>{const s0=new Date(state.start),ek=dkey(CHALLENGE_END),o=[];for(let i=0;i<62;i++){const k=dkey(new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()+i).getTime());if(k>ek)break;o.push(k)}return o},
     openPlayer:id=>{closeVenue();openPlayer(id);pushNav()},close:()=>backOv(closeVenue)};
   // 会場のプログラムは、キャラクターを選んでいる間に読み込んでおく
-  const mod=import('./venue/venue.js?v=7');mod.catch(()=>{});
+  const mod=import('./venue/venue.js?v=8');mod.catch(()=>{});
   api.chara=await chooseChara(el,cheer);api.mmIcon=chooseChara.icon||null;api.bokoShirt=chooseChara.shirt||null;if(!api.chara||!document.getElementById('venue'))return;nextCheer();
   el.innerHTML='<div class="vload">会場を準備中…</div>';
   try{const m=await mod;if(!document.getElementById('venue'))return;VEN=await m.start(el,api)}

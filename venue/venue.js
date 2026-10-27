@@ -114,7 +114,7 @@ export async function start(root, X){
     [0xff3d7f,0x3dd6ff,0xffd23d,0x8a5bff,0x3dff9e,0xff7a3d].forEach((c,i)=>{const m=new THREE.Mesh(bg,new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.16,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
       m.position.set(-8+i*3.4,5.9,-1.2);m.visible=!DAY;stage.add(m);beams.push(m)})}
   // 花火：ステージの奥の空に、数秒おきに打ち上げる（音なし。スマホは粒を少なめに）
-  const FW=[];{const NP=MOB?70:140,PAL=[0xff3d7f,0x3dd6ff,0xffd23d,0x8a5bff,0x3dff9e,0xff7a3d,0xffffff];
+  const FW=[],fwV=new THREE.Vector3();{const NP=MOB?70:140,PAL=[0xff3d7f,0x3dd6ff,0xffd23d,0x8a5bff,0x3dff9e,0xff7a3d,0xffffff];
     // 粒を丸くぼかす（四角に見えないように）
     const dotTex=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),gr=x.createRadialGradient(32,32,0,32,32,32);
       gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.35,'rgba(255,255,255,.8)');gr.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=gr;x.fillRect(0,0,64,64);
@@ -126,14 +126,18 @@ export async function start(root, X){
     for(let i=0;i<(MOB?4:6);i++)FW.push(mk());
     let next=1;
     const launch=()=>{const f=FW.find(f=>!f.pts.visible);if(!f)return;f.stage=1;f.t=0;f.pts.visible=true;
-      f.o.set((Math.random()-.5)*70,0,SZ-22-Math.random()*20);f.top=10+Math.random()*7;
+      // どこを向いていても背景に見えるよう、今見ている方向（左右45度くらい）を中心に、ときどき別の方向にも上げる
+      const fwd=cam.getWorldDirection(fwV),ang=Math.atan2(fwd.x,fwd.z)+(Math.random()<.75?(Math.random()-.5)*1.6:(Math.random()-.5)*Math.PI*2),d=55+Math.random()*30;
+      f.o.set(cam.position.x+Math.sin(ang)*d,0,cam.position.z+Math.cos(ang)*d);
+      // 建物や群衆の上の空（画面の上の端より少し下）で開くように、遠いほど高く
+      f.top=cam.position.y+d*(.1+Math.random()*.05);
       f.m.color.setHex(PAL[Math.floor(Math.random()*PAL.length)]);f.m.opacity=1;
       const a=f.g.attributes.position.array;for(let i=0;i<NP;i++){a[i*3]=f.o.x;a[i*3+1]=4;a[i*3+2]=f.o.z}f.g.attributes.position.needsUpdate=true};
     var fireworks=dt=>{next-=dt;if(next<=0){launch();if(Math.random()<.3)launch();next=1.2+Math.random()*2.8}
       for(const f of FW){if(!f.pts.visible)continue;f.t+=dt;const a=f.g.attributes.position.array;
         if(f.stage===1){// 打ち上げ：1本の光がのぼる
           const y=4+(f.top-4)*Math.min(1,f.t/1.1);for(let i=0;i<NP;i++){a[i*3]=f.o.x;a[i*3+1]=y-(i%8)*.12;a[i*3+2]=f.o.z}
-          if(f.t>=1.1){f.stage=2;f.t=0;f.life=1.8+Math.random()*.8;const sp=7+Math.random()*5;
+          if(f.t>=1.1){f.stage=2;f.t=0;f.life=1.8+Math.random()*.8;const sp=5+Math.random()*3.5;
             for(let i=0;i<NP;i++){const u=Math.random()*2-1,th=Math.random()*Math.PI*2,r=Math.sqrt(1-u*u),k=sp*(.85+Math.random()*.15);
               f.vel[i*3]=r*Math.cos(th)*k;f.vel[i*3+1]=u*k;f.vel[i*3+2]=r*Math.sin(th)*k;a[i*3]=f.o.x;a[i*3+1]=f.top;a[i*3+2]=f.o.z}}}
         else{// 開いて、重力で垂れながら消える
