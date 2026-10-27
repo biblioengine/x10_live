@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="1日10投稿30日チャレンジの報告カードを、手入力で作れるページ">
+<title>1×10×30 報告カード</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Dela+Gothic+One&family=Roboto+Mono:wght@500;700&family=Archivo+Black&family=Archivo:wght@500;700;800;900&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap">
+<style>
+/* x10_live の報告カードを、APIのデータなしで手入力だけで作れるようにした単独ページ。カードの描き方は index.html と同じ */
+:root{
+  --bg:#f3f4f8; --panel:#ffffff; --line:#e1e4ec; --fg:#161a24; --muted:#687087;
+  --x:#2f62f0; --gold:#f0a800; --hover:#f0f2f8;
+  --f-body:"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif;
+  --f-disp:"Dela Gothic One","Noto Sans JP",sans-serif;
+  --f-num:"Roboto Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1218; --panel:#181c25; --line:#2a303c; --fg:#eceff5; --muted:#9aa3b6;
+  --x:#6c90ff; --gold:#ffc53d; --hover:#20252f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1218; --panel:#181c25; --line:#2a303c; --fg:#eceff5; --muted:#9aa3b6;
+  --x:#6c90ff; --gold:#ffc53d; --hover:#20252f; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.6}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--x);outline-offset:2px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;font-size:13px}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--fg);border-color:var(--fg);color:var(--panel)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:8px;font-size:13px;z-index:10;max-width:calc(100vw - 32px)}
+
+.page{max-width:880px;margin:24px auto;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.ttl{padding:18px 20px 0;margin:0;font-family:var(--f-disp);font-weight:400;font-size:20px;line-height:1.3}
+.ttl em{font-style:normal;color:var(--gold)}
+
+.cd{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,260px);gap:20px;padding:20px;align-items:start}
+.cd canvas{width:100%;height:auto;max-width:100%;border-radius:12px;display:block;box-shadow:0 6px 24px rgba(0,0,0,.18)}
+.cd h3{margin:0 0 4px;font-size:16px}
+.cd .hint{margin:0 0 14px;font-size:12px;color:var(--muted);line-height:1.6}
+.cd label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;margin-bottom:12px}
+.cd input{font:inherit;font-family:var(--f-num);font-size:18px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);width:100%}
+.cd input:focus,.cd textarea:focus{outline:2px solid var(--gold);outline-offset:1px}
+.cd textarea{font:inherit;font-size:16px;font-weight:400;line-height:1.5;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);width:100%;resize:vertical;min-height:84px}
+.cd .cnt{font-size:11px;font-weight:400;color:var(--muted);text-align:right}
+.cd .frow{display:grid;grid-template-columns:62px minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:6px;margin-bottom:10px;font-size:12px;font-weight:700}
+.cd .frow b{color:var(--muted);font-weight:400}
+.cd .frow input{font-size:16px;padding:7px 8px}
+.cd .prow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:4px 0 8px}
+.cd .prow .bgl{grid-column:1/-1}
+.cd .prow label{margin:0;font-size:11px}
+.cd .prow input{font-size:16px;padding:7px 8px}
+.cd .bgpick{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0 4px}
+.cd .bgl{width:100%;font-size:12px;font-weight:700}
+.cd .sw{display:flex;flex-wrap:wrap;gap:6px}
+.cd .sw button{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);padding:0}
+.cd .sw button[aria-pressed="true"]{border-color:var(--fg);box-shadow:0 0 0 2px var(--panel) inset}
+.cd .free{flex-direction:row;align-items:center;gap:6px;margin:0;font-size:12px;font-weight:700}
+.cd .bnrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
+.cd .bnrow[hidden]{display:none}
+.cd .bna{flex-direction:row;align-items:center;gap:8px;margin:0;font-size:12px;font-weight:700}
+.cd .bna input{width:120px;padding:0;border:0;background:none;accent-color:var(--gold)}
+.cd .bnrow:has(#cBn:not(:checked)) .bna{opacity:.4;pointer-events:none}
+.cd .bnsw{flex-direction:row;align-items:center;gap:6px;margin:0;font-size:12px;font-weight:700;cursor:pointer}
+.cd .bnsw input{width:18px;height:18px;padding:0;margin:0;accent-color:var(--gold);cursor:pointer}
+.cd .free input{width:36px;height:30px;padding:0;border-radius:6px;cursor:pointer}
+.cd .acts{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.cd .acts .btn{width:100%;padding:9px 12px}
+
+/* プロフィール（初回だけ入力。この端末に保存） */
+.prof{border:1px solid var(--line);border-radius:10px;margin:0 0 18px;background:var(--bg)}
+.prof summary{list-style:none;cursor:pointer;padding:10px 12px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+.prof summary::-webkit-details-marker{display:none}
+.prof summary::after{content:'▾';margin-left:auto;color:var(--muted);transition:transform .15s}
+.prof[open] summary::after{transform:rotate(180deg)}
+.prof summary .st{font-size:11px;font-weight:400;color:var(--muted)}
+.prof .pb{padding:0 12px 4px}
+.prof .pb .hint{margin-bottom:12px}
+.cd .prof input{background:var(--panel);font-family:var(--f-body);font-size:16px}
+.cd .prof textarea{background:var(--panel);min-height:64px}
+.cd .prof input[type=date]{font-family:var(--f-num)}
+.imgrow{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:12px;font-weight:700}
+.imgrow .lb{flex:none;width:88px;white-space:nowrap}
+.imgrow .pv{flex:none;width:44px;height:44px;border-radius:50%;background:var(--line) center/cover no-repeat;border:1px solid var(--line)}
+.imgrow .pv.bn{width:66px;height:22px;border-radius:4px}
+.imgrow .pick{position:relative;overflow:hidden;padding:5px 10px;font-size:12px;white-space:nowrap;flex:none}
+.imgrow .pick input{position:absolute;inset:0;opacity:0;cursor:pointer;padding:0}
+.imgrow .rm{white-space:nowrap;border:0;background:none;color:var(--muted);font-size:12px;padding:4px;text-decoration:underline}
+.imgrow .rm[hidden]{display:none}
+
+@media (max-width:640px){
+  .page{margin:0;border:0;border-radius:0;min-height:100vh;min-height:100dvh}
+  .ttl{padding:14px 14px 0;font-size:18px}
+  .cd{grid-template-columns:minmax(0,1fr);padding:0 14px 14px;gap:14px}
+  /* スマホ：カードと背景の色はいつも上に見えるように固定し、入力欄だけがスクロールする */
+  .cd .cdl{position:sticky;top:0;z-index:2;background:var(--panel);margin:0 -14px;padding:12px 14px 8px}
+  .cd .cdl::after{content:'';position:absolute;left:0;right:0;top:100%;height:22px;background:linear-gradient(var(--panel),transparent);pointer-events:none;opacity:0;transition:opacity .15s}
+  body.scrolled .cd .cdl::after{opacity:1}
+  .cd canvas{width:auto;max-height:36vh;margin:0 auto}
+  .cd .bgpick{margin:10px 0 0;gap:6px}.cd .bgpick .bgl{width:auto;margin-right:2px}
+  .cd .sw button{width:24px;height:24px}}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1 class="ttl">1<em>×</em>10<em>×</em>30 報告カード</h1>
+  <div class="cd">
+    <div class="cdl">
+      <canvas id="cardCv" width="1080" height="1080" aria-label="報告カードのプレビュー"></canvas>
+      <div class="bgpick">
+        <span class="bgl">背景の色</span>
+        <div class="sw" id="cardSw"></div>
+        <label class="free" for="cBg">自由に選ぶ<input type="color" id="cBg" value="#0e1116"></label>
+        <span class="bnrow" id="cBnW" hidden><label class="bnsw"><input type="checkbox" id="cBn" checked>ヘッダー画像</label>
+          <label class="bna">なじませる<input type="range" id="cBnA" min="0" max="100" step="5" value="100" aria-label="ヘッダー画像を背景色になじませる強さ"></label></span>
+      </div>
+    </div>
+    <div>
+      <details class="prof" id="prof">
+        <summary>プロフィール<span class="st" id="profSt"></span></summary>
+        <div class="pb">
+          <p class="hint">最初に一度だけ入力してください。この端末のブラウザに保存され、次からは入力しなくても入ります。</p>
+          <div class="imgrow"><span class="lb">アイコン</span><span class="pv" id="avPv"></span>
+            <span class="btn pick">選ぶ<input type="file" id="avIn" accept="image/*" aria-label="アイコン画像を選ぶ"></span>
+            <button type="button" class="rm" id="avRm" hidden>外す</button></div>
+          <div class="imgrow"><span class="lb">ヘッダー画像</span><span class="pv bn" id="bnPv"></span>
+            <span class="btn pick">選ぶ<input type="file" id="bnIn" accept="image/*" aria-label="ヘッダー画像を選ぶ"></span>
+            <button type="button" class="rm" id="bnRm" hidden>外す</button></div>
+          <label for="uName">名前<input id="uName" autocomplete="off" maxlength="40" placeholder="表示名"></label>
+          <label for="uHandle">@ID<input id="uHandle" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="30" placeholder="@なしで入力"></label>
+          <label for="uTag">紹介文<textarea id="uTag" rows="2" maxlength="80" placeholder="名前の下に入るひとこと（2行まで）"></textarea></label>
+          <label for="uStart">参加開始日<input type="date" id="uStart" value="2026-10-01"></label>
+        </div>
+      </details>
+
+      <h3>今日の個人カード</h3>
+      <p class="hint">前日と現在のフォロワー数を入れると、増減を自動で計算してカードにします。前日の欄は、前回カードを作ったときの「現在」が自動で入ります。</p>
+      <label for="cDate">日付<input type="date" id="cDate"></label>
+      <div class="frow"><span>X</span><input id="pX" inputmode="numeric" autocomplete="off" placeholder="前日" aria-label="X 前日"><b>→</b><input id="cX" inputmode="numeric" autocomplete="off" placeholder="現在" aria-label="X 現在"></div>
+      <div class="frow"><span>Threads</span><input id="pTh" inputmode="numeric" autocomplete="off" placeholder="前日" aria-label="Threads 前日"><b>→</b><input id="cTh" inputmode="numeric" autocomplete="off" placeholder="現在" aria-label="Threads 現在"></div>
+      <div class="frow"><span>note</span><input id="pNote" inputmode="numeric" autocomplete="off" placeholder="前日" aria-label="note 前日"><b>→</b><input id="cNote" inputmode="numeric" autocomplete="off" placeholder="現在" aria-label="note 現在"></div>
+      <div class="prow"><span class="bgl">今日の投稿数</span>
+        <label for="nX">X<input id="nX" inputmode="numeric" autocomplete="off" placeholder="本"></label>
+        <label for="nTh">Threads<input id="nTh" inputmode="numeric" autocomplete="off" placeholder="本"></label>
+        <label for="nNote">note<input id="nNote" inputmode="numeric" autocomplete="off" placeholder="本"></label>
+      </div>
+      <label for="cMsg">ひとこと（今の状況・気持ち・気づきなど）<textarea id="cMsg" rows="3" maxlength="140" placeholder="何も書かないと「note企画｜１日１０回投稿３０日チャレンジ中」と入ります"></textarea><span class="cnt" id="cMsgN">0 / 140</span></label>
+      <div class="acts">
+        <button class="btn primary" type="button" id="cardShare" hidden>画像を共有</button>
+        <button class="btn primary" type="button" id="cardSave">画像を保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- 保存（この端末のブラウザだけ） ---------- */
+const LS={get(k,d){try{const v=localStorage.getItem('mcard:'+k);return v==null?d:v}catch{return d}},
+  set(k,v){try{localStorage.setItem('mcard:'+k,v);return true}catch{return false}}};
+const dkey=t=>{const d=new Date(t);return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate()};
+const todayKey=()=>dkey(Date.now());
+const isoDay=t=>`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3200)}
+
+/* プロフィール：index.html では取得データから入っていた部分 */
+const prof={name:'',handle:'',tag:'',start:'2026-10-01',av:'',bn:''};
+try{Object.assign(prof,JSON.parse(LS.get('profile','{}')))}catch{}
+function saveProf(){if(!LS.set('profile',JSON.stringify(prof)))toast('保存できませんでした。画像を小さめのものにしてみてください')}
+const uName=document.getElementById('uName'),uHandle=document.getElementById('uHandle'),uTag=document.getElementById('uTag'),uStart=document.getElementById('uStart');
+const cleanHandle=s=>s.trim().replace(/^@+/,'').replace(/\s/g,'');
+
+/* ---------- 個人カード：1×10×30 / One Ten Thirty Run（index.html と同じ描き方） ---------- */
+const BN_BLEND=100; // ヘッダー画像を背景色になじませる強さ（初期値）
+let cardImg=null,cardBn=null,cardRaf=0,cardBg='#0e1116';
+const BG_PRESETS=[['#0e1116','インク'],['#14213d','ネイビー'],['#123629','ディープグリーン'],['#4a1424','ボルドー'],['#2a1c48','パープル'],['#3a3f4a','スレート'],['#7a2e12','テラコッタ'],['#f3f4f6','ホワイト']];
+const hexRgb=h=>{h=h.replace('#','');return[0,2,4].map(i=>parseInt(h.slice(i,i+2),16))};
+const rgbHex=a=>'#'+a.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');
+const mixHex=(h,to,t)=>{const a=hexRgb(h),b=hexRgb(to);return rgbHex(a.map((v,i)=>v+(b[i]-v)*t))};
+const lum=h=>{const [r,g,b]=hexRgb(h).map(v=>{v/=255;return v<=.03928?v/12.92:((v+.055)/1.055)**2.4});return .2126*r+.7152*g+.0722*b};
+const contrast=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
+function readable(bg,color,fallback,min){return contrast(bg,color)>=min?color:fallback}
+function cardPalette(bg){
+  // 背景の明るさに合わせて文字色を決め、どの色でも読める濃さを保つ
+  const light=contrast(bg,'#151922')>=contrast(bg,'#ffffff');
+  const fg=light?'#151922':'#ffffff',to=light?'#000000':'#ffffff';
+  let muted=mixHex(bg,to,.5);for(let t=.5;contrast(bg,muted)<3.2&&t<.95;t+=.05)muted=mixHex(bg,to,t);
+  const gold=readable(bg,light?'#a86f00':'#f2b632',fg,3);
+  return{bg,fg,muted,gold,up:gold,down:readable(bg,light?'#c0392b':'#ff8a8a',fg,3),
+    panel:mixHex(bg,to,light?.06:.08),line:mixHex(bg,to,.16)};
+}
+function setBg(hex,save=true){
+  cardBg=hex;document.getElementById('cBg').value=hex;
+  document.querySelectorAll('#cardSw button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.bg===hex));
+  if(save)LS.set('bg',hex);
+  redrawCard();
+}
+document.getElementById('cardSw').innerHTML=BG_PRESETS.map(([h,n])=>`<button type="button" data-bg="${h}" style="background:${h}" aria-label="${n}" title="${n}" aria-pressed="false"></button>`).join('');
+document.getElementById('cardSw').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setBg(b.dataset.bg)});
+document.getElementById('cBg').addEventListener('input',e=>setBg(e.target.value));
+const cv=document.getElementById('cardCv');
+const cDate=document.getElementById('cDate'),cMsg=document.getElementById('cMsg'),cMsgN=document.getElementById('cMsgN');
+const cIn=['cX','cTh','cNote'].map(id=>document.getElementById(id)),pIn=['pX','pTh','pNote'].map(id=>document.getElementById(id)),nIn=['nX','nTh','nNote'].map(id=>document.getElementById(id));
+// カードの日付：入力欄の日付（初期値は今日）。空なら今日
+function cardDate(){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(cDate.value);return m?new Date(+m[1],m[2]-1,+m[3]):new Date()}
+function startDate(){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(prof.start||'');return m?new Date(+m[1],m[2]-1,+m[3]):new Date(2026,9,1)}
+function dayNo(){const t=cardDate(),a=new Date(t.getFullYear(),t.getMonth(),t.getDate()),b=startDate();return Math.round((a-b)/864e5)+1}
+const digits=i=>i.value.replace(/[^\d]/g,'');
+function cardVals(){return cIn.map(digits)}
+function prevVals(){return pIn.map(digits)}
+function postVals(){return nIn.map(digits)}
+function spaced(ctx,text,x,y,sp,align){
+  const w=[...text].reduce((s,c)=>s+ctx.measureText(c).width,0)+sp*([...text].length-1);
+  let cx=align==='right'?x-w:x;ctx.textAlign='left';
+  for(const c of text){ctx.fillText(c,cx,y);cx+=ctx.measureText(c).width+sp}
+  return w;
+}
+function fit(ctx,text,maxW,size,font){let s=size;do{ctx.font=font.replace('#',s);if(ctx.measureText(text).width<=maxW)break;s-=2}while(s>14);return s}
+function wrap(ctx,text,maxW,maxLines){
+  const lines=[];let cur='';
+  for(const c of text){if(ctx.measureText(cur+c).width>maxW&&cur){lines.push(cur);cur=c;if(lines.length===maxLines)break}else cur+=c}
+  if(lines.length<maxLines&&cur)lines.push(cur);
+  if(lines.length===maxLines&&lines.join('').length<text.length){let l=lines[maxLines-1];while(l&&ctx.measureText(l+'…').width>maxW)l=l.slice(0,-1);lines[maxLines-1]=l+'…'}
+  return lines;
+}
+function rrect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+const MSG_DEFAULT='note企画｜１日１０回投稿３０日チャレンジ中',MSG_FONT='500 36px "Zen Kaku Gothic New","Noto Sans JP",sans-serif',MSG_LH=56;
+function msgText(){return cMsg.value.trim()||MSG_DEFAULT}
+// ひとことを行に分ける（改行はそのまま、長い行は折り返す）
+function msgLines(ctx,maxW){
+  ctx.font=MSG_FONT;const out=[];
+  for(const para of msgText().split(/\r?\n/)){
+    let cur='';for(const c of para){if(cur&&ctx.measureText(cur+c).width>maxW){out.push(cur);cur=c}else cur+=c}
+    out.push(cur);
+  }
+  while(out.length>1&&!out[out.length-1].trim())out.pop();
+  return out;
+}
+function drawCard(){
+  const u={name:prof.name.trim()||'あなたの名前',handle:prof.handle||'your_id',color:'#5b6475'};
+  let ctx=cv.getContext('2d');const W=1080,F=28,P=84,C=cardPalette(cardBg);
+  const EN='"Archivo",sans-serif',LOGO='"Archivo Black","Archivo",sans-serif',JP='"Zen Kaku Gothic New","Noto Sans JP",sans-serif',MIX='"Archivo","Zen Kaku Gothic New","Noto Sans JP",sans-serif';
+  // ひとことの行数に合わせてカードを縦に伸ばす
+  const lines=msgLines(ctx,W-P*2),msgTop=996+44,H=msgTop+36+(lines.length-1)*MSG_LH+P;
+  if(cv.height!==H){cv.height=H;ctx=cv.getContext('2d')}
+  // 白い枠
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=C.bg;rrect(ctx,F,F,W-F*2,H-F*2,34);ctx.fill();
+  ctx.textBaseline='alphabetic';ctx.textAlign='left';
+  // Day・日付（右上）
+  const n=dayNo(),t=cardDate(),R=W-P;
+  ctx.fillStyle=C.gold;ctx.font=`800 28px ${EN}`;spaced(ctx,'DAY',R,112,8,'right');
+  ctx.font=`700 40px ${EN}`;const tw=ctx.measureText(' / 30').width;
+  ctx.fillStyle=C.muted;ctx.textAlign='right';ctx.fillText(' / 30',R,208);
+  ctx.fillStyle=C.fg;ctx.font=`118px ${LOGO}`;ctx.fillText(String(n),R-tw,208);
+  const dayW=Math.max(ctx.measureText(String(n)).width+tw,180);
+  ctx.fillStyle=C.muted;ctx.font=`700 28px ${EN}`;
+  spaced(ctx,`${t.getFullYear()}.${String(t.getMonth()+1).padStart(2,'0')}.${String(t.getDate()).padStart(2,'0')}`,R,262,3,'right');
+  // ロゴ（左上）
+  const parts=[['1',C.fg],['×',C.gold],['10',C.fg],['×',C.gold],['30',C.fg]],logoMax=R-dayW-48-P;
+  let ls=150;do{ctx.font=`${ls}px ${LOGO}`;if(parts.reduce((w,[s])=>w+ctx.measureText(s).width+6,0)<=logoMax)break;ls-=4}while(ls>60);
+  let x=P;ctx.textAlign='left';
+  for(const [s,col] of parts){ctx.fillStyle=col;ctx.fillText(s,x,208);x+=ctx.measureText(s).width+6}
+  ctx.fillStyle=C.muted;ctx.font=`800 28px ${EN}`;const subW=spaced(ctx,'ONE TEN THIRTY RUN',P+4,262,8.5);
+  ctx.font='30px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';ctx.textAlign='left';ctx.fillText('🏆',P+4+subW+14,264);
+  // ヘッダー画像：ロゴの下からフォロワー数の手前までに、色を重ねずそのまま敷く（比率はそのまま、はみ出た分を切る）
+  const bnOn=!!(cardBn&&cardBn.complete&&cardBn.naturalWidth&&document.getElementById('cBn').checked);
+  if(bnOn){const x0=F,y0=306,w0=W-F*2,h0=294,iw=cardBn.naturalWidth,ih=cardBn.naturalHeight,sc=Math.max(w0/iw,h0/ih);
+    ctx.save();ctx.beginPath();ctx.rect(x0,y0,w0,h0);ctx.clip();
+    ctx.drawImage(cardBn,x0+(w0-iw*sc)/2,y0+(h0-ih*sc)/2,iw*sc,ih*sc);
+    // 背景色になじませる（スライダーの値。右側＝文字のある側ほど強く）
+    const v=(+document.getElementById('cBnA').value||0)/100;
+    if(v>0){const [r,g,b]=hexRgb(C.bg),gr=ctx.createLinearGradient(x0,0,x0+w0,0);
+      gr.addColorStop(0,`rgba(${r},${g},${b},${v*.25})`);gr.addColorStop(.3,`rgba(${r},${g},${b},${v*.6})`);gr.addColorStop(.45,`rgba(${r},${g},${b},${v*.9})`);gr.addColorStop(1,`rgba(${r},${g},${b},${v})`);
+      ctx.fillStyle=gr;ctx.fillRect(x0,y0,w0,h0)}
+    ctx.restore()}
+  ctx.fillStyle=C.line;ctx.fillRect(P,306,W-P*2,3);
+  // アイコン
+  const ax=P,ay=350,ar=224;
+  ctx.save();ctx.beginPath();ctx.arc(ax+ar/2,ay+ar/2,ar/2,0,Math.PI*2);ctx.closePath();ctx.clip();
+  if(cardImg&&cardImg.complete&&cardImg.naturalWidth){
+    // 正方形でない画像も、比率を変えずに真ん中で切り取る
+    const iw=cardImg.naturalWidth,ih=cardImg.naturalHeight,sc=Math.max(ar/iw,ar/ih);
+    ctx.drawImage(cardImg,ax+(ar-iw*sc)/2,ay+(ar-ih*sc)/2,iw*sc,ih*sc)}
+  else{ctx.fillStyle=u.color;ctx.fillRect(ax,ay,ar,ar);ctx.fillStyle='#fff';ctx.font=`900 96px ${JP}`;ctx.textAlign='center';ctx.fillText([...u.name][0]||'?',ax+ar/2,ay+ar/2+34)}
+  ctx.restore();
+  ctx.strokeStyle=C.gold;ctx.lineWidth=6;ctx.beginPath();ctx.arc(ax+ar/2,ay+ar/2,ar/2+7,0,Math.PI*2);ctx.stroke();
+  // 名前・ハンドル・キャッチコピー
+  const tx=ax+ar+48,tmax=W-P-tx;ctx.textAlign='left';
+  const tag=prof.tag.trim();
+  ctx.font=`500 30px ${JP}`;const tagL=tag?wrap(ctx,tag.replace(/\s*\n\s*/g,' '),tmax,2):[];
+  const nmPx=fit(ctx,u.name,tmax,60,`900 #px ${MIX}`);
+  ctx.fillStyle=C.fg;ctx.font=`900 ${nmPx}px ${MIX}`;ctx.fillText(u.name,tx,ay+78);
+  ctx.fillStyle=C.muted;fit(ctx,'@'+u.handle,tmax,28,`500 #px ${EN}`);ctx.fillText('@'+u.handle,tx,ay+124);
+  if(tagL.length){ctx.fillStyle=C.fg;ctx.font=`500 30px ${JP}`;tagL.forEach((l,i)=>ctx.fillText(l,tx,ay+178+i*44))}
+  // フォロワー数
+  const vals=cardVals(),prev=prevVals(),labels=['X','Threads','note'],gap=24,bw=(W-P*2-gap*2)/3,by=624,bh=W-P-624;
+  const fmt=v=>Number(v).toLocaleString('en-US');
+  const shown=vals.map(v=>v?fmt(v):'—');
+  const numSize=Math.min(...shown.map(v=>fit(ctx,v,bw-64,92,`800 #px ${EN}`)));
+  labels.forEach((lb,i)=>{
+    const bx=P+i*(bw+gap);
+    ctx.fillStyle=C.panel;rrect(ctx,bx,by,bw,bh,26);ctx.fill();
+    const pc=postVals()[i];
+    if(pc){ctx.font=`800 20px ${EN}`;ctx.fillStyle=C.muted;const sw=spaced(ctx,Number(pc)===1?'POST':'POSTS',bx+bw-32,by+56,3,'right');
+      ctx.textAlign='right';ctx.fillStyle=C.gold;ctx.font=`800 34px ${EN}`;ctx.fillText(pc,bx+bw-32-sw-10,by+57);ctx.textAlign='left'}
+    ctx.fillStyle=C.fg;ctx.font=`800 34px ${EN}`;ctx.textAlign='left';ctx.fillText(lb,bx+32,by+100);
+    // 前日 →
+    if(prev[i]){ctx.fillStyle=C.muted;fit(ctx,fmt(prev[i])+' →',bw-64,32,`700 #px ${EN}`);ctx.fillText(fmt(prev[i])+' →',bx+32,by+164)}
+    // 現在
+    ctx.fillStyle=vals[i]?C.fg:C.muted;ctx.font=`800 ${numSize}px ${EN}`;ctx.fillText(shown[i],bx+32,by+250);
+    // （増減）
+    if(prev[i]&&vals[i]){const d=Number(vals[i])-Number(prev[i]);
+      ctx.fillStyle=d>0?C.up:d<0?C.down:C.muted;ctx.font=`800 32px ${EN}`;
+      ctx.fillText(`(${d>0?'+':d<0?'−':'±'}${fmt(Math.abs(d))})`,bx+32,by+300)}
+    ctx.fillStyle=C.muted;ctx.font=`700 22px ${EN}`;spaced(ctx,'FOLLOWERS',bx+32,by+bh-30,5);
+  });
+  // ひとこと
+  ctx.fillStyle=C.fg;ctx.font=MSG_FONT;ctx.textAlign='left';
+  lines.forEach((l,i)=>ctx.fillText(l,P,msgTop+36+i*MSG_LH));
+}
+function redrawCard(){cancelAnimationFrame(cardRaf);cardRaf=requestAnimationFrame(drawCard)}
+
+/* ---------- 文字を描く前に、使う文字の分だけフォントを読み込む ---------- */
+const FONTS=['150px "Archivo Black"','800 40px "Archivo"','500 28px "Archivo"','700 22px "Archivo"','900 60px "Archivo"',
+  '900 60px "Zen Kaku Gothic New"','500 30px "Zen Kaku Gothic New"','500 36px "Zen Kaku Gothic New"'];
+function loadFonts(){
+  const txt=(prof.name||'あなたの名前')+prof.tag+MSG_DEFAULT+cMsg.value+'1×10×30 ONE TEN THIRTY RUN DAY FOLLOWERS POSTS Threads note 0123456789,./—@_()+−±→'+(prof.handle||'your_id');
+  return Promise.all(FONTS.map(f=>document.fonts.load(f,txt))).catch(()=>{});
+}
+
+/* ---------- 画像：選んだ画像を小さくしてこの端末に保存する（比率は変えない） ---------- */
+function shrink(file,maxW,maxH){
+  return new Promise((res,rej)=>{
+    const img=new Image(),url=URL.createObjectURL(file);
+    img.onload=()=>{URL.revokeObjectURL(url);
+      const sc=Math.min(1,maxW/img.naturalWidth,maxH/img.naturalHeight),w=Math.round(img.naturalWidth*sc),h=Math.round(img.naturalHeight*sc);
+      const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+      res(c.toDataURL('image/jpeg',.88))};
+    img.onerror=()=>{URL.revokeObjectURL(url);rej()};
+    img.src=url;
+  });
+}
+function loadImg(src){if(!src)return null;const i=new Image();i.onload=redrawCard;i.onerror=redrawCard;i.src=src;return i}
+function showImgs(){
+  const av=document.getElementById('avPv'),bn=document.getElementById('bnPv');
+  av.style.backgroundImage=prof.av?`url(${prof.av})`:'';bn.style.backgroundImage=prof.bn?`url(${prof.bn})`:'';
+  document.getElementById('avRm').hidden=!prof.av;document.getElementById('bnRm').hidden=!prof.bn;
+  // ヘッダー画像のオンオフ・なじませるは、ヘッダー画像があるときだけ出す
+  document.getElementById('cBnW').hidden=!prof.bn;
+  cardImg=loadImg(prof.av);cardBn=loadImg(prof.bn);
+  redrawCard();
+}
+async function pickImg(input,key,maxW,maxH){
+  const f=input.files&&input.files[0];input.value='';if(!f)return;
+  try{prof[key]=await shrink(f,maxW,maxH);saveProf();showImgs();profState()}
+  catch{toast('この画像は読み込めませんでした')}
+}
+document.getElementById('avIn').addEventListener('change',e=>pickImg(e.target,'av',480,480));
+document.getElementById('bnIn').addEventListener('change',e=>pickImg(e.target,'bn',1500,1500));
+document.getElementById('avRm').onclick=()=>{prof.av='';saveProf();showImgs();profState()};
+document.getElementById('bnRm').onclick=()=>{prof.bn='';saveProf();showImgs();profState()};
+
+/* ---------- プロフィールの入力 ---------- */
+function profState(){
+  const ok=prof.name.trim()&&prof.handle;
+  document.getElementById('profSt').textContent=ok?'@'+prof.handle:'（最初に入力してください）';
+  return ok;
+}
+uName.value=prof.name;uHandle.value=prof.handle;uTag.value=prof.tag;uStart.value=prof.start||'2026-10-01';
+[uName,uHandle,uTag].forEach(i=>i.addEventListener('input',()=>{
+  prof.name=uName.value;prof.handle=cleanHandle(uHandle.value);prof.tag=uTag.value;saveProf();profState();
+  loadFonts().then(redrawCard);redrawCard();
+}));
+uHandle.addEventListener('change',()=>{uHandle.value=prof.handle});
+uStart.addEventListener('input',()=>{prof.start=uStart.value;saveProf();redrawCard()});
+uStart.addEventListener('change',()=>{prof.start=uStart.value;saveProf();redrawCard()});
+// 初回（名前か@IDが空）はプロフィールを開いておく
+if(!profState())document.getElementById('prof').open=true;
+
+/* ---------- 今日の入力：同じ日なら復元。日が変わっていたら、前回の「現在」を「前日」に入れる ---------- */
+{let saved={};try{saved=JSON.parse(LS.get('day','{}'))}catch{}
+  const tk=todayKey();
+  if(saved.d===tk){pIn.forEach((e,i)=>e.value=saved.p?.[i]||'');cIn.forEach((e,i)=>e.value=saved.c?.[i]||'');nIn.forEach((e,i)=>e.value=saved.n?.[i]||'');cMsg.value=saved.t||''}
+  else{pIn.forEach((e,i)=>e.value=(saved.d&&saved.d<tk?(saved.c?.[i]||saved.p?.[i]):'')||'')}
+  cMsgN.textContent=`${cMsg.value.length} / 140`;
+  cDate.value=isoDay(new Date());
+}
+[...cIn,...pIn,...nIn,cMsg].forEach(i=>i.addEventListener('input',()=>{
+  LS.set('day',JSON.stringify({d:todayKey(),p:prevVals(),c:cardVals(),n:postVals(),t:cMsg.value}));
+  redrawCard();
+}));
+cDate.addEventListener('input',redrawCard);cDate.addEventListener('change',redrawCard);
+// 入力した文字のフォントが届いてから描き直す（日本語フォントは使う文字の分だけ読み込まれるため）
+cMsg.addEventListener('input',()=>{cMsgN.textContent=`${cMsg.value.length} / 140`;
+  document.fonts.load('500 36px "Zen Kaku Gothic New"',cMsg.value||MSG_DEFAULT).then(redrawCard,()=>{})});
+
+/* ---------- 背景色・ヘッダー画像の設定 ---------- */
+setBg(LS.get('bg','#0e1116'),false);
+document.getElementById('cBn').checked=LS.get('bn','1')!=='0';
+document.getElementById('cBnA').value=LS.get('bna',String(BN_BLEND));
+document.getElementById('cBnA').addEventListener('input',e=>{LS.set('bna',e.target.value);redrawCard()});
+document.getElementById('cBn').addEventListener('change',e=>{LS.set('bn',e.target.checked?'1':'0');redrawCard()});
+
+/* ---------- 保存・共有 ---------- */
+function cardFile(cb){
+  try{cv.toBlob(b=>{if(!b){toast('画像を作れませんでした');return}
+    cb(new File([b],`1x10x30_${prof.handle||'card'}_day${dayNo()}.png`,{type:'image/png'}))},'image/png')}
+  catch{toast('画像を作れませんでした')}
+}
+document.getElementById('cardSave').onclick=()=>cardFile(f=>{
+  const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);toast('画像を保存しました');
+});
+document.getElementById('cardShare').onclick=()=>cardFile(async f=>{try{await navigator.share({files:[f]})}catch{}});
+{const probe=new File([new Blob(['x'],{type:'image/png'})],'x.png',{type:'image/png'});
+  document.getElementById('cardShare').hidden=!(navigator.canShare&&navigator.canShare({files:[probe]}))}
+
+// スマホ：スクロールしたらカードの下に影を出す
+addEventListener('scroll',()=>document.body.classList.toggle('scrolled',scrollY>2),{passive:true});
+
+showImgs();drawCard();loadFonts().then(redrawCard);
+</script>
+</body>
+</html>
