@@ -37,9 +37,10 @@ export async function start(root, X){
   // ---------- 描画の準備 ----------
   const R=new THREE.WebGLRenderer({canvas:cv,antialias:!MOB,powerPreference:'high-performance'});
   R.setPixelRatio(Math.min(devicePixelRatio||1,MOB?1.5:2));R.outputColorSpace=THREE.SRGBColorSpace;
-  // 昼と夜：日本時間の6時〜18時は昼（?day=1 / ?day=0 で確認用に固定できる）
+  // 昼と夜：日本時間の6時〜18時は昼（?day=1 / ?day=0 で確認用に固定できる）。実況の終了後はずっと夜
+  const FIN=!!(X.ended&&X.ended());
   const qd=/[?&]day=([01])/.exec(location.search);
-  const DAY=qd?qd[1]==='1':(()=>{const h=(new Date().getUTCHours()+9)%24;return h>=6&&h<18})();
+  const DAY=FIN?false:qd?qd[1]==='1':(()=>{const h=(new Date().getUTCHours()+9)%24;return h>=6&&h<18})();
   const BG=DAY?0xcfdbe6:0x07080d;
   const scene=new THREE.Scene();scene.background=new THREE.Color(BG);scene.fog=new THREE.Fog(BG,DAY?60:34,DAY?160:100);
   const cam=new THREE.PerspectiveCamera(55,1,.1,600);
@@ -346,7 +347,7 @@ export async function start(root, X){
 
   // ---------- オーロラビジョン ----------
   const head=new Image();head.src=BASE+'header.jpg';
-  let avT=0,avAcc=0;const SC=['head','x30','ttl'];
+  let avT=0,avAcc=0;const SC=FIN?['head','icons']:['head','x30','ttl']; // 終了後は、あたうるさんの画像と全員のアイコンを交互に
   const dec=t=>String(t).replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&');
   const tick=()=>{const it=X.tickerData();return it.length?it.map(x=>`【${x.tag}】${x.txt.replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&')}`).join('　／　'):'1日10投稿30日チャレンジ実況中'};
   let tickText=tick(),tickX=0;
@@ -373,6 +374,11 @@ export async function start(root, X){
     const i=Math.floor(avT/5)%SC.length,k=SC[i],p=(avT%5)/5;
     cx.fillStyle='#05060a';cx.fillRect(0,0,W,H);
     if(k==='head'){if(head.complete&&head.naturalWidth){const s=Math.max(W/head.naturalWidth,mh/head.naturalHeight),w=head.naturalWidth*s,h=head.naturalHeight*s;cx.drawImage(head,(W-w)/2,(mh-h)/2,w,h)}}
+    else if(k==='icons'){const us=X.users(),n=us.length;if(n){const aw=W-48,ah=mh-44;let best=0,bc=1;
+        for(let c=1;c<=n;c++){const r=Math.ceil(n/c),s=Math.min(aw/c,ah/r);if(s>best){best=s;bc=c}}
+        const rows=Math.ceil(n/bc),r=best*.42,x0=(W-best*bc)/2,y0=(mh-best*rows)/2;
+        us.forEach((u,j)=>{const row=Math.floor(j/bc),inRow=row===rows-1?n-row*bc:bc,xo=(W-best*inRow)/2;
+          circ(cx,img(u),u,xo+(j%bc+.5)*best,y0+(row+.5)*best,r)})}}
     else if(k==='x30'){const parts=['1','×','10','×','30'];cx.font='160px "Archivo Black","Archivo",sans-serif';cx.textBaseline='middle';cx.textAlign='left';
       const ws=parts.map(s=>cx.measureText(s).width+10),tw=ws.reduce((a,b)=>a+b,0);let x=(W-tw)/2;
       parts.forEach((s,j)=>{const hue=(avT*90+j*55)%360,b=Math.sin(avT*6+j)*10;cx.fillStyle=`hsl(${hue},95%,62%)`;cx.shadowColor=`hsl(${hue},95%,55%)`;cx.shadowBlur=28;cx.fillText(s,x,mh/2+b);x+=ws[j]});cx.shadowBlur=0}
