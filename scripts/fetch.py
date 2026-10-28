@@ -118,8 +118,9 @@ def refresh_users(data, handles):
     known = {u["handle"].lower(): u for u in data["users"] + data.get("sub_users", [])}
     today = today_jst()
     daily = st.get("users_refreshed_on") != today or os.environ.get("FORCE_PROFILE_REFRESH") == "true"
-    # 締め切り日を過ぎたら、フォロワー数などは取り直さない（最終日の記録で止める）
-    if today > CHALLENGE_END[:10]:
+    # 締め切りの翌日（11/1）の0時台にもう1回だけ記録し（最終日に増えた分まで入れるため）、それより後は取り直さない
+    last_rec = (datetime.fromisoformat(CHALLENGE_END).date() + timedelta(days=1)).isoformat()
+    if today > last_rec:
         daily = False
     targets = handles if daily else [h for h in handles if h.lower() not in known]
     if targets:
