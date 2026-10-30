@@ -27,8 +27,17 @@ export async function start(root, X){
     <div class="vstick" hidden><i></i></div>
     <div class="vbtns"><button type="button" class="vdance" hidden>踊る</button><button type="button" class="vexit" hidden>会場を出る</button></div>
     <div class="vgoin" hidden><button type="button" class="vopen"></button></div>
+    <div class="vscr" hidden><button type="button" class="vscrb"></button></div>
+    <div class="vplay" hidden><div class="vpbox"><button type="button" class="vpx" aria-label="上映を閉じる">×</button><div class="vpf"></div></div></div>
     <div class="vslide" hidden><button type="button" data-sl="-1" aria-label="前のカード">◀︎</button><span class="vsn"></span><button type="button" data-sl="1" aria-label="次のカード">▶︎</button></div>`;
   const cv=root.querySelector('.vcv'),ld=root.querySelector('.vload'),hint=root.querySelector('.vhint');
+  const bScr=root.querySelector('.vscrb'),vplay=root.querySelector('.vplay');
+  // 野外スクリーンの上映：ステージの前でボタンを押すと、YouTube の再生画面を重ねて開く（押すまで読み込まない）
+  const closeShow=()=>{vplay.hidden=true;vplay.querySelector('.vpf').innerHTML='';X.bgm&&X.bgm.resume()};
+  on(vplay,'click',e=>{if(e.target===vplay||e.target.closest('.vpx'))closeShow()});
+  on(bScr,'click',()=>{const s=X.screening&&X.screening();if(!s)return;X.bgm&&X.bgm.pause();
+    vplay.querySelector('.vpf').innerHTML=`<iframe src="https://www.youtube-nocookie.com/embed/${s.id}?autoplay=1&playsinline=1&rel=0" title="${s.title.replace(/[<>&"]/g,'')}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;vplay.hidden=false});
+  cleanups.push(()=>{vplay.querySelector('.vpf').innerHTML=''});
   const bOpen=root.querySelector('.vopen'),bDance=root.querySelector('.vdance'),bExit=root.querySelector('.vexit'),slide=root.querySelector('.vslide'),stickEl=root.querySelector('.vstick');
   root.querySelector('.vback').onclick=()=>X.close();
   {const sb=root.querySelector('.vsnd'),paint=()=>{const o=X.music.on();sb.textContent=o?'♪':'♪';sb.classList.toggle('off',!o);sb.setAttribute('aria-pressed',o)};paint();sb.onclick=()=>{X.music.toggle();paint()}}bExit.onclick=()=>X.close();
@@ -385,15 +394,18 @@ export async function start(root, X){
   let tickText=tick(),tickX=0;
   // 両脇のビジョン：速報を4件ずつ、数秒ごとに入れ替え
   let sideT=0;
-  // 締め切りまでの数日は、20秒ごとに5秒間「FINAL WEEK」（最終日は「LAST DAY」）を大きく出す
-  const finalLabel=()=>{if(FIN||(X.ended&&X.ended()))return null;const ds=X.days(),tk=X.todayKey(),last=ds[ds.length-1];
-    return tk===last?['LAST','DAY']:tk>=ds[Math.max(0,ds.length-7)]?['FINAL','WEEK']:null};
+  // 20秒ごとに5秒間、大きな文字を出す：最終週は「FINAL WEEK」、10/30は「HAPPY FRIDAY NIGHT!!!」、10/31は「LAST DAY OF OCTOBER !!!」、終了後は「congratulations！！！」
+  const finalLabel=()=>{if(FIN||(X.ended&&X.ended()))return ['congratulations','！！！','#ffd23d'];const ds=X.days(),tk=X.todayKey(),last=ds[ds.length-1];
+    return tk===last?['LAST DAY OF','OCTOBER !!!','#ff4d3a']:tk===last-1?['HAPPY FRIDAY','NIGHT!!!','#ff3d7f']:tk>=ds[Math.max(0,ds.length-7)]?['FINAL','WEEK','#ffb21a']:null};
   function drawSides(dt){sideT+=dt;const it=X.tickerData(),fl=sideT%20>=15?finalLabel():null;
     if(fl){for(const S of SIDE){const cx=S.cx,W=512,H=445;cx.fillStyle='#0b0a08';cx.fillRect(0,0,W,H);
-        const on=Math.floor(sideT*3)%2===0,col=fl[0]==='LAST'?'#ff4d3a':'#ffb21a';
-        cx.textAlign='center';cx.textBaseline='middle';cx.font='130px "Archivo Black","Archivo",sans-serif';
-        cx.fillStyle=on?col:'#5a3a10';cx.shadowColor=col;cx.shadowBlur=on?26:0;
-        cx.fillText(fl[0],W/2,H/2-72);cx.fillText(fl[1],W/2,H/2+72);cx.shadowBlur=0;
+        const on=Math.floor(sideT*3)%2===0,col=fl[2];
+        cx.textAlign='center';cx.textBaseline='middle';
+        // 文字数に合わせて、横幅に収まる大きさにそろえる
+        let fs=130;cx.font=`${fs}px "Archivo Black","Archivo",sans-serif`;const mw=Math.max(cx.measureText(fl[0]).width,cx.measureText(fl[1]).width);
+        if(mw>W-40){fs=Math.floor(fs*(W-40)/mw);cx.font=`${fs}px "Archivo Black","Archivo",sans-serif`}
+        cx.fillStyle=on?col:'#3a2a20';cx.shadowColor=col;cx.shadowBlur=on?26:0;
+        cx.fillText(fl[0],W/2,H/2-fs*.55);cx.fillText(fl[1],W/2,H/2+fs*.55);cx.shadowBlur=0;
         cx.fillStyle='rgba(0,0,0,.35)';for(let y=0;y<H;y+=4)cx.fillRect(0,y,W,1);S.t.needsUpdate=true}
       return}
     for(const S of SIDE){const cx=S.cx,W=512,H=445;cx.fillStyle='#0b0a08';cx.fillRect(0,0,W,H);
@@ -413,9 +425,14 @@ export async function start(root, X){
       cx.fillStyle='rgba(0,0,0,.35)';for(let y=0;y<H;y+=4)cx.fillRect(0,y,W,1);
       S.t.needsUpdate=true}}
   function drawAurora(dt){const W=1024,H=465,cx=avx,TB=74,mh=H-TB;avT+=dt;
-    const i=Math.floor(avT/5)%SC.length,k=SC[i],p=(avT%5)/5;
+    const scr=X.screening&&X.screening(),SCN=scr?[...SC,'show']:SC;
+    const i=Math.floor(avT/5)%SCN.length,k=SCN[i],p=(avT%5)/5;
     cx.fillStyle='#05060a';cx.fillRect(0,0,W,H);
-    if(k==='head'){if(head.complete&&head.naturalWidth){const s=Math.max(W/head.naturalWidth,mh/head.naturalHeight),w=head.naturalWidth*s,h=head.naturalHeight*s;cx.drawImage(head,(W-w)/2,(mh-h)/2,w,h)}}
+    if(k==='show'&&scr){cx.textAlign='center';cx.textBaseline='middle';const on=Math.floor(avT*2)%2===0;
+      cx.font=`800 64px ${JP}`;cx.fillStyle=on?'#ff3d7f':'#ffd23d';cx.shadowColor=cx.fillStyle;cx.shadowBlur=26;cx.fillText('▶ 上映中',W/2,mh/2-62);
+      cx.font=`900 58px ${JP}`;cx.fillStyle='#fff';cx.shadowBlur=14;cx.fillText(scr.title,W/2,mh/2+30);
+      cx.font=`700 30px ${JP}`;cx.fillStyle='#c9d2ff';cx.shadowBlur=0;cx.fillText('ステージの前のボタンで観られます',W/2,mh/2+110)}
+    else if(k==='head'){if(head.complete&&head.naturalWidth){const s=Math.max(W/head.naturalWidth,mh/head.naturalHeight),w=head.naturalWidth*s,h=head.naturalHeight*s;cx.drawImage(head,(W-w)/2,(mh-h)/2,w,h)}}
     else if(k==='icons'){const us=X.users(),n=us.length;if(n){const aw=W-48,ah=mh-44;let best=0,bc=1;
         for(let c=1;c<=n;c++){const r=Math.ceil(n/c),s=Math.min(aw/c,ah/r);if(s>best){best=s;bc=c}}
         const rows=Math.ceil(n/bc),r=best*.42,x0=(W-best*bc)/2,y0=(mh-best*rows)/2;
@@ -487,6 +504,8 @@ export async function start(root, X){
     // 劇場の前：その劇場の画面を開くボタン（覗き窓から実況サイトの画面へ）
     {let near=null,nd=7;for(const T of TH){const d=me.position.distanceTo(T.front);if(d<nd){nd=d;near=T}}
       bOpen.parentNode.hidden=!near;if(near&&bOpen.dataset.k!==near.key){bOpen.dataset.k=near.key;bOpen.textContent=(near.key==='profile'?'このカードの人のページを開く':near.title+'を開く')+' ▶︎'}}
+    {const s=X.screening&&X.screening(),nearStage=Math.abs(me.position.x)<16&&me.position.z>SZ&&me.position.z<SZ+22;
+      bScr.parentNode.hidden=!(s&&nearStage&&vplay.hidden);if(s&&bScr.dataset.t!==s.title){bScr.dataset.t=s.title;bScr.textContent='▶ '+s.title+'を観る'}}
     if(!slide.hidden)slide.querySelector('.vsn').textContent=`${profI+1} / ${X.users().length}`;
     bExit.hidden=me.position.distanceTo(tmpV.set(SUB.x,0,SUB.z))>5.5;
     if(!DAY)moveSpots(clock.elapsedTime);

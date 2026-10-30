@@ -279,6 +279,14 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #ppl .pl .lhead .topbar .vgo{padding:5px 10px;font-size:11px}
 #vret{position:fixed;right:12px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:70;border:0;border-radius:999px;padding:9px 18px;font-size:13px;font-weight:800;color:#fff;cursor:pointer;
   background:linear-gradient(90deg,#ff3d7f,#8a5bff,#3dd6ff);box-shadow:0 4px 18px rgba(0,0,0,.35)}
+#venue .vscr{position:absolute;left:50%;bottom:calc(140px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:3}
+#venue .vscrb{border:0;border-radius:999px;padding:12px 22px;font-size:15px;font-weight:800;cursor:pointer;color:#fff;background:linear-gradient(90deg,#ff3d7f,#8a5bff);box-shadow:0 0 20px rgba(255,61,127,.6);white-space:nowrap}
+#venue .vplay{position:absolute;inset:0;z-index:20;background:rgba(5,6,12,.82);display:flex;align-items:center;justify-content:center;padding:calc(12px + env(safe-area-inset-top,0px)) 12px calc(12px + env(safe-area-inset-bottom,0px))}
+#venue .vplay[hidden]{display:none}
+#venue .vpbox{position:relative;width:min(100%,calc((100vh - 120px)*16/9),1100px)}
+#venue .vpf{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden;box-shadow:0 0 40px rgba(255,61,127,.35)}
+#venue .vpf iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+#venue .vpx{position:absolute;right:0;top:-46px;width:38px;height:38px;border-radius:50%;border:0;background:#fff;color:#161a24;font-size:22px;font-weight:900;cursor:pointer}
 #venue .vgoin{position:absolute;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%)}
 #venue .vopen{border:0;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;color:#161a24;background:#ffd23d;box-shadow:0 0 18px rgba(255,210,61,.55);white-space:nowrap}
 #venue[hidden]{display:none}
@@ -867,6 +875,15 @@ const GOAL=10;
 // 集計の締め切り（日本時間 10/31 23:59）。これを過ぎたら、画面の「今日」はこの時刻で止まり、表示は「全日程終了」になる
 const CHALLENGE_END=Date.parse('2026-10-31T23:59:59+09:00');
 const ended=()=>Date.now()>CHALLENGE_END;
+// 実況会場の野外スクリーンで上映する動画（YouTube）。from〜until（日本時間）のあいだ上映する。until が空なら、そのあとも上映を続ける
+// youtube には動画のURL（https://youtu.be/… や https://www.youtube.com/watch?v=…）を入れる。空のあいだは上映しない
+const SCREENINGS=[
+  {from:'2026-10-30 00:00',until:'2026-10-31 02:00',title:'華金お疲れ様ナイト',youtube:'https://youtu.be/cGBgh9Ae0oo'},
+  {from:'2026-10-31 18:00',until:'',title:'1ヶ月完走お疲れ様ナイト',youtube:''},
+];
+const ytId=u=>{const m=/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/.exec(u||'');return m?m[1]:null};
+function screening(){const t=Date.now(),jst=x=>Date.parse(x.replace(' ','T')+':00+09:00');
+  const cur=SCREENINGS.find(s=>jst(s.from)<=t&&(!s.until||t<jst(s.until)));return cur&&ytId(cur.youtube)?{title:cur.title,id:ytId(cur.youtube)}:null}
 const clock=()=>Math.min(Date.now(),CHALLENGE_END);
 const COLORS=['#2b8a5e','#c2410c','#7c3aed','#0e7490','#b45309','#be185d','#4d7c0f','#475569'];
 const DOW=['日','月','火','水','木','金','土'];
@@ -1016,9 +1033,9 @@ function renderNav(){
 function onair(compact){
   // 締め切り後：時計と残り時間をやめ、「全日程終了」を出す
   if(ended()){const e=new Date(CHALLENGE_END),dl=`${e.getMonth()+1}/${e.getDate()} ${hm(e)}`;
-    if(compact)return `<span class="onair cmp"><span class="dno">FINISH</span><span class="mut">全日程終了</span></span>`;
+    if(compact)return `<span class="onair cmp"><span class="dno">FINISH</span><span class="mut">congratulations！！！</span></span>`;
     const upd=state.updated?`<span class="mut">最終更新 ${new Date(state.updated).getMonth()+1}/${new Date(state.updated).getDate()} ${hm(state.updated)}</span>`:'';
-    return `<span class="onair"><span class="dot fin">FINISH</span><span class="num">全日程終了</span><span class="mut">${dl} 締め切り</span>${upd}</span>`}
+    return `<span class="onair"><span class="dot fin">FINISH</span><span class="num">congratulations！！！</span><span class="mut">${dl} 締め切り</span>${upd}</span>`}
   const n=new Date(),left=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1)-n;
   // スマホのトップ用の短い表示：DAY（企画の何日目か）・現在時刻・今日の残り
   if(compact){const s0=new Date(state.start),day=Math.round((new Date(n.getFullYear(),n.getMonth(),n.getDate())-new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()))/864e5)+1;
@@ -1914,16 +1931,17 @@ async function openVenue(){
   au.addEventListener('pause',()=>{if(mOn&&!au.ended&&VAU===au&&venuePeeking())setTimeout(()=>{if(mOn&&VAU===au&&au.paused&&venuePeeking())au.play().catch(()=>{})},0)});
   // 歓声：同時に重ねられるよう3つ用意し、押した瞬間に一度鳴らして（無音で）使えるようにしておく
   const CH=[1,2,3,4,5].map(i=>'venue/cheer/c'+i+'.mp3'),cpool=[0,1,2].map(()=>{const a=new Audio();a.preload='auto';a.src=CH[0];a.muted=true;a.play().then(()=>{a.pause();a.muted=false}).catch(()=>{a.muted=false});return a});
-  let cpi=0;const cheer=(loud)=>{if(!mOn||!VAU)return;const a=cpool[cpi++%cpool.length];a.src=CH[Math.floor(Math.random()*CH.length)];a.volume=loud?.75:.4;a.play().catch(()=>{})};
+  let cpi=0,scr=false;const cheer=(loud)=>{if(!mOn||!VAU||scr)return;const a=cpool[cpi++%cpool.length];a.src=CH[Math.floor(Math.random()*CH.length)];a.volume=loud?.75:.4;a.play().catch(()=>{})};
   VCH=cheer;clearTimeout(VCT);const nextCheer=()=>{VCT=setTimeout(()=>{if(VAU)cheer(false);if(VAU)nextCheer()},15000+Math.random()*30000)};
   VCP=cpool;
   const music={on:()=>mOn,toggle(){setTimeout(musicBtns);mOn=!mOn;try{localStorage.setItem('x10vmusic',mOn?'1':'0')}catch{}if(mOn)au.play().catch(()=>{});else{au.pause();VCP.forEach(a=>a.pause())}return mOn}};VMUS=music;
-  const api={users:()=>state.users,avatar:u=>'avatars/'+encodeURIComponent(u.handle.toLowerCase())+'.jpg',tag:u=>state.tags[u.handle.toLowerCase()],
+  const bgm={pause(){scr=true;au.pause();cpool.forEach(a=>a.pause())},resume(){scr=false;if(mOn)au.play().catch(()=>{})}};
+  const api={screening,bgm,users:()=>state.users,avatar:u=>'avatars/'+encodeURIComponent(u.handle.toLowerCase())+'.jpg',tag:u=>state.tags[u.handle.toLowerCase()],
     dayCount,todayKey,totals,GOAL,ended,tickerData,ix:()=>state.ix||[],music,peek:venuePeek,cheer:l=>VCH&&VCH(l),
     days:()=>{const s0=new Date(state.start),ek=dkey(CHALLENGE_END),o=[];for(let i=0;i<62;i++){const k=dkey(new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()+i).getTime());if(k>ek)break;o.push(k)}return o},
     openPlayer:id=>{closeVenue();openPlayer(id);pushNav()},close:()=>backOv(closeVenue)};
   // 会場のプログラムは、キャラクターを選んでいる間に読み込んでおく
-  const mod=import('./venue/venue.js?v=8');mod.catch(()=>{});
+  const mod=import('./venue/venue.js?v=9');mod.catch(()=>{});
   api.chara=await chooseChara(el,cheer);api.mmIcon=chooseChara.icon||null;api.bokoShirt=chooseChara.shirt||null;if(!api.chara||!document.getElementById('venue'))return;nextCheer();
   el.innerHTML='<div class="vload">会場を準備中…</div>';
   try{const m=await mod;if(!document.getElementById('venue'))return;VEN=await m.start(el,api)}
