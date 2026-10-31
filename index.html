@@ -268,6 +268,8 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #wall .wr{border-radius:50%;position:relative;flex:none}
 #wall .wr .av{width:100%;height:100%;border:var(--bw,2px) solid var(--bg);font-size:inherit}
 #wall .wc{position:absolute;left:50%;transform:translateX(-50%);background:var(--gold);color:#161a24;font-weight:900;border-radius:999px;border:2px solid var(--bg);white-space:nowrap;line-height:1.3}
+#wall .hl,#ppl .hl{font-family:"Archivo",var(--f-body);font-weight:800;letter-spacing:.16em;color:var(--gold);line-height:1;margin-bottom:.6em;white-space:nowrap;padding-left:.16em}
+#wall .wf.host,#ppl .wf.host{overflow:visible}
 #wall .wn{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.25;margin-top:3px}
 .rosterbar{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
 .seg{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:3px 12px;font-size:12px}
@@ -1503,8 +1505,9 @@ function fillWall(g,all){
       ${av(u)}
       ${a&&ring>=36?`<span class="wc" style="bottom:${-Math.round(ring*.06)}px;font-size:${Math.max(8,Math.round(ring*.13))}px;padding:0 ${Math.round(ring*.08)}px">達成</span>`:''}</span>
       ${showName?`<span class="wn" style="font-size:${Math.max(9,Math.min(12,Math.round(cell*.15)))}px">${esc(u.name)}</span>`:''}</div>`}).join('');
-  {const s=L.s,col=Math.floor((L.c-s)/2)+1,row=Math.floor((L.r-s)/2)+1,R=Math.floor(Math.min(cell*s,cell*1.3*s-22)*.86);
+  {const s=L.s,col=Math.floor((L.c-s)/2)+1,row=Math.floor((L.r-s)/2)+1,lf=Math.max(8,Math.min(14,Math.round(cell*s/11))),R=Math.floor(Math.min(cell*s,cell*1.3*s-30-lf*1.8)*.86);
     html=`<div class="wf host" style="grid-column:${col}/span ${s};grid-row:${row}/span ${s};justify-content:center">
+      <span class="hl" style="font-size:${lf}px">PRESENTED BY</span>
       <span class="wr" style="width:${R}px;height:${R}px;padding:${pad(R)}px;--bw:${bw(R)}px;background:var(--gold)">
         <span class="av" style="background-color:#5b6475;background-image:url('avatars/${HOST.handle}.jpg'),url('${HOST.img}')" role="img" aria-label="${esc(HOST.name)}"></span></span>
       <span class="wn" style="font-size:${Math.max(11,Math.min(16,Math.round(cell*.2)))}px;font-weight:700;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;text-align:center;line-height:1.2">${esc(HOST.name).replace('頭の中が','頭の中が<wbr>')}</span></div>`+html}
