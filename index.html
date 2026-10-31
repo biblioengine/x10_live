@@ -879,7 +879,7 @@ const ended=()=>Date.now()>CHALLENGE_END;
 // youtube には動画のURL（https://youtu.be/… や https://www.youtube.com/watch?v=…）を入れる。空のあいだは上映しない
 const SCREENINGS=[
   {from:'2026-10-30 00:00',until:'2026-10-31 02:00',title:'華金お疲れ様ナイト',youtube:'https://youtu.be/cGBgh9Ae0oo'},
-  {from:'2026-10-31 18:00',until:'',title:'1ヶ月完走お疲れ様ナイト',youtube:''},
+  {from:'2026-10-31 19:00',until:'',title:'華金お疲れ様ナイト リバイバル上映',youtube:'https://youtu.be/cGBgh9Ae0oo'},
 ];
 const ytId=u=>{const m=/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/.exec(u||'');return m?m[1]:null};
 function screening(){const t=Date.now(),jst=x=>Date.parse(x.replace(' ','T')+':00+09:00');

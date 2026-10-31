@@ -122,6 +122,8 @@ button:focus-visible{outline:2px solid var(--x);outline-offset:2px}
         <summary>プロフィール<span class="st" id="profSt"></span></summary>
         <div class="pb">
           <p class="hint">最初に一度だけ入力してください。この端末のブラウザに保存され、次からは入力しなくても入ります。</p>
+          <label for="uTitle">カードのタイトル<input id="uTitle" autocomplete="off" maxlength="20" placeholder="1×10×30"></label>
+          <label for="uSub">サブタイトル<input id="uSub" autocomplete="off" maxlength="30" placeholder="ONE TEN THIRTY RUN"></label>
           <div class="imgrow"><span class="lb">アイコン</span><span class="pv" id="avPv"></span>
             <span class="btn pick">選ぶ<input type="file" id="avIn" accept="image/*" aria-label="アイコン画像を選ぶ"></span>
             <button type="button" class="rm" id="avRm" hidden>外す</button></div>
@@ -165,10 +167,10 @@ const isoDay=t=>`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${
 function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3200)}
 
 /* プロフィール：index.html では取得データから入っていた部分 */
-const prof={name:'',handle:'',tag:'',start:'2026-10-01',av:'',bn:''};
+const prof={name:'',handle:'',tag:'',start:'2026-10-01',av:'',bn:'',title:'',sub:''};
 try{Object.assign(prof,JSON.parse(LS.get('profile','{}')))}catch{}
 function saveProf(){if(!LS.set('profile',JSON.stringify(prof)))toast('保存できませんでした。画像を小さめのものにしてみてください')}
-const uName=document.getElementById('uName'),uHandle=document.getElementById('uHandle'),uTag=document.getElementById('uTag'),uStart=document.getElementById('uStart');
+const uTitle=document.getElementById('uTitle'),uSub=document.getElementById('uSub'),uName=document.getElementById('uName'),uHandle=document.getElementById('uHandle'),uTag=document.getElementById('uTag'),uStart=document.getElementById('uStart');
 const cleanHandle=s=>s.trim().replace(/^@+/,'').replace(/\s/g,'');
 
 /* ---------- 個人カード：1×10×30 / One Ten Thirty Run（index.html と同じ描き方） ---------- */
@@ -258,11 +260,12 @@ function drawCard(){
   ctx.fillStyle=C.muted;ctx.font=`700 28px ${EN}`;
   spaced(ctx,`${t.getFullYear()}.${String(t.getMonth()+1).padStart(2,'0')}.${String(t.getDate()).padStart(2,'0')}`,R,262,3,'right');
   // ロゴ（左上）
-  const parts=[['1',C.fg],['×',C.gold],['10',C.fg],['×',C.gold],['30',C.fg]],logoMax=R-dayW-48-P;
-  let ls=150;do{ctx.font=`${ls}px ${LOGO}`;if(parts.reduce((w,[s])=>w+ctx.measureText(s).width+6,0)<=logoMax)break;ls-=4}while(ls>60);
+  const ttl=(prof.title||'').trim()||'1×10×30',parts=ttl.split(/(×)/).filter(s=>s).map(s=>[s,s==='×'?C.gold:C.fg]),logoMax=R-dayW-48-P;
+  const LOGOF=/[^\x00-\x7F×]/.test(ttl)?`"Archivo Black",${JP}`:LOGO,LW=/[^\x00-\x7F×]/.test(ttl)?'900 ':'';
+  let ls=150;do{ctx.font=`${LW}${ls}px ${LOGOF}`;if(parts.reduce((w,[s])=>w+ctx.measureText(s).width+6,0)<=logoMax)break;ls-=4}while(ls>30);
   let x=P;ctx.textAlign='left';
   for(const [s,col] of parts){ctx.fillStyle=col;ctx.fillText(s,x,208);x+=ctx.measureText(s).width+6}
-  ctx.fillStyle=C.muted;ctx.font=`800 28px ${EN}`;const subW=spaced(ctx,'ONE TEN THIRTY RUN',P+4,262,8.5);
+  ctx.fillStyle=C.muted;ctx.font=`800 28px ${MIX}`;const subW=spaced(ctx,(prof.sub||'').trim()||'ONE TEN THIRTY RUN',P+4,262,8.5);
   ctx.font='30px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';ctx.textAlign='left';ctx.fillText('🏆',P+4+subW+14,264);
   // ヘッダー画像：ロゴの下からフォロワー数の手前までに、色を重ねずそのまま敷く（比率はそのまま、はみ出た分を切る）
   const bnOn=!!(cardBn&&cardBn.complete&&cardBn.naturalWidth&&document.getElementById('cBn').checked);
@@ -326,7 +329,7 @@ function redrawCard(){cancelAnimationFrame(cardRaf);cardRaf=requestAnimationFram
 const FONTS=['150px "Archivo Black"','800 40px "Archivo"','500 28px "Archivo"','700 22px "Archivo"','900 60px "Archivo"',
   '900 60px "Zen Kaku Gothic New"','500 30px "Zen Kaku Gothic New"','500 36px "Zen Kaku Gothic New"'];
 function loadFonts(){
-  const txt=(prof.name||'あなたの名前')+prof.tag+MSG_DEFAULT+cMsg.value+'1×10×30 ONE TEN THIRTY RUN DAY FOLLOWERS POSTS Threads note 0123456789,./—@_()+−±→'+(prof.handle||'your_id');
+  const txt=(prof.title||'')+(prof.sub||'')+(prof.name||'あなたの名前')+prof.tag+MSG_DEFAULT+cMsg.value+'1×10×30 ONE TEN THIRTY RUN DAY FOLLOWERS POSTS Threads note 0123456789,./—@_()+−±→'+(prof.handle||'your_id');
   return Promise.all(FONTS.map(f=>document.fonts.load(f,txt))).catch(()=>{});
 }
 
@@ -368,9 +371,9 @@ function profState(){
   document.getElementById('profSt').textContent=ok?'@'+prof.handle:'（最初に入力してください）';
   return ok;
 }
-uName.value=prof.name;uHandle.value=prof.handle;uTag.value=prof.tag;uStart.value=prof.start||'2026-10-01';
-[uName,uHandle,uTag].forEach(i=>i.addEventListener('input',()=>{
-  prof.name=uName.value;prof.handle=cleanHandle(uHandle.value);prof.tag=uTag.value;saveProf();profState();
+uTitle.value=prof.title||'';uSub.value=prof.sub||'';uName.value=prof.name;uHandle.value=prof.handle;uTag.value=prof.tag;uStart.value=prof.start||'2026-10-01';
+[uTitle,uSub,uName,uHandle,uTag].forEach(i=>i.addEventListener('input',()=>{
+  prof.title=uTitle.value;prof.sub=uSub.value;prof.name=uName.value;prof.handle=cleanHandle(uHandle.value);prof.tag=uTag.value;saveProf();profState();
   loadFonts().then(redrawCard);redrawCard();
 }));
 uHandle.addEventListener('change',()=>{uHandle.value=prof.handle});
