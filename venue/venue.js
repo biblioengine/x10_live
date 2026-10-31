@@ -364,7 +364,7 @@ export async function start(root, X){
         const top=44,cw=Math.min(28,(W-60)/Math.max(1,n)),rh=(H-top-8)/us.length,x0=(W-cw*n)/2;
         cx.fillStyle='#8a93a8';cx.font=`700 14px ${NUM}`;cx.textAlign='center';
         us.forEach((u,r)=>{const tt=X.totals(u.id);ds.forEach((k,c)=>{const v=tt.map[k]||0,y=top+r*rh;
-          cx.fillStyle=k>tk?'#151823':k<tt.usk?'#1d2130':v>=X.GOAL?'#ffc53d':v?'#34405e':'#20253a';cx.fillRect(x0+c*cw+1,y+.5,cw-2,Math.max(1,rh-1))})})}
+          cx.fillStyle=k>tk?'#151823':k<tt.usk||(X.leaveOf&&X.leaveOf(u,k))?'#1d2130':v>=X.GOAL?'#ffc53d':v?'#34405e':'#20253a';cx.fillRect(x0+c*cw+1,y+.5,cw-2,Math.max(1,rh-1))})})}
       T.t.needsUpdate=true}
     dirty=false;
   }
