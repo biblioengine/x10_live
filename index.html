@@ -549,7 +549,8 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
 #ppl .tc .tcb{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;width:100%;background:var(--tcl);border-radius:3px 3px 10px 10px;margin-top:4px;padding:9px 8px 12px}
 #ppl .tc .tct{background-size:cover;background-position:center;position:relative}
 #ppl .tc .pring{margin-bottom:0}
-#ppl .tc .pav{border-color:var(--tcd)}
+#ppl .tc .pring{padding:0}
+#ppl .tc .pav{border:0;box-shadow:0 2px 10px rgba(0,0,0,.25)} /* リングも縁取りもなし（ヘッダー画像を活かす） */
 #ppl .tc .pdone{border-color:var(--tcd)}
 #ppl .tc .pn{color:var(--tct)}
 #ppl .tc .ph2,#ppl .tc .pt2{color:var(--tcm)}
@@ -1035,7 +1036,9 @@ document.addEventListener('scroll',e=>{const w=e.target;if(!w.classList)return;i
 function renderNav(){
   const tk=todayKey(),done=state.users.filter(u=>dayCount(u.id,tk)>=GOAL).length;
   document.getElementById('navViews').innerHTML=tabsHTML(state.view==='live'?'live':null);
-  document.getElementById('navUsers').innerHTML=newsSide();
+  // 締め切り後は左の速報欄ごと隠す
+  {const ns=document.querySelector('.navs');if(ns)ns.style.display=ended()?'none':'';}
+  if(!ended())document.getElementById('navUsers').innerHTML=newsSide();
 }
 function onair(compact){
   // 締め切り後：時計と残り時間をやめ、「全日程終了」を出す
@@ -1058,6 +1061,7 @@ function monthNav(){
 /* 速報の帯（スマホの LIVE）：達成・最速・自己ベスト・連続達成・全体の通算・個人の節目 */
 // 速報のもと。u＝取り上げる人（いない項目もある）、s＝名前を除いた短い文（PCの左の電光掲示板用）
 function tickerData(){
+  if(ended())return []; // 締め切り後は速報を止める
   const tk=todayKey(),out=[],T=(tag,txt,u,sh)=>out.push({tag,txt,u,s:sh||txt});
   const rows=state.users.map(u=>{const tot=totals(u.id),ps=state.byUser[u.id].filter(p=>dkey(p.ts)===tk);return{u,tot,ps,c:ps.length}});
   // 達成速報（新しい順）と最速達成
@@ -1110,7 +1114,7 @@ function renderLive(target){
   // 締め切り後：全員に S のバッジを付け、本数とバーを消して「お疲れ様でした」を出す
   const fin=ended();
   const board=[...rows].sort((a,b)=>b.c-a.c||a.reach-b.reach).map((r,i)=>{
-    const done=r.c>=GOAL,isS=fin||(fastest&&fastest.u.id===r.u.id);
+    const done=fin||r.c>=GOAL,isS=fin||(fastest&&fastest.u.id===r.u.id); // 終了後は全員同じ（達成の色）にそろえる
     return `<button type="button" class="player${done?' done':''}${isS?' has-s':''}" data-u="${esc(r.u.id)}" data-today="1">
       ${isS?`<span class="sbadge" title="${fin?'1ヶ月間チャレンジお疲れ様でした':`今日いちばん早く10本に到達（${hm(r.goal)}）`}" aria-label="${fin?'チャレンジ完走':'今日の最速達成'}"><span class="t t1"></span><span class="t t2"></span><span class="sh">S</span></span>`:''}
       <div class="top"><span class="rk">${i+1}</span>${av(r.u)}<div class="nm"><b>${esc(r.u.name)}</b><span>@${esc(r.u.handle)}</span></div>
@@ -1576,7 +1580,7 @@ function fillPeople(){const el=document.getElementById('ppl');if(!el)return;
   // PROFILE：全員のカード（アイコンに今日の投稿数のリング）
   el.querySelector('.pgrid').innerHTML=state.users.map(u=>{const tag=state.tags[u.handle.toLowerCase()],k=dayCount(u.id,tk);
     return `<button type="button" class="pcard tc" data-plr="${esc(u.id)}" style="${tcStyle(state.colors[u.handle.toLowerCase()])}" aria-label="${esc(u.name)}さんの選手紹介（今日 ${k}本）">
-      <span class="tct"${u.bn?` style="background-image:url('${bnURL(u)}')"`:''}><span class="pring" style="background:${ringBg(k,'#ffffff','rgba(255,255,255,.22)')}"><span class="pav" style="background-color:${u.color};background-image:url('avatars/${encodeURIComponent(u.handle.toLowerCase())}.jpg')${state.img[u.id]?`,url('${esc(state.img[u.id])}')`:''}"></span>${k>=GOAL?'<span class="pdone">達成</span>':''}</span></span>
+      <span class="tct"${u.bn?` style="background-image:url('${bnURL(u)}')"`:''}><span class="pring"><span class="pav" style="background-color:${u.color};background-image:url('avatars/${encodeURIComponent(u.handle.toLowerCase())}.jpg')${state.img[u.id]?`,url('${esc(state.img[u.id])}')`:''}"></span></span></span>
       <span class="tcb"><span class="pn">${esc(u.name)}</span><span class="ph2">@${esc(u.handle)}</span>${tag?`<span class="pt2">${esc(tag)}</span>`:''}</span></button>`}).join('');
   // colors.txt に色がない人は、ヘッダー画像の色から下の色を決める
   state.users.forEach(u=>{if(!u.bn||state.colors[u.handle.toLowerCase()])return;
@@ -1953,7 +1957,7 @@ async function openVenue(){
     days:()=>{const s0=new Date(state.start),ek=dkey(CHALLENGE_END),o=[];for(let i=0;i<62;i++){const k=dkey(new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()+i).getTime());if(k>ek)break;o.push(k)}return o},
     openPlayer:id=>{closeVenue();openPlayer(id);pushNav()},close:()=>backOv(closeVenue)};
   // 会場のプログラムは、キャラクターを選んでいる間に読み込んでおく
-  const mod=import('./venue/venue.js?v=11');mod.catch(()=>{});
+  const mod=import('./venue/venue.js?v=12');mod.catch(()=>{});
   api.chara=await chooseChara(el,cheer);api.mmIcon=chooseChara.icon||null;api.bokoShirt=chooseChara.shirt||null;if(!api.chara||!document.getElementById('venue'))return;nextCheer();
   el.innerHTML='<div class="vload">会場を準備中…</div>';
   try{const m=await mod;if(!document.getElementById('venue'))return;VEN=await m.start(el,api)}

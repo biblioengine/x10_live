@@ -390,14 +390,14 @@ export async function start(root, X){
   const head=new Image();head.src=BASE+'header.jpg';
   let avT=0,avAcc=0;const SC=FIN?['head','icons']:['head','x30','ttl']; // 終了後は、あたうるさんの画像と全員のアイコンを交互に
   const dec=t=>String(t).replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&');
-  const tick=()=>{const it=X.tickerData();return it.length?it.map(x=>`【${x.tag}】${x.txt.replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&')}`).join('　／　'):'1日10投稿30日チャレンジ実況中'};
+  const tick=()=>{const it=X.tickerData();return it.length?it.map(x=>`【${x.tag}】${x.txt.replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&')}`).join('　／　'):FIN?'congratulations！！！　1ヶ月間チャレンジお疲れ様でした':'1日10投稿30日チャレンジ実況中'};
   let tickText=tick(),tickX=0;
   // 両脇のビジョン：速報を4件ずつ、数秒ごとに入れ替え
   let sideT=0;
   // 20秒ごとに5秒間、大きな文字を出す：最終週は「FINAL WEEK」、10/30は「HAPPY FRIDAY NIGHT!!!」、10/31は「LAST DAY OF OCTOBER !!!」、終了後は「congratulations！！！」
   const finalLabel=()=>{if(FIN||(X.ended&&X.ended()))return ['congratulations','！！！','#ffd23d'];const ds=X.days(),tk=X.todayKey(),last=ds[ds.length-1];
     return tk===last?['LAST DAY OF','OCTOBER !!!','#ff4d3a']:tk===last-1?['HAPPY FRIDAY','NIGHT!!!','#ff3d7f']:tk>=ds[Math.max(0,ds.length-7)]?['FINAL','WEEK','#ffb21a']:null};
-  function drawSides(dt){sideT+=dt;const it=X.tickerData(),fl=sideT%20>=15?finalLabel():null;
+  function drawSides(dt){sideT+=dt;const it=X.tickerData(),fl=FIN||sideT%20>=15?finalLabel():null; // 終了後は速報を出さず、ずっと congratulations
     if(fl){for(const S of SIDE){const cx=S.cx,W=512,H=445;cx.fillStyle='#0b0a08';cx.fillRect(0,0,W,H);
         const on=Math.floor(sideT*3)%2===0,col=fl[2];
         cx.textAlign='center';cx.textBaseline='middle';
