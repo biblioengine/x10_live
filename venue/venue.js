@@ -344,7 +344,7 @@ export async function start(root, X){
         cx.fillStyle='#eef1f7';cx.textAlign='left';cx.font=`700 46px ${JP}`;cx.fillText(short(u.name,14),360,92);
         cx.fillStyle='#8a93a8';cx.font=`500 26px ${NUM}`;cx.fillText('@'+u.handle,362,142);
         const tag=X.tag(u);if(tag){cx.fillStyle='#cfd5e2';cx.font=`500 26px ${JP}`;cx.fillText(short(tag,26),362,190)}
-        cx.fillStyle='#ffc53d';cx.font=`800 28px ${JP}`;cx.fillText(`今日 ${c}/${X.GOAL}　達成 ${tt.ach}日　通算 ${tt.all}本`,362,262);
+        cx.fillStyle='#ffc53d';cx.font=`800 28px ${JP}`;cx.fillText(`今日 ${c}/${X.GOAL}　通算 ${tt.all}本`,362,262);
         cx.fillStyle='#8a93a8';cx.font=`500 20px ${JP}`;cx.fillText(`${profI%us.length+1} / ${us.length}　画面を押すとこの人のページへ`,362,318)}}
       else if(T.key==='board'){const rows=us.map(u=>({u,c:X.dayCount(u.id,tk)})).sort((a,b)=>b.c-a.c).slice(0,12);
         cx.fillStyle='#ffc53d';cx.font=`800 26px ${JP}`;cx.textAlign='left';cx.fillText('今日の途中経過',24,26);
@@ -353,12 +353,12 @@ export async function start(root, X){
           circ(cx,img(r.u),r.u,x+56,y,18);cx.textAlign='left';cx.fillStyle='#eef1f7';cx.font=`700 22px ${JP}`;cx.fillText(short(r.u.name,9),x+84,y);
           for(let k=0;k<10;k++){cx.fillStyle=k<r.c?(r.c>=X.GOAL?'#ffc53d':'#6c90ff'):'#2a2f3d';cx.fillRect(x+284+k*15,y-9,12,18)}
           cx.fillStyle=r.c>=X.GOAL?'#ffc53d':'#eef1f7';cx.font=`700 22px ${NUM}`;cx.textAlign='right';cx.fillText(r.c,x+470,y)})}
-      else if(T.key==='rank'){const rows=us.map(u=>({u,t:X.totals(u.id)})).sort((a,b)=>b.t.ach-a.t.ach||b.t.all-a.t.all).slice(0,12);
-        cx.fillStyle='#ffc53d';cx.font=`800 26px ${JP}`;cx.textAlign='left';cx.fillText('通算成績（達成日数・投稿数）',24,26);
+      else if(T.key==='rank'){const rows=us.map(u=>({u,t:X.totals(u.id)})).sort((a,b)=>b.t.all-a.t.all).slice(0,12);
+        cx.fillStyle='#ffc53d';cx.font=`800 26px ${JP}`;cx.textAlign='left';cx.fillText('通算成績（投稿数）',24,26);
         rows.forEach((r,i)=>{const col=i%2,row=Math.floor(i/2),x=24+col*500,y=72+row*48;
           cx.fillStyle='#8a93a8';cx.font=`700 22px ${NUM}`;cx.textAlign='right';cx.fillText(i+1,x+26,y);
           circ(cx,img(r.u),r.u,x+56,y,18);cx.textAlign='left';cx.fillStyle='#eef1f7';cx.font=`700 22px ${JP}`;cx.fillText(short(r.u.name,9),x+84,y);
-          cx.textAlign='right';cx.fillStyle='#ffc53d';cx.font=`700 22px ${NUM}`;cx.fillText(r.t.ach+'日',x+380,y);cx.fillStyle='#eef1f7';cx.fillText(r.t.all+'本',x+470,y)})}
+          cx.textAlign='right';cx.fillStyle='#eef1f7';cx.font=`700 22px ${NUM}`;cx.fillText(r.t.all+'本',x+470,y)})}
       else if(T.key==='net'){netDraw(cx,W,H,us)}
       else if(T.key==='cal'){const ds=X.days(),n=ds.length;cx.fillStyle='#ffc53d';cx.font=`800 24px ${JP}`;cx.textAlign='left';cx.fillText('達成カレンダー（金色＝10本達成）',24,22);
         const top=44,cw=Math.min(28,(W-60)/Math.max(1,n)),rh=(H-top-8)/us.length,x0=(W-cw*n)/2;

@@ -225,7 +225,7 @@ table.cmp{border-collapse:separate;border-spacing:3px;min-width:100%}
   .cd .bgpick{margin:10px 0 0;gap:6px}.cd .bgpick .bgl{width:auto;margin-right:2px}
   .cd .sw button{width:24px;height:24px}}
 .subnote{font-size:12px;color:var(--muted);background:var(--panel);border:1px dashed var(--line);border-radius:10px;padding:8px 12px}
-.rank-row{display:grid;grid-template-columns:minmax(190px,1.6fr) repeat(5,minmax(70px,1fr));align-items:center;gap:10px;padding:9px 16px 9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.rank-row{display:grid;grid-template-columns:minmax(190px,1.6fr) repeat(3,minmax(70px,1fr));align-items:center;gap:10px;padding:9px 16px 9px 0;border-bottom:1px solid var(--line);font-size:13px}
 .rank-row .stick{display:flex;align-items:center;gap:8px;min-width:0;align-self:stretch;padding-left:8px;background:var(--panel)}
 .rank-row:last-child{border-bottom:0}
 .rank-row.h{font-size:11px;color:var(--muted);padding-block:8px}
@@ -1121,18 +1121,18 @@ function renderLive(target){
       const c=tot.map[k]||0;
       return `<td><button type="button" class="cell${c>=GOAL?' done':''}${k===tk?' today':''}" data-u="${esc(u.id)}" data-k="${k}"
         aria-label="${esc(u.name)} ${m+1}月${i+1}日 ${c}本">${c}</button></td>`}).join('')
-    }<td class="tot num">${tot.ach}<span style="color:var(--muted)">/${tot.days}日</span></td></tr>`).join('');
+    }</tr>`).join('');
 
-  const rs=state.rs||(state.rs={k:'ach',dir:-1});
-  const rate=t=>t.days?t.ach/t.days:0, avg=t=>t.days?t.all/t.days:0;
-  const sortVal={name:r=>r.u.name,ach:r=>r.tot.ach,rate:r=>rate(r.tot),all:r=>r.tot.all,avg:r=>avg(r.tot),fol:r=>fol(r.u.handle)?.total??-Infinity};
+  if(state.rs&&(state.rs.k==='ach'||state.rs.k==='rate'))state.rs=null;
+  const rs=state.rs||(state.rs={k:'all',dir:-1});
+  const avg=t=>t.days?t.all/t.days:0;
+  const sortVal={name:r=>r.u.name,all:r=>r.tot.all,avg:r=>avg(r.tot),fol:r=>fol(r.u.handle)?.total??-Infinity};
   const cmp=(a,b)=>{const va=sortVal[rs.k](a),vb=sortVal[rs.k](b);
     const d=rs.k==='name'?String(va).localeCompare(String(vb),'ja'):va-vb;
-    return d*rs.dir||b.tot.ach-a.tot.ach||b.tot.all-a.tot.all};
+    return d*rs.dir||b.tot.all-a.tot.all};
   const sh=(k,label,right=true)=>`<div${right?' class="r"':''}><button type="button" class="sortbtn" data-sort="${k}"${rs.k===k?` aria-sort="${rs.dir<0?'descending':'ascending'}"`:''}>${label}<span class="ar">${rs.k===k?(rs.dir<0?'▼':'▲'):''}</span></button></div>`;
   const rank=[...rows].sort(cmp).map(({u,tot},i)=>
     `<div class="rank-row"><div class="stick"><span class="no">${i+1}</span>${av(u,'sm')}<span class="nm">${esc(u.name)}</span></div>
-     <div class="r num">${tot.ach}日</div><div class="r num">${tot.days?Math.round(tot.ach/tot.days*100):0}%</div>
      <div class="r num">${tot.all}</div><div class="r num">${tot.days?(tot.all/tot.days).toFixed(1):'0'}</div>
      ${(f=>`<div class="r num" style="color:${sgnc(f?.total)}">${f?sgn(f.total):'—'}</div>`)(fol(u.handle))}</div>`).join('');
 
@@ -1150,12 +1150,12 @@ function renderLive(target){
   </section>
   ${LM}<section class="card" data-sec="cal">
     <div class="card-h">${target?'':`<h2>達成カレンダー</h2>${monthNav()}`}<div class="key"><span><i style="background:var(--gold)"></i>10本達成</span><span><i style="background:var(--track)"></i>未達（数字は本数）</span></div></div>
-    <div class="cmpwrap"><table class="cmp"><thead><tr><th></th>${head}<th>達成</th></tr></thead><tbody>${body}</tbody></table></div>
+    <div class="cmpwrap"><table class="cmp"><thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table></div>
   </section>
   ${LM}<section class="card" data-sec="rank">
     <div class="card-h">${target?'':'<h2>通算成績</h2>'}<span class="sub">${st.getMonth()+1}/${st.getDate()} から今日まで・見出しを押すと並び替え</span></div>
     <div class="rankwrap"><div class="rank">
-      <div class="rank-row h"><div class="stick"><span class="no"></span><button type="button" class="sortbtn" data-sort="name"${rs.k==='name'?` aria-sort="${rs.dir<0?'descending':'ascending'}"`:''}>参加者<span class="ar">${rs.k==='name'?(rs.dir<0?'▼':'▲'):''}</span></button></div>${sh('ach','達成日数')}${sh('rate','達成率')}${sh('all','投稿数')}${sh('avg','1日平均')}${sh('fol','フォロワー増減')}</div>
+      <div class="rank-row h"><div class="stick"><span class="no"></span><button type="button" class="sortbtn" data-sort="name"${rs.k==='name'?` aria-sort="${rs.dir<0?'descending':'ascending'}"`:''}>参加者<span class="ar">${rs.k==='name'?(rs.dir<0?'▼':'▲'):''}</span></button></div>${sh('all','投稿数')}${sh('avg','1日平均')}${sh('fol','フォロワー増減')}</div>
       ${rank}</div></div>
   </section>${L2}`;
 }
@@ -1625,24 +1625,17 @@ function plrParts(u){
   const pages=[
     [st('',`${L('ENTRY','参加日')}<div class="v">${md(S.usk)}</div>`),
      st('',`${L('SINCE','Xを始めた年')}<div class="v">${joined?joined.getFullYear():'—'}</div>`),
-     st('',`${L('CLEAR','達成日数')}<div class="v">${t.ach}<small>/ ${t.days} DAYS</small></div>`),
-     st('',`${L('CLEAR RATE','達成率')}<div class="v">${pct(t.ach,t.days)}<small>%</small></div><div class="bar"><i style="width:${pct(t.ach,t.days)}%"></i></div>`)],
-    [st('',`${L('TOTAL POSTS','通算投稿数')}<div class="v">${S.all.toLocaleString()}</div>`),
-     st('',`${L('AVG / DAY','1日平均')}<div class="v">${t.days?(S.all/t.days).toFixed(1):'0'}</div>`),
-     st('',`${L('HIGH SCORE','いちばん多く投稿した日')}<div class="v">${S.high.c}<small>POSTS</small></div><div class="sub">${S.high.k?md(S.high.k):'—'}</div>`),
-     st('',`${L('MAX COMBO','連続で達成した最長日数')}<div class="v">${S.combo}<small>DAYS</small></div>`)],
-    [st('',`${L('GROW UP','フォロワーの増え方')}<div class="v${g>0?' up':g<0?' dn':''}">${g==null?'—':sgn(g)}</div>${S.fol?`<div class="sub">${S.fol.since.slice(5).replace('-','.')}〜</div>`:''}`),
-     st('',`${L('QUOTE','引用の割合')}<div class="v">${pct(S.quote,S.all)}<small>%</small></div><div class="bar"><i class="b" style="width:${pct(S.quote,S.all)}%"></i></div>`),
-     st(' w2',`${L('DAY / NIGHT','よく投稿する時間帯（昼6〜18時／夜）')}
-          <div class="dn2"><span>DAY ${pct(S.day,S.all)}%</span><span>NIGHT ${pct(S.night,S.all)}%</span></div>
-          <div class="bar"><i style="width:${pct(S.day,S.all)}%"></i><i class="b" style="flex:1"></i></div>
-          <div class="sub">PEAK ${S.peak==null?'—':String(S.peak).padStart(2,'0')+':00'}</div>`)]];
-  // 3ページ目：フォロワー数・増え方・引用・昼夜
-  {const f=S.fol;pages[2]=[
+     st('',`${L('TOTAL POSTS','通算投稿数')}<div class="v">${S.all.toLocaleString()}</div>`),
+     st('',`${L('AVG / DAY','1日平均')}<div class="v">${t.days?(S.all/t.days).toFixed(1):'0'}</div>`)],
+    [st('',`${L('HIGH SCORE','いちばん多く投稿した日')}<div class="v">${S.high.c}<small>POSTS</small></div><div class="sub">${S.high.k?md(S.high.k):'—'}</div>`),
+     st('',`${L('MAX COMBO','連続で達成した最長日数')}<div class="v">${S.combo}<small>DAYS</small></div>`)]];
+  // 2ページ目の残り：フォロワー数・増え方／3ページ目：引用・昼夜（横いっぱい）
+  {const f=S.fol;pages[1].push(
       st('',`${L('FOLLOWERS','フォロワー数')}<div class="v">${f?f.now.toLocaleString():'—'}</div>${f&&f.day!=null?`<div class="sub">前日比 ${sgn(f.day)}</div>`:''}`),
-      st('',`${L('GROW UP','フォロワーの増え方')}<div class="v${g>0?' up':g<0?' dn':''}">${g==null?'—':sgn(g)}</div>${f?`<div class="sub">${f.since.slice(5).replace('-','.')}〜</div>`:''}`),
-      st('',`${L('QUOTE','引用の割合')}<div class="v">${pct(S.quote,S.all)}<small>%</small></div><div class="bar"><i class="b" style="width:${pct(S.quote,S.all)}%"></i></div>`),
-      st('',`${L('DAY / NIGHT','昼6〜18時／夜')}<div class="dn2"><span>DAY ${pct(S.day,S.all)}%</span><span>${pct(S.night,S.all)}%</span></div>
+      st('',`${L('GROW UP','フォロワーの増え方')}<div class="v${g>0?' up':g<0?' dn':''}">${g==null?'—':sgn(g)}</div>${f?`<div class="sub">${f.since.slice(5).replace('-','.')}〜</div>`:''}`));
+    pages[2]=[
+      st(' w2',`${L('QUOTE','引用の割合')}<div class="v">${pct(S.quote,S.all)}<small>%</small></div><div class="bar"><i class="b" style="width:${pct(S.quote,S.all)}%"></i></div>`),
+      st(' w2',`${L('DAY / NIGHT','昼6〜18時／夜')}<div class="dn2"><span>DAY ${pct(S.day,S.all)}%</span><span>${pct(S.night,S.all)}%</span></div>
           <div class="bar"><i style="width:${pct(S.day,S.all)}%"></i><i class="b" style="flex:1"></i></div><div class="sub">PEAK ${S.peak==null?'—':String(S.peak).padStart(2,'0')+':00'}</div>`)]}
   const stsHTML=`<section class="sts${tint?' tint':''}"${tint} aria-roledescription="carousel" aria-label="ステータス">
           <div class="sth"><div class="lb">STATUS<small>成績</small></div>
@@ -1941,7 +1934,7 @@ async function openVenue(){
     days:()=>{const s0=new Date(state.start),ek=dkey(CHALLENGE_END),o=[];for(let i=0;i<62;i++){const k=dkey(new Date(s0.getFullYear(),s0.getMonth(),s0.getDate()+i).getTime());if(k>ek)break;o.push(k)}return o},
     openPlayer:id=>{closeVenue();openPlayer(id);pushNav()},close:()=>backOv(closeVenue)};
   // 会場のプログラムは、キャラクターを選んでいる間に読み込んでおく
-  const mod=import('./venue/venue.js?v=9');mod.catch(()=>{});
+  const mod=import('./venue/venue.js?v=10');mod.catch(()=>{});
   api.chara=await chooseChara(el,cheer);api.mmIcon=chooseChara.icon||null;api.bokoShirt=chooseChara.shirt||null;if(!api.chara||!document.getElementById('venue'))return;nextCheer();
   el.innerHTML='<div class="vload">会場を準備中…</div>';
   try{const m=await mod;if(!document.getElementById('venue'))return;VEN=await m.start(el,api)}
@@ -2149,7 +2142,7 @@ document.addEventListener('click',e=>{
   if(b.dataset.net){const id=b.dataset.net;closeOverlays();openNet(id);pushNav();return}
   if(b.id==='btnNetBack'){backOv(closeNet);return}
   if(b.dataset.rf){state.rf=b.dataset.rf;render();return}
-  if(b.dataset.sort){const k=b.dataset.sort,rs=state.rs||{k:'ach',dir:-1};
+  if(b.dataset.sort){const k=b.dataset.sort,rs=state.rs||{k:'all',dir:-1};
     state.rs=rs.k===k?{k,dir:-rs.dir}:{k,dir:k==='name'?1:-1};render();return}
   if(b.dataset.mv){state.m+=+b.dataset.mv;if(state.m<0){state.m=11;state.y--}if(state.m>11){state.m=0;state.y++}render();return}
   if(b.dataset.u&&(b.dataset.k||b.dataset.today||b.closest('#navUsers'))&&isPhone()){
