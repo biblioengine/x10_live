@@ -1183,21 +1183,22 @@ function renderRoster(){
   const all=state.users.map(u=>({u,c:dayCount(u.id,tk)})).sort((a,b)=>Math.min(b.c,GOAL)-Math.min(a.c,GOAL));
   const list=state.rf==='done'?all.filter(r=>r.c>=GOAL):state.rf==='todo'?all.filter(r=>r.c<GOAL):all;
   const doneN=all.filter(r=>r.c>=GOAL).length;
-  const faces=list.map(({u,c})=>{const a=c>=GOAL;
-    const ring=a?'var(--gold)':`conic-gradient(var(--x) 0 ${c/GOAL*360}deg, var(--track) 0)`;
+  const fin=ended();
+  const faces=(fin?state.users.map(u=>({u,c:dayCount(u.id,tk)})):list).map(({u,c})=>{const a=c>=GOAL&&!fin;
+    const ring=fin||a?'var(--gold)':`conic-gradient(var(--x) 0 ${c/GOAL*360}deg, var(--track) 0)`;
     return `<button type="button" class="face" data-u="${esc(u.id)}" data-today="1"
       title="${esc(u.name)} @${esc(u.handle)}　今日 ${c}本" aria-label="${esc(u.name)} 今日 ${c}本${a?' 達成':''}">
       <span class="ring" style="background:${ring}">${av(u)}${a?'<span class="crown">達成</span>':''}</span>
-      <b>${esc(u.name)}</b><span class="sc num">${c}/${GOAL}</span></button>`}).join('');
+      <b>${esc(u.name)}</b>${fin?'':`<span class="sc num">${c}/${GOAL}</span>`}</button>`}).join('');
   const seg=(v,l)=>`<button type="button" class="seg" data-rf="${v}" aria-pressed="${state.rf===v}">${l}</button>`;
   document.getElementById('main').innerHTML=`
   <div class="topbar"><h1>参加者一覧 <small>${state.users.length}人</small></h1><button type="button" class="wallbtn" id="btnWall">全員表示</button><button type="button" class="wallbtn" id="btnNet">参加者の交流</button>${onair()}</div>
   <section class="card">
-    <div class="wall-sum"><span class="big num">${doneN}<small>/ ${all.length}人が今日達成</small></span>
+    <div class="wall-sum">${fin?'<span class="big">1ヶ月間チャレンジお疲れ様でした</span>':`<span class="big num">${doneN}<small>/ ${all.length}人が今日達成</small></span>
       <span class="prog" aria-hidden="true"><i style="width:${doneN/Math.max(1,all.length)*100}%"></i></span>
-      <div class="rosterbar">${seg('all','全員')}${seg('done','達成 '+doneN)}${seg('todo','挑戦中 '+(all.length-doneN))}</div></div>
+      <div class="rosterbar">${seg('all','全員')}${seg('done','達成 '+doneN)}${seg('todo','挑戦中 '+(all.length-doneN))}</div>`}</div>
     <div class="roster">${faces||'<div class="empty" style="grid-column:1/-1">該当する参加者はいません</div>'}</div>
-    <div class="wall-foot"><span>リングは今日の本数（1周で10本、金色で達成）。進んでいる順。</span>
+    <div class="wall-foot"><span>${fin?'':'リングは今日の本数（1周で10本、金色で達成）。進んでいる順。'}</span>
       <button class="btn" type="button" id="btnFaces" style="margin-left:auto">アイコン画像を読み込む</button></div>
   </section>`;
 }
@@ -1478,29 +1479,46 @@ function wallLayout(n,W,H){
     if(w>best.w)best={c,w};}
   return best;
 }
-function renderWall(){
-  let el=document.getElementById('wall');
-  if(!el){el=document.createElement('div');el.id='wall';document.body.appendChild(el);document.documentElement.style.overflow='hidden'}
+// 主催者：メンバー一覧の真ん中に大きく出す（スクショ用）。avatars/ata_uru.jpg を置けばそちらを優先
+const HOST={handle:'ata_uru',name:'頭の中がうるさい、よ。',img:'https://pbs.twimg.com/profile_images/1888048733339975680/ISOmgDZQ_400x400.jpg'};
+function wallRows(){
   const tk=todayKey();
-  const all=state.users.map(u=>({u,c:dayCount(u.id,tk)})).sort((a,b)=>Math.min(b.c,GOAL)-Math.min(a.c,GOAL));
-  const done=all.filter(r=>r.c>=GOAL).length,n=new Date(clock());
-  el.innerHTML=`<div class="wh"><span class="wt"><em>10</em>投稿チャレンジ</span>
-    <span class="ws num">${n.getMonth()+1}/${n.getDate()} ${hm(n)}時点　本日達成 <b>${done}</b> / ${all.length}人</span>
-    <div class="wacts"><button type="button" class="back" id="btnWallBack">戻る</button><button type="button" class="back pf" id="btnToProfile">PROFILE ▶︎</button></div></div><div class="wg"></div>
-    <div class="wsw">横にスワイプで PROFILE へ</div>`;
-  const g=el.querySelector('.wg');
-  const W=g.clientWidth,H=g.clientHeight-6;
-  const {c,w}=wallLayout(all.length,W,H);
-  const cell=Math.floor(w),ring=Math.floor(cell*.86),showName=cell>=46;
-  g.style.gridTemplateColumns=`repeat(${c},${cell}px)`;
-  g.style.gridAutoRows=`${Math.floor(cell*1.3)}px`;
-  g.innerHTML=all.map(({u,c:k})=>{const a=k>=GOAL;
-    const bg=a?'var(--gold)':`conic-gradient(var(--x) 0 ${k/GOAL*360}deg, var(--track) 0)`;
-    const pad=Math.max(2,Math.round(ring*.06)),bw=Math.max(1,Math.round(ring*.04));
-    return `<div class="wf"><span class="wr" style="width:${ring}px;height:${ring}px;padding:${pad}px;--bw:${bw}px;background:${bg};font-size:${Math.round(ring*.32)}px">
+  const all=state.users.map(u=>({u,c:dayCount(u.id,tk)}));
+  // 並びはいつもの順のまま（今日の本数では並べ替えない）
+  return all;
+}
+function wallHead(all){const n=new Date(clock()),done=all.filter(r=>r.c>=GOAL).length;
+  return ended()?'1ヶ月間チャレンジお疲れ様でした':`${n.getMonth()+1}/${n.getDate()} ${hm(n)}時点　本日達成 <b>${done}</b> / ${all.length}人`}
+function fillWall(g,all){
+  // リングは日付が変わる（締め切り）までは今日の本数、変わったら全員金色
+  const fin=ended(),W=g.clientWidth,H=g.clientHeight-6,n=all.length;
+  // 主催者を s×s マスで真ん中に置く（列が偶数なら2×2、奇数なら3×3で左右の真ん中がそろう）
+  let L={c:1,w:0,s:1,r:n+1};
+  for(let c=2;c<=n+9;c++){const s=c%2?3:2;if(s>c)continue;const r=Math.max(s,Math.ceil((n+s*s)/c)),w=Math.min(W/c,H/(r*1.3));if(w>L.w)L={c,w,s,r}}
+  const cell=Math.floor(L.w),ring=Math.floor(cell*.86),showName=cell>=46;
+  g.style.gridTemplateColumns=`repeat(${L.c},${cell}px)`;g.style.gridAutoRows=`${Math.floor(cell*1.3)}px`;g.style.gridAutoFlow='row dense';
+  const pad=r=>Math.max(2,Math.round(r*.06)),bw=r=>Math.max(1,Math.round(r*.04));
+  let html=all.map(({u,c:k})=>{const a=k>=GOAL&&!fin;
+    return `<div class="wf"><span class="wr" style="width:${ring}px;height:${ring}px;padding:${pad(ring)}px;--bw:${bw(ring)}px;background:${fin?'var(--gold)':ringBg(k)};font-size:${Math.round(ring*.32)}px">
       ${av(u)}
       ${a&&ring>=36?`<span class="wc" style="bottom:${-Math.round(ring*.06)}px;font-size:${Math.max(8,Math.round(ring*.13))}px;padding:0 ${Math.round(ring*.08)}px">達成</span>`:''}</span>
       ${showName?`<span class="wn" style="font-size:${Math.max(9,Math.min(12,Math.round(cell*.15)))}px">${esc(u.name)}</span>`:''}</div>`}).join('');
+  {const s=L.s,col=Math.floor((L.c-s)/2)+1,row=Math.floor((L.r-s)/2)+1,R=Math.floor(Math.min(cell*s,cell*1.3*s-22)*.86);
+    html=`<div class="wf host" style="grid-column:${col}/span ${s};grid-row:${row}/span ${s};justify-content:center">
+      <span class="wr" style="width:${R}px;height:${R}px;padding:${pad(R)}px;--bw:${bw(R)}px;background:var(--gold)">
+        <span class="av" style="background-color:#5b6475;background-image:url('avatars/${HOST.handle}.jpg'),url('${HOST.img}')" role="img" aria-label="${esc(HOST.name)}"></span></span>
+      <span class="wn" style="font-size:${Math.max(11,Math.min(16,Math.round(cell*.2)))}px;font-weight:700;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;text-align:center;line-height:1.2">${esc(HOST.name).replace('頭の中が','頭の中が<wbr>')}</span></div>`+html}
+  g.innerHTML=html;
+}
+function renderWall(){
+  let el=document.getElementById('wall');
+  if(!el){el=document.createElement('div');el.id='wall';document.body.appendChild(el);document.documentElement.style.overflow='hidden'}
+  const all=wallRows();
+  el.innerHTML=`<div class="wh"><span class="wt"><em>10</em>投稿チャレンジ</span>
+    <span class="ws num">${wallHead(all)}</span>
+    <div class="wacts"><button type="button" class="back" id="btnWallBack">戻る</button><button type="button" class="back pf" id="btnToProfile">PROFILE ▶︎</button></div></div><div class="wg"></div>
+    <div class="wsw">横にスワイプで PROFILE へ</div>`;
+  fillWall(el.querySelector('.wg'),all);
 }
 // MEMBER：全員を1画面に並べる表示を開く
 function goMember(){openPeople(1);pushNav()}
@@ -1548,21 +1566,10 @@ function fillPeople(){const el=document.getElementById('ppl');if(!el)return;
   if(nc){nc.scrollLeft=li*nc.clientWidth;[...nc.children].forEach((x,i)=>x.scrollTop=tops[i]||0);liveTabs(nc);
     const nw=pv.querySelector('[data-sec="cal"] .cmpwrap');if(nw&&wpos){nw.scrollLeft=wpos[0];nw.scrollTop=wpos[1]}
     nc.addEventListener('scroll',()=>requestAnimationFrame(()=>liveTabs(nc)),{passive:true})}
-  const tk=todayKey(),n=new Date(clock());
-  const all=state.users.map(u=>({u,c:dayCount(u.id,tk)})).sort((a,b)=>Math.min(b.c,GOAL)-Math.min(a.c,GOAL));
-  const done=all.filter(r=>r.c>=GOAL).length;
-  el.querySelector('.ws').innerHTML=`${n.getMonth()+1}/${n.getDate()} ${hm(n)}時点　本日達成 <b>${done}</b> / ${all.length}人`;
+  const tk=todayKey(),all=wallRows();
+  el.querySelector('.ws').innerHTML=wallHead(all);
   // MEMBER：全員を1画面に収める
-  const g=el.querySelector('.wg'),W=g.clientWidth,H=g.clientHeight-6;
-  const {c,w}=wallLayout(all.length,W,H);
-  const cell=Math.floor(w),ring=Math.floor(cell*.86),showName=cell>=46;
-  g.style.gridTemplateColumns=`repeat(${c},${cell}px)`;g.style.gridAutoRows=`${Math.floor(cell*1.3)}px`;
-  g.innerHTML=all.map(({u,c:k})=>{const a=k>=GOAL;
-    const pad=Math.max(2,Math.round(ring*.06)),bw=Math.max(1,Math.round(ring*.04));
-    return `<div class="wf"><span class="wr" style="width:${ring}px;height:${ring}px;padding:${pad}px;--bw:${bw}px;background:${ringBg(k)};font-size:${Math.round(ring*.32)}px">
-      ${av(u)}
-      ${a&&ring>=36?`<span class="wc" style="bottom:${-Math.round(ring*.06)}px;font-size:${Math.max(8,Math.round(ring*.13))}px;padding:0 ${Math.round(ring*.08)}px">達成</span>`:''}</span>
-      ${showName?`<span class="wn" style="font-size:${Math.max(9,Math.min(12,Math.round(cell*.15)))}px">${esc(u.name)}</span>`:''}</div>`}).join('');
+  fillWall(el.querySelector('.wg'),all);
   // PROFILE：全員のカード（アイコンに今日の投稿数のリング）
   el.querySelector('.pgrid').innerHTML=state.users.map(u=>{const tag=state.tags[u.handle.toLowerCase()],k=dayCount(u.id,tk);
     return `<button type="button" class="pcard tc" data-plr="${esc(u.id)}" style="${tcStyle(state.colors[u.handle.toLowerCase()])}" aria-label="${esc(u.name)}さんの選手紹介（今日 ${k}本）">
